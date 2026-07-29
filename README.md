@@ -1,8 +1,9 @@
 # Neon Racer
 
-Neon Racer is a Raylib/C++ 3D track-building and time-trial game. This directory
-currently contains the application shell, shared-neon visual integration, and
-the first track-domain implementation that later editor and race phases build on.
+Neon Racer is a Raylib/C++ 3D track-building and time-trial game. It is a
+self-contained project: application flow, editor, race simulation, track domain,
+rendering, persistence, tests, assets, and documentation each have dedicated
+locations.
 
 ## Build and run
 
@@ -14,8 +15,8 @@ make run
 make test
 ```
 
-The root Makefile explicitly lists the current application sources and links
-them with `shared/neon.cpp`. It produces `build/neon-racer`; `make test` builds
+The root Makefile explicitly lists the application sources and links
+the UI module. It produces `build/neon-racer`; `make test` builds
 and runs the Raylib-independent track-domain tests. Raylib must be installed or
 supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS`, as documented in that Makefile.
 
@@ -53,16 +54,26 @@ supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS`, as documented in that Makefi
 - Gamepad: left stick steers; right/left trigger accelerate/brake; face buttons
   provide acceleration, brake, and reverse fallbacks.
 
-## Phase 1 architecture
+## Project structure
 
-- `main.cpp` owns the Raylib window and frame loop.
-- `application.*` owns high-level states and their cameras.
-- Future track domain, editor, physics, and persistence modules remain separate
-  from this shell, so the rendering flow does not become coupled to game rules.
+- `src/app`: Raylib window lifecycle, application states, and cameras.
+- `src/editor`: track editing interaction and editor interface.
+- `src/persistence`: draft-format serialization and draft library access.
+- `src/race`: time-trial state and vehicle simulation.
+- `src/render`: track surface rendering.
+- `src/track`: grid track model, geometry, validation, surface sampling, and
+  playable-export contracts.
+- `src/ui`: shared neon visual primitives.
+- `tests/unit`: Raylib-independent domain tests.
+- `assets/tracks/examples`: versioned example drafts.
+
+See `docs/architecture.md` for dependency rules and the planned internal splits.
 
 ## Data and compatibility baseline
 
-Custom editable layouts are stored as versioned text drafts in `neon-racer/tracks/custom`.
+Custom editable layouts are stored as versioned text drafts in `tracks/custom`.
+That runtime-created folder is intentionally ignored by Git; shipped examples are
+kept in `assets/tracks/examples`.
 New saves use `NEON_RACER_DRAFT 5`; the loader continues to accept milestone-one
 `NEON_RACER_DRAFT 1` through `NEON_RACER_DRAFT 4` files. Draft files remain editable-only at this stage and
 contain no verification replay or playable-export status.

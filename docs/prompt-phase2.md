@@ -1,14 +1,17 @@
-# Neon Racer — Milestone 2 implementation
+# Neon Racer — Historical milestone 2 brief
 
-Implement Milestone 2 for the existing Raylib/C++ project in `racer/`.
+> This is a historical implementation brief. Paths and build commands below
+> describe the pre-refactor project and are not current instructions.
 
-Read `racer/README.md`, `racer/prompt.md`, and the current source before changing anything. Milestone 1 is complete and working: preserve its build command, existing editor workflow, race-preview flow, controls where practical, and neon visual style.
+Implement Milestone 2 for the existing Raylib/C++ project.
+
+Read `README.md`, `docs/prompt.md`, and the current source before changing anything. Milestone 1 is complete and working: preserve its build command, existing editor workflow, race-preview flow, controls where practical, and neon visual style.
 
 The objective is to evolve the current straight/curve closed-loop prototype into a robust custom-track editor with playable exports, ghost replays, and physically motivated 3D driving. Do not rewrite the project as a new engine or introduce external dependencies.
 
 ## Delivery strategy
 
-Implement this in small, compiling vertical slices. After each meaningful slice, run `make racer` and fix regressions before continuing.
+Implement this in small, compiling vertical slices. After each meaningful slice, run `make build` and `make test` and fix regressions before continuing.
 
 Prioritize features in this order:
 

@@ -1,12 +1,15 @@
-# Neon Racer - 3D racing and track building game
+# Neon Racer - Original project brief
+
+> Historical implementation brief retained for product context. The current
+> standalone architecture is documented in `architecture.md`.
 
 The goal is to build a 3D game based on Raylib/C++ that allows the player to build a custom
 track, using pre-defined assets (straights, curves, and obstacles like ramps and loops) and testing
 them in a racing environment.
 
-The game inherits the shared neon/space visual style of the existing games through
-the `shared/neon` module. Reusable extensions may be added to that module when the
-racer needs them, while preserving visual consistency with the rest of the games.
+The game retains the neon/space visual style inherited from the earlier
+mini-game collection. The visual primitives now live in `src/ui` and belong to
+this project.
 
 ## Technical baseline
 

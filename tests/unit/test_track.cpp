@@ -1,6 +1,6 @@
-#include "../draft_io.hpp"
-#include "../playable_export.hpp"
-#include "../track.hpp"
+#include "../../src/persistence/draft_io.hpp"
+#include "../../src/track/playable_export.hpp"
+#include "../../src/track/track.hpp"
 
 #include <cstdio>
 #include <fstream>

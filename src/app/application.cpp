@@ -1,7 +1,7 @@
 #include "application.hpp"
 
-#include "../shared/neon.hpp"
-#include "track_renderer.hpp"
+#include "../render/track_renderer.hpp"
+#include "../ui/neon.hpp"
 
 #include <cmath>
 #include <rlgl.h>

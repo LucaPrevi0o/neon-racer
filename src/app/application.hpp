@@ -2,9 +2,9 @@
 
 #include <raylib.h>
 
-#include "editor.hpp"
-#include "playable_export.hpp"
-#include "race.hpp"
+#include "../editor/editor.hpp"
+#include "../race/race.hpp"
+#include "../track/playable_export.hpp"
 
 // The application owns only high-level flow. Track editing, validation and
 // simulation live in dedicated modules as they are introduced in later phases.

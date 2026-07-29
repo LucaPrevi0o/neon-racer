@@ -9,25 +9,24 @@ RAYLIB_CFLAGS ?= $(shell $(PKG_CONFIG) --cflags raylib 2>/dev/null)
 RAYLIB_LIBS ?= $(shell $(PKG_CONFIG) --libs raylib 2>/dev/null)
 RAYLIB_LIBS := $(if $(strip $(RAYLIB_LIBS)),$(RAYLIB_LIBS),-lraylib)
 
-PROJECT_DIR := neon-racer
 BUILD_DIR := build
 APP := $(BUILD_DIR)/neon-racer
 TRACK_TEST := $(BUILD_DIR)/tests/track_tests
 
-APP_SOURCES := $(PROJECT_DIR)/main.cpp \
-	$(PROJECT_DIR)/application.cpp \
-	$(PROJECT_DIR)/draft_io.cpp \
-	$(PROJECT_DIR)/editor.cpp \
-	$(PROJECT_DIR)/playable_export.cpp \
-	$(PROJECT_DIR)/race.cpp \
-	$(PROJECT_DIR)/track.cpp \
-	$(PROJECT_DIR)/track_renderer.cpp \
-	shared/neon.cpp
+APP_SOURCES := src/app/main.cpp \
+	src/app/application.cpp \
+	src/editor/editor.cpp \
+	src/persistence/draft_io.cpp \
+	src/race/race.cpp \
+	src/render/track_renderer.cpp \
+	src/track/playable_export.cpp \
+	src/track/track.cpp \
+	src/ui/neon.cpp
 
-TRACK_TEST_SOURCES := $(PROJECT_DIR)/tests/test_track.cpp \
-	$(PROJECT_DIR)/track.cpp \
-	$(PROJECT_DIR)/draft_io.cpp \
-	$(PROJECT_DIR)/playable_export.cpp
+TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
+	src/track/track.cpp \
+	src/persistence/draft_io.cpp \
+	src/track/playable_export.cpp
 
 .PHONY: all build run test clean help neon-racer racer racer-test
 
@@ -58,6 +57,3 @@ test racer-test: $(TRACK_TEST)
 
 clean:
 	$(RM) -r $(BUILD_DIR)
-
-# Temporary compatibility aliases while the source still lives in neon-racer/.
-neon-racer racer: build

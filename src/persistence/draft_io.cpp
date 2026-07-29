@@ -10,8 +10,8 @@
 
 namespace {
 
-const char* kTrackDirectory = "neon-racer/tracks";
-const char* kCustomDraftDirectory = "neon-racer/tracks/custom";
+const char* kTrackDirectory = "tracks";
+const char* kCustomDraftDirectory = "tracks/custom";
 
 bool EnsureCustomDraftDirectory(std::string& error) {
     if (mkdir(kTrackDirectory, 0755) != 0 && errno != EEXIST) {
@@ -44,7 +44,7 @@ std::string SafeDraftName(const std::string& name) {
 namespace DraftIO {
 
 const char* DefaultCustomDraftPath() {
-    return "neon-racer/tracks/custom/untitled.draft";
+    return "tracks/custom/untitled.draft";
 }
 
 std::string CustomDraftPath(const std::string& name) {

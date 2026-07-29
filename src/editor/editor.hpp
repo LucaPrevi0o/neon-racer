@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "track.hpp"
+#include "../track/track.hpp"
 
 class TrackEditor {
 public:

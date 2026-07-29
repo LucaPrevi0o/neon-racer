@@ -2,7 +2,7 @@
 
 #include <raylib.h>
 
-#include "track.hpp"
+#include "../track/track.hpp"
 
 struct RaceCar {
     Vector3 position;
