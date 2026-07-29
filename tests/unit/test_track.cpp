@@ -166,6 +166,27 @@ void TestBranchArmCollision() {
            "branch arms expose physical surface contacts for driving");
 }
 
+void TestBranchMergeGuardrailsFollowOuterBoundary() {
+    Track branch;
+    Expect(branch.AddBranch(GridPosition{0, 0, 0}, Heading::East, 6, 3) != 0,
+           "branch is accepted for guardrail-boundary testing");
+    const TrackContact branchRightInterior = branch.QuerySurface(4.0f, 0.16f, 1.0f);
+    const TrackContact branchLeftInterior = branch.QuerySurface(4.0f, 0.16f, -1.0f);
+    Expect(branchRightInterior.found && !branchRightInterior.guardrailHit &&
+               branchLeftInterior.found && !branchLeftInterior.guardrailHit,
+           "branch guardrails do not cross either neighboring arm's road");
+    const TrackContact branchGap = branch.QuerySurface(6.0f, 0.16f, 0.0f);
+    Expect(branchGap.found && branchGap.guardrailHit,
+           "branch guardrails remain on the real gap between separated arms");
+
+    Track merge;
+    Expect(merge.AddMerge(GridPosition{0, 0, 0}, Heading::East, 6, 3) != 0,
+           "merge is accepted for guardrail-boundary testing");
+    const TrackContact mergeInterior = merge.QuerySurface(2.0f, 0.16f, 1.0f);
+    Expect(mergeInterior.found && !mergeInterior.guardrailHit,
+           "merge guardrails do not cross the neighboring arm's road");
+}
+
 void TestBranchUsesDistinctExitConnectors() {
     Track track;
     Expect(track.AddBranch(GridPosition{0, 0, 0}, Heading::East, 6, 3) != 0,
@@ -247,6 +268,7 @@ int main() {
     TestConnectedCurveJoin();
     TestConnectorCollections();
     TestBranchArmCollision();
+    TestBranchMergeGuardrailsFollowOuterBoundary();
     TestBranchUsesDistinctExitConnectors();
     TestBranchMergeDraftRoundTrip();
     TestPlayableExport();
