@@ -74,6 +74,9 @@ void TestVariableStraightSurface() {
     guardrailTrack.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
     const TrackContact rail = guardrailTrack.QuerySurface(2.0f, 0.16f, 2.7f);
     Expect(rail.found && rail.guardrailHit, "surface query reports a guardrail just beyond the road edge");
+    const TrackContact broadRail = guardrailTrack.QuerySurface(2.0f, 0.16f, 3.4f, 1.4f);
+    Expect(broadRail.found && broadRail.guardrailHit,
+           "guardrail query keeps a broad enough contact band for fast movement");
 
     const std::string path = "/tmp/neon_racer_advanced_draft_test.draft";
     std::string error;

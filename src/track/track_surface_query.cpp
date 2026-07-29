@@ -84,7 +84,10 @@ TrackContact Track::QuerySurface(float x, float y, float z, float maxDistance) c
             float sideZ = 0.0f;
             if (!RoadSide(*sample, sideX, sideY, sideZ)) continue;
             const float lateral = (x - sample->x) * sideX + (y - sample->y) * sideY + (z - sample->z) * sideZ;
-            const float railLimit = sample->halfWidth + 0.35f;
+            // The rail needs a wider query band than its visible thickness:
+            // a fast fixed step can otherwise move the car beyond 0.35 m in
+            // one update and lose collision before resolution can occur.
+            const float railLimit = sample->halfWidth + std::min(maxDistance, 1.0f);
             if (std::fabs(lateral) > railLimit) continue;
             const bool guardrailHit = std::fabs(lateral) > sample->halfWidth;
             // Select the containing arm's surface rather than merely clearing

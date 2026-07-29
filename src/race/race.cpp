@@ -211,10 +211,26 @@ void TimeTrial::FixedUpdate(float deltaTime) {
         acceleration = Add(acceleration, Scale(car_.velocity, -0.75f));
         if (contact.guardrailHit) {
             const Vector3 edgePoint = surfacePoint;
-            const Vector3 outward = Normalize(ProjectOnPlane(Add(car_.position, Scale(edgePoint, -1.0f)), normal), right);
+            const Vector3 railOffset = ProjectOnPlane(Add(car_.position, Scale(edgePoint, -1.0f)), normal);
+            const float penetration = Magnitude(railOffset);
+            const Vector3 outward = Normalize(railOffset, right);
+
+            // Resolve the overlap immediately. The previous spring-like force
+            // left the car embedded for one or more fixed steps, where it
+            // repeatedly cancelled drive velocity and could lock the car.
+            // A small skin keeps the next query outside the rail boundary.
+            if (penetration > 0.0001f) {
+                car_.position = Add(car_.position, Scale(outward, -(penetration + 0.015f)));
+            }
+
+            // A rail blocks only its outward normal. Keep tangential velocity
+            // so the car can slide along it, and keep inward velocity so a
+            // reverse manoeuvre always moves the car back onto the road.
             const float outwardSpeed = Dot(car_.velocity, outward);
             if (outwardSpeed > 0.0f) car_.velocity = Add(car_.velocity, Scale(outward, -outwardSpeed));
-            acceleration = Add(acceleration, Scale(outward, -65.0f));
+            const float outwardAcceleration = Dot(acceleration, outward);
+            if (outwardAcceleration > 0.0f)
+                acceleration = Add(acceleration, Scale(outward, -outwardAcceleration));
             statusMessage_ = "Guardrail impact.";
         }
         surfaceMaterial_ = contact.surface.material;
