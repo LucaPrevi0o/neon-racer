@@ -1,6 +1,9 @@
 # Build products
 /build/
 /cmake-build-*/
+
+# Pre-v0.2 repository-local drafts are preserved for automatic import.
+/tracks/custom/
 /neon-racer/main
 /neon-racer/tests/test_track
 

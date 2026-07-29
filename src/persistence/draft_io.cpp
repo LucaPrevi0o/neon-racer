@@ -22,6 +22,7 @@ std::string DataDirectory() {
 }
 
 std::string CustomDraftDirectory() { return DataDirectory() + "/tracks"; }
+const char* kLegacyCustomDraftDirectory = "tracks/custom";
 
 std::string ParentDirectory(const std::string& path) {
     const std::string::size_type separator = path.find_last_of('/');
@@ -39,6 +40,38 @@ bool EnsureDirectory(const std::string& path, std::string& error) {
             return false;
         }
     }
+    return true;
+}
+
+bool FileExists(const std::string& path) {
+    std::ifstream file(path.c_str());
+    return static_cast<bool>(file);
+}
+
+bool ImportLegacyDrafts(std::string& error) {
+    DIR* legacy = opendir(kLegacyCustomDraftDirectory);
+    if (legacy == 0) {
+        if (errno == ENOENT) return true;
+        error = std::string("Could not read legacy draft folder: ") + std::strerror(errno);
+        return false;
+    }
+    dirent* entry = 0;
+    while ((entry = readdir(legacy)) != 0) {
+        const std::string filename(entry->d_name);
+        const std::string suffix = ".draft";
+        if (filename.size() <= suffix.size() || filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) != 0)
+            continue;
+        const std::string source = std::string(kLegacyCustomDraftDirectory) + "/" + filename;
+        const std::string destination = CustomDraftDirectory() + "/" + filename;
+        if (FileExists(destination)) continue;
+        if (!EnsureDirectory(CustomDraftDirectory(), error)) { closedir(legacy); return false; }
+        std::ifstream input(source.c_str(), std::ios::binary);
+        std::ofstream output(destination.c_str(), std::ios::binary);
+        if (!input || !output) { closedir(legacy); error = "Could not import legacy draft: " + filename; return false; }
+        output << input.rdbuf();
+        if (!output) { closedir(legacy); error = "Could not finish importing legacy draft: " + filename; return false; }
+    }
+    closedir(legacy);
     return true;
 }
 
@@ -71,6 +104,7 @@ std::string CustomDraftPath(const std::string& name) {
 
 bool ListCustomDrafts(std::vector<std::string>& names, std::string& error) {
     names.clear();
+    if (!ImportLegacyDrafts(error)) return false;
     const std::string path = CustomDraftDirectory();
     DIR* directory = opendir(path.c_str());
     if (directory == 0) {

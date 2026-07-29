@@ -36,4 +36,6 @@ this document.
 Shipped examples live in `assets/tracks/examples`. Personal drafts live under
 `$XDG_DATA_HOME/neon-racer/tracks`, falling back to
 `~/.local/share/neon-racer/tracks`. `NEON_RACER_DATA_DIR` overrides the base
-directory for development and portable installs.
+directory for development and portable installs. When the draft library opens,
+the game imports legacy `tracks/custom/*.draft` files from the old repository
+location without overwriting an existing user-data draft of the same name.
