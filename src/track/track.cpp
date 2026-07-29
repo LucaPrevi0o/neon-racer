@@ -138,36 +138,6 @@ std::vector<RoadQuad> RoadQuads(const TrackPiece& piece) {
     return quads;
 }
 
-// Rendering and collision expand branch/merge components into two physical
-// road arms. Surface contact must use that identical expansion or vehicles
-// fall through a visually valid route.
-std::vector<TrackSurfaceSample> RoadSurfaceSamples(const TrackPiece& piece) {
-    if (piece.type == TrackPieceType::Branch) {
-        TrackPiece rightArm = piece;
-        rightArm.type = TrackPieceType::Straight;
-        TrackPiece leftArm = rightArm;
-        leftArm.lateralOffset = -leftArm.lateralOffset;
-        std::vector<TrackSurfaceSample> samples = rightArm.SurfaceSamples();
-        const std::vector<TrackSurfaceSample> leftSamples = leftArm.SurfaceSamples();
-        samples.insert(samples.end(), leftSamples.begin(), leftSamples.end());
-        return samples;
-    }
-    if (piece.type == TrackPieceType::Merge) {
-        std::vector<TrackSurfaceSample> samples;
-        const std::vector<TrackConnector> entries = piece.EntryConnectors();
-        for (std::size_t index = 0; index < entries.size(); ++index) {
-            TrackPiece arm = piece;
-            arm.type = TrackPieceType::Straight;
-            arm.entryPosition = entries[index].position;
-            arm.lateralOffset = index == 0 ? -std::abs(piece.lateralOffset) : std::abs(piece.lateralOffset);
-            const std::vector<TrackSurfaceSample> armSamples = arm.SurfaceSamples();
-            samples.insert(samples.end(), armSamples.begin(), armSamples.end());
-        }
-        return samples;
-    }
-    return piece.SurfaceSamples();
-}
-
 bool RoadSurfacesOverlap(const TrackPiece& first, const TrackPiece& second) {
     const std::vector<RoadQuad> firstQuads = RoadQuads(first);
     const std::vector<RoadQuad> secondQuads = RoadQuads(second);
@@ -578,42 +548,6 @@ bool Track::ReplacePiece(const TrackPiece& replacement) {
         }
     }
     return false;
-}
-
-TrackContact Track::QuerySurface(float x, float y, float z, float maxDistance) const {
-    TrackContact result = {false, TrackSurfaceSample{}, maxDistance, false};
-    for (std::vector<TrackPiece>::const_iterator piece = pieces_.begin(); piece != pieces_.end(); ++piece) {
-        const std::vector<TrackSurfaceSample> samples = RoadSurfaceSamples(*piece);
-        for (std::vector<TrackSurfaceSample>::const_iterator sample = samples.begin(); sample != samples.end(); ++sample) {
-            // The road's side direction must be fully three-dimensional: a
-            // horizontal-only side vector fails on vertical loop sections.
-            float sideX = sample->tangentY * sample->normalZ - sample->tangentZ * sample->normalY;
-            float sideY = sample->tangentZ * sample->normalX - sample->tangentX * sample->normalZ;
-            float sideZ = sample->tangentX * sample->normalY - sample->tangentY * sample->normalX;
-            const float sideLength = std::sqrt(sideX * sideX + sideY * sideY + sideZ * sideZ);
-            if (sideLength < 0.0001f) continue;
-            sideX /= sideLength;
-            sideY /= sideLength;
-            sideZ /= sideLength;
-            const float lateral = (x - sample->x) * sideX + (y - sample->y) * sideY + (z - sample->z) * sideZ;
-            const float railLimit = sample->halfWidth + 0.35f;
-            if (std::fabs(lateral) > railLimit) continue;
-            const float clampedLateral = std::max(-sample->halfWidth, std::min(sample->halfWidth, lateral));
-            const float dx = x - (sample->x + sideX * clampedLateral);
-            const float dy = y - (sample->y + sideY * clampedLateral);
-            const float dz = z - (sample->z + sideZ * clampedLateral);
-            const float distance = Length(dx, dy, dz);
-            if (distance >= result.distance) continue;
-            result.found = true;
-            result.distance = distance;
-            result.guardrailHit = std::fabs(lateral) > sample->halfWidth;
-            result.surface = *sample;
-            result.surface.x += sideX * clampedLateral;
-            result.surface.y += sideY * clampedLateral;
-            result.surface.z += sideZ * clampedLateral;
-        }
-    }
-    return result;
 }
 
 std::uint32_t Track::LayoutRevision() const {
