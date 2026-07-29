@@ -732,7 +732,7 @@ void TrackEditor::DrawTrackLibrary() const {
         DrawRectangleRec(Rectangle{840.0f, 214.0f, 375.0f, 34.0f}, Fade(BLACK, 0.65f));
         DrawRectangleLinesEx(Rectangle{840.0f, 214.0f, 375.0f, 34.0f}, 2.0f, Neon::Yellow);
         DrawText(draftName_.c_str(), 850, 223, 18, Neon::Yellow);
-        DrawText("Names save only into tracks/custom/.", 840, 265, 14, Fade(RAYWHITE, 0.68f));
+        DrawText("Names save in your Neon Racer data folder.", 840, 265, 14, Fade(RAYWHITE, 0.68f));
         return;
     }
 

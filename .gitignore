@@ -9,8 +9,6 @@
 /neon-racer/neon-racer-v1.0
 /neon-racer/neon-racer-v1.1
 
-# Runtime-created editable drafts; versioned examples live in assets/tracks/examples.
-/tracks/custom/
 
 # Local editor and OS state
 .vscode/

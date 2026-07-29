@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
+#include <cstdlib>
 #include <dirent.h>
 #include <fstream>
 #include <map>
@@ -10,17 +11,33 @@
 
 namespace {
 
-const char* kTrackDirectory = "tracks";
-const char* kCustomDraftDirectory = "tracks/custom";
+std::string DataDirectory() {
+    const char* overrideDirectory = std::getenv("NEON_RACER_DATA_DIR");
+    if (overrideDirectory != 0 && *overrideDirectory != '\0') return overrideDirectory;
+    const char* xdgData = std::getenv("XDG_DATA_HOME");
+    if (xdgData != 0 && *xdgData != '\0') return std::string(xdgData) + "/neon-racer";
+    const char* home = std::getenv("HOME");
+    if (home != 0 && *home != '\0') return std::string(home) + "/.local/share/neon-racer";
+    return "/tmp/neon-racer";
+}
 
-bool EnsureCustomDraftDirectory(std::string& error) {
-    if (mkdir(kTrackDirectory, 0755) != 0 && errno != EEXIST) {
-        error = std::string("Could not create track directory: ") + std::strerror(errno);
-        return false;
-    }
-    if (mkdir(kCustomDraftDirectory, 0755) != 0 && errno != EEXIST) {
-        error = std::string("Could not create custom draft folder: ") + std::strerror(errno);
-        return false;
+std::string CustomDraftDirectory() { return DataDirectory() + "/tracks"; }
+
+std::string ParentDirectory(const std::string& path) {
+    const std::string::size_type separator = path.find_last_of('/');
+    return separator == std::string::npos ? "." : (separator == 0 ? "/" : path.substr(0, separator));
+}
+
+bool EnsureDirectory(const std::string& path, std::string& error) {
+    std::string current;
+    for (std::size_t index = 0; index < path.size(); ++index) {
+        current += path[index];
+        if (path[index] != '/' && index + 1 != path.size()) continue;
+        if (current.empty() || current == "/") continue;
+        if (mkdir(current.c_str(), 0755) != 0 && errno != EEXIST) {
+            error = std::string("Could not create draft directory: ") + std::strerror(errno);
+            return false;
+        }
     }
     return true;
 }
@@ -44,16 +61,18 @@ std::string SafeDraftName(const std::string& name) {
 namespace DraftIO {
 
 const char* DefaultCustomDraftPath() {
-    return "tracks/custom/untitled.draft";
+    static const std::string path = CustomDraftDirectory() + "/untitled.draft";
+    return path.c_str();
 }
 
 std::string CustomDraftPath(const std::string& name) {
-    return std::string(kCustomDraftDirectory) + "/" + SafeDraftName(name) + ".draft";
+    return CustomDraftDirectory() + "/" + SafeDraftName(name) + ".draft";
 }
 
 bool ListCustomDrafts(std::vector<std::string>& names, std::string& error) {
     names.clear();
-    DIR* directory = opendir(kCustomDraftDirectory);
+    const std::string path = CustomDraftDirectory();
+    DIR* directory = opendir(path.c_str());
     if (directory == 0) {
         if (errno == ENOENT) return true;
         error = std::string("Could not read custom draft folder: ") + std::strerror(errno);
@@ -74,7 +93,7 @@ bool ListCustomDrafts(std::vector<std::string>& names, std::string& error) {
 }
 
 bool Save(const Track& track, const std::string& path, std::string& error) {
-    if (!EnsureCustomDraftDirectory(error)) return false;
+    if (!EnsureDirectory(ParentDirectory(path), error)) return false;
     std::ofstream file(path.c_str());
     if (!file) {
         error = "Could not open draft for writing: " + path;

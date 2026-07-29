@@ -50,6 +50,5 @@ ghost-replay services.
 ## Data locations
 
 Versioned example tracks are assets under `assets/tracks/examples`. Editable
-runtime drafts are written below `tracks/custom`, which is ignored by Git. A
-future persistence milestone will relocate runtime drafts to an operating-system
-application-data directory and import existing local drafts.
+runtime drafts are written outside the repository under the operating-system
+application-data directory; see `track-format.md` for the exact lookup order.

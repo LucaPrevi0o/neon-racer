@@ -33,7 +33,7 @@ this document.
 
 ## Storage
 
-Shipped examples live in `assets/tracks/examples`. The running game currently
-writes personal drafts to `tracks/custom`, which is ignored by Git. The next
-persistence evolution should move those drafts to an OS application-data folder
-and import the existing local directory once.
+Shipped examples live in `assets/tracks/examples`. Personal drafts live under
+`$XDG_DATA_HOME/neon-racer/tracks`, falling back to
+`~/.local/share/neon-racer/tracks`. `NEON_RACER_DATA_DIR` overrides the base
+directory for development and portable installs.
