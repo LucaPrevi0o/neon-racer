@@ -15,6 +15,9 @@ TRACK_TEST := $(BUILD_DIR)/tests/track_tests
 RACE_PHYSICS_TEST := $(BUILD_DIR)/tests/race_physics_tests
 TIME_TRIAL_TEST := $(BUILD_DIR)/tests/time_trial_tests
 
+RACE_CORE_SOURCES := src/race/race.cpp \
+	src/race/race_physics.cpp
+
 APP_SOURCES := src/app/main.cpp \
 	src/app/application.cpp \
 	src/app/raylib_race_input.cpp \
@@ -25,8 +28,7 @@ APP_SOURCES := src/app/main.cpp \
 	src/editor/editor_library.cpp \
 	src/editor/editor_picking.cpp \
 	src/persistence/draft_io.cpp \
-	src/race/race.cpp \
-	src/race/race_physics.cpp \
+	$(RACE_CORE_SOURCES) \
 	src/render/car_renderer.cpp \
 	src/render/race_scene.cpp \
 	src/render/track_renderer.cpp \
@@ -59,8 +61,7 @@ RACE_PHYSICS_TEST_SOURCES := tests/unit/test_race_physics.cpp \
 	src/race/race_physics.cpp
 
 TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
-	src/race/race.cpp \
-	src/race/race_physics.cpp \
+	$(RACE_CORE_SOURCES) \
 	src/track/track_layout.cpp \
 	src/track/track_piece_geometry.cpp \
 	src/track/track_overlap.cpp \
@@ -101,7 +102,7 @@ $(RACE_PHYSICS_TEST): $(RACE_PHYSICS_TEST_SOURCES)
 
 $(TIME_TRIAL_TEST): $(TIME_TRIAL_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(RAYLIB_CFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
 
 test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(TIME_TRIAL_TEST)
 	./$(TRACK_TEST)

@@ -27,10 +27,10 @@ on read-only domain types, but neither may define game rules. `src/app` is the
 composition root: it creates the window, chooses the active screen, and wires
 the modules together.
 
-The CMake build mirrors these boundaries: `neon_racer_domain` is the
-Raylib-independent track and persistence library, while the `neon-racer`
-executable links it to the Raylib-backed application modules. The track tests
-link only the domain library.
+The CMake build mirrors these boundaries: `neon_racer_domain` owns the
+Raylib-independent track and persistence layer, and `neon_racer_race` is a
+separate Raylib-free simulation library built on top of it. The `neon-racer`
+executable links those libraries to the Raylib-backed application modules.
 
 ## Current refactoring boundaries
 
@@ -51,7 +51,8 @@ track-piece selections. `editor.cpp` remains the coordinator for input
 dispatch, mutable editor state, commands, and drawing.
 `app/raylib_race_input.cpp` translates Raylib devices into a plain `RaceInput`;
 `TimeTrial` receives that frame snapshot and reuses its held axes for every
-fixed step. The Raylib-free `race_physics.cpp` owns brake-damping policy and
+fixed step. `race_contracts.hpp` owns the simulation's vector, vehicle, and
+ghost values; the Raylib-free `race_physics.cpp` owns brake-damping policy and
 its digital-input cap. Later commits will split the rest of `race.cpp` into
 vehicle dynamics, time-trial, and ghost-replay services.
 

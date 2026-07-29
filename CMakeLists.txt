@@ -5,15 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_path(RAYLIB_INCLUDE_DIR raylib.h)
-find_library(RAYLIB_LIBRARY NAMES raylib)
-if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIBRARY)
-    message(FATAL_ERROR "Raylib was not found. Set RAYLIB_INCLUDE_DIR and RAYLIB_LIBRARY if it is installed outside standard paths.")
-endif()
-
-add_library(neon_racer_raylib INTERFACE)
-target_include_directories(neon_racer_raylib INTERFACE ${RAYLIB_INCLUDE_DIR})
-target_link_libraries(neon_racer_raylib INTERFACE ${RAYLIB_LIBRARY})
+option(NEON_RACER_BUILD_APP "Build the Raylib-backed Neon Racer application" ON)
 
 add_library(neon_racer_domain
     src/persistence/draft_io.cpp
@@ -30,15 +22,33 @@ add_library(neon_racer_domain
 )
 target_compile_options(neon_racer_domain PRIVATE -Wall -Wextra)
 
-add_executable(neon-racer
-    src/app/main.cpp src/app/application.cpp src/app/raylib_race_input.cpp
-    src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
-    src/editor/editor_library.cpp src/editor/editor_picking.cpp
-    src/race/race.cpp src/race/race_physics.cpp
-    src/render/car_renderer.cpp src/render/race_scene.cpp src/render/track_renderer.cpp src/ui/neon.cpp
+add_library(neon_racer_race
+    src/race/race.cpp
+    src/race/race_physics.cpp
 )
-target_compile_options(neon-racer PRIVATE -Wall -Wextra)
-target_link_libraries(neon-racer PRIVATE neon_racer_domain neon_racer_raylib)
+target_compile_options(neon_racer_race PRIVATE -Wall -Wextra)
+target_link_libraries(neon_racer_race PUBLIC neon_racer_domain)
+
+if(NEON_RACER_BUILD_APP)
+    find_path(RAYLIB_INCLUDE_DIR raylib.h)
+    find_library(RAYLIB_LIBRARY NAMES raylib)
+    if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIBRARY)
+        message(FATAL_ERROR "Raylib was not found. Set RAYLIB_INCLUDE_DIR and RAYLIB_LIBRARY if it is installed outside standard paths.")
+    endif()
+
+    add_library(neon_racer_raylib INTERFACE)
+    target_include_directories(neon_racer_raylib INTERFACE ${RAYLIB_INCLUDE_DIR})
+    target_link_libraries(neon_racer_raylib INTERFACE ${RAYLIB_LIBRARY})
+
+    add_executable(neon-racer
+        src/app/main.cpp src/app/application.cpp src/app/raylib_race_input.cpp
+        src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
+        src/editor/editor_library.cpp src/editor/editor_picking.cpp
+        src/render/car_renderer.cpp src/render/race_scene.cpp src/render/track_renderer.cpp src/ui/neon.cpp
+    )
+    target_compile_options(neon-racer PRIVATE -Wall -Wextra)
+    target_link_libraries(neon-racer PRIVATE neon_racer_race neon_racer_raylib)
+endif()
 
 enable_testing()
 add_executable(neon-racer-track-tests tests/unit/test_track.cpp)
@@ -52,10 +62,7 @@ add_test(NAME neon-racer-race-physics-tests COMMAND neon-racer-race-physics-test
 
 add_executable(neon-racer-time-trial-tests
     tests/unit/test_time_trial.cpp
-    src/race/race.cpp
-    src/race/race_physics.cpp
 )
 target_compile_options(neon-racer-time-trial-tests PRIVATE -Wall -Wextra)
-target_include_directories(neon-racer-time-trial-tests PRIVATE ${RAYLIB_INCLUDE_DIR})
-target_link_libraries(neon-racer-time-trial-tests PRIVATE neon_racer_domain)
+target_link_libraries(neon-racer-time-trial-tests PRIVATE neon_racer_race)
 add_test(NAME neon-racer-time-trial-tests COMMAND neon-racer-time-trial-tests)

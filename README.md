@@ -17,10 +17,9 @@ make test
 
 The root Makefile explicitly lists the application sources and links
 the UI module. It produces `build/neon-racer`; `make test` builds
-and runs headless track, race-physics, and input-injected time-trial tests.
-The time-trial test temporarily needs Raylib headers for its `Vector3` contract,
-but opens no window or device. Raylib must be installed or supplied through
-`RAYLIB_CFLAGS` and `RAYLIB_LIBS`, as documented in that Makefile.
+and runs Raylib-free track, race-physics, and input-injected time-trial tests.
+Only building or running the graphical application requires Raylib, installed
+or supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS` as documented there.
 
 ## CMake build
 
@@ -32,7 +31,8 @@ ctest --test-dir build/cmake --output-on-failure
 
 CMake uses separate domain, application, and test targets. Set
 `RAYLIB_INCLUDE_DIR` and `RAYLIB_LIBRARY` if Raylib is installed outside normal
-system paths.
+system paths. To build only the headless domain and race tests, configure with
+`-DNEON_RACER_BUILD_APP=OFF`; this mode does not discover or require Raylib.
 
 ## Current controls
 

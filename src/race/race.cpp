@@ -3,11 +3,13 @@
 
 #include "../track/track_road_geometry.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
 namespace {
 
+const float kPi = 3.14159265358979323846f;
 const float kFixedStep = 1.0f / 120.0f;
 const float kMaxFrameTime = 0.10f;
 const float kMaxForwardSpeed = 32.0f;
@@ -23,43 +25,43 @@ const float kGuardrailSkin = 0.015f;
 float HeadingRadians(Heading heading) {
     switch (heading) {
     case Heading::East: return 0.0f;
-    case Heading::South: return PI * 0.5f;
-    case Heading::West: return PI;
-    case Heading::North: return -PI * 0.5f;
+    case Heading::South: return kPi * 0.5f;
+    case Heading::West: return kPi;
+    case Heading::North: return -kPi * 0.5f;
     }
     return 0.0f;
 }
 
-Vector3 Forward(float heading) {
-    return Vector3{std::cos(heading), 0.0f, std::sin(heading)};
+RaceVector3 Forward(float heading) {
+    return RaceVector3{std::cos(heading), 0.0f, std::sin(heading)};
 }
 
-Vector3 Add(Vector3 a, Vector3 b) { return Vector3{a.x + b.x, a.y + b.y, a.z + b.z}; }
-Vector3 Scale(Vector3 vector, float amount) { return Vector3{vector.x * amount, vector.y * amount, vector.z * amount}; }
-float Dot(Vector3 a, Vector3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-Vector3 Cross(Vector3 a, Vector3 b) {
-    return Vector3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+RaceVector3 Add(RaceVector3 a, RaceVector3 b) { return RaceVector3{a.x + b.x, a.y + b.y, a.z + b.z}; }
+RaceVector3 Scale(RaceVector3 vector, float amount) { return RaceVector3{vector.x * amount, vector.y * amount, vector.z * amount}; }
+float Dot(RaceVector3 a, RaceVector3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+RaceVector3 Cross(RaceVector3 a, RaceVector3 b) {
+    return RaceVector3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
 }
-float Magnitude(Vector3 vector) { return std::sqrt(Dot(vector, vector)); }
-Vector3 Normalize(Vector3 vector, Vector3 fallback) {
+float Magnitude(RaceVector3 vector) { return std::sqrt(Dot(vector, vector)); }
+RaceVector3 Normalize(RaceVector3 vector, RaceVector3 fallback) {
     const float length = Magnitude(vector);
     return length > 0.0001f ? Scale(vector, 1.0f / length) : fallback;
 }
-Vector3 ProjectOnPlane(Vector3 vector, Vector3 normal) { return Add(vector, Scale(normal, -Dot(vector, normal))); }
-Vector3 RotateAround(Vector3 vector, Vector3 axis, float radians) {
+RaceVector3 ProjectOnPlane(RaceVector3 vector, RaceVector3 normal) { return Add(vector, Scale(normal, -Dot(vector, normal))); }
+RaceVector3 RotateAround(RaceVector3 vector, RaceVector3 axis, float radians) {
     const float cosine = std::cos(radians);
     const float sine = std::sin(radians);
     return Add(Add(Scale(vector, cosine), Scale(Cross(axis, vector), sine)),
                Scale(axis, Dot(axis, vector) * (1.0f - cosine)));
 }
 
-Vector3 RoadSide(const TrackSurfaceSample& surface, Vector3 fallback) {
+RaceVector3 RoadSide(const TrackSurfaceSample& surface, RaceVector3 fallback) {
     // Contacts normally come from Track::QuerySurface(), whose frame is
     // already valid. Retain the historic fallback policy as well, so a
     // synthesized or malformed contact cannot destabilize guardrail response.
-    const Vector3 tangent = Normalize(Vector3{surface.tangentX, surface.tangentY, surface.tangentZ}, fallback);
-    const Vector3 normal = Normalize(Vector3{surface.normalX, surface.normalY, surface.normalZ},
-                                     Vector3{0.0f, 1.0f, 0.0f});
+    const RaceVector3 tangent = Normalize(RaceVector3{surface.tangentX, surface.tangentY, surface.tangentZ}, fallback);
+    const RaceVector3 normal = Normalize(RaceVector3{surface.normalX, surface.normalY, surface.normalZ},
+                                     RaceVector3{0.0f, 1.0f, 0.0f});
     TrackSurfaceSample normalizedSurface = surface;
     normalizedSurface.tangentX = tangent.x;
     normalizedSurface.tangentY = tangent.y;
@@ -69,23 +71,23 @@ Vector3 RoadSide(const TrackSurfaceSample& surface, Vector3 fallback) {
     normalizedSurface.normalZ = normal.z;
     TrackRoadAxis axis;
     if (!TrackRoadGeometry::NormalizedSurfaceRightAxis(normalizedSurface, axis)) return fallback;
-    return Vector3{axis.x, axis.y, axis.z};
+    return RaceVector3{axis.x, axis.y, axis.z};
 }
 
 // `TrackContact::surface` sits on the closest road edge when guardrailHit is
 // true. Resolve only the signed distance across that edge: the distance to the
 // sampled point also contains motion along the road, which must not be treated
 // as penetration or it can pull a car backwards into a rail.
-bool ResolveGuardrailContact(RaceCar& car, const TrackContact& contact, Vector3* acceleration) {
+bool ResolveGuardrailContact(RaceCar& car, const TrackContact& contact, RaceVector3* acceleration) {
     if (!contact.found || !contact.guardrailHit) return false;
 
-    const Vector3 fallbackSide = Normalize(Cross(car.forward, car.up), Vector3{0.0f, 0.0f, 1.0f});
-    const Vector3 side = RoadSide(contact.surface, fallbackSide);
-    const Vector3 edgePoint = Vector3{contact.surface.x, contact.surface.y, contact.surface.z};
+    const RaceVector3 fallbackSide = Normalize(Cross(car.forward, car.up), RaceVector3{0.0f, 0.0f, 1.0f});
+    const RaceVector3 side = RoadSide(contact.surface, fallbackSide);
+    const RaceVector3 edgePoint = RaceVector3{contact.surface.x, contact.surface.y, contact.surface.z};
     const float signedPenetration = Dot(Add(car.position, Scale(edgePoint, -1.0f)), side);
     if (std::fabs(signedPenetration) <= 0.0001f) return true;
 
-    const Vector3 outward = Scale(side, signedPenetration < 0.0f ? -1.0f : 1.0f);
+    const RaceVector3 outward = Scale(side, signedPenetration < 0.0f ? -1.0f : 1.0f);
     const float penetration = std::fabs(signedPenetration);
 
     // Keep a small inward skin so the next surface query is clearly on the
@@ -121,8 +123,8 @@ float DriveFor(SurfaceMaterial material) {
 } // namespace
 
 TimeTrial::TimeTrial()
-    : track_(0), car_{Vector3{0.0f, 0.16f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f},
-                     Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}, 0.0f, 0.0f}, accumulator_(0.0f),
+    : track_(0), car_{RaceVector3{0.0f, 0.16f, 0.0f}, RaceVector3{0.0f, 0.0f, 0.0f},
+                     RaceVector3{1.0f, 0.0f, 0.0f}, RaceVector3{0.0f, 1.0f, 0.0f}, 0.0f, 0.0f}, accumulator_(0.0f),
       currentLapTime_(0.0f), bestLapTime_(0.0f), totalTime_(0.0f), previousStartProjection_(0.0f),
       completedLaps_(0), hasLeftStart_(false), paused_(false), finished_(false), ready_(false),
       onTrack_(true), surfaceMaterial_(SurfaceMaterial::Regular),
@@ -204,17 +206,17 @@ RaceCar TimeTrial::GhostCar() const {
         const GhostSample& previous = verifiedGhostSamples_[index - 1];
         const float span = next.time - previous.time;
         const float amount = span > 0.0f ? (playbackTime - previous.time) / span : 0.0f;
-        return RaceCar{Vector3{previous.car.position.x + (next.car.position.x - previous.car.position.x) * amount,
+        return RaceCar{RaceVector3{previous.car.position.x + (next.car.position.x - previous.car.position.x) * amount,
                                previous.car.position.y + (next.car.position.y - previous.car.position.y) * amount,
                                previous.car.position.z + (next.car.position.z - previous.car.position.z) * amount},
-                       Vector3{previous.car.velocity.x + (next.car.velocity.x - previous.car.velocity.x) * amount,
+                       RaceVector3{previous.car.velocity.x + (next.car.velocity.x - previous.car.velocity.x) * amount,
                                previous.car.velocity.y + (next.car.velocity.y - previous.car.velocity.y) * amount,
                                previous.car.velocity.z + (next.car.velocity.z - previous.car.velocity.z) * amount},
-                       Normalize(Vector3{previous.car.forward.x + (next.car.forward.x - previous.car.forward.x) * amount,
+                       Normalize(RaceVector3{previous.car.forward.x + (next.car.forward.x - previous.car.forward.x) * amount,
                                          previous.car.forward.y + (next.car.forward.y - previous.car.forward.y) * amount,
                                          previous.car.forward.z + (next.car.forward.z - previous.car.forward.z) * amount},
                                  previous.car.forward),
-                       Normalize(Vector3{previous.car.up.x + (next.car.up.x - previous.car.up.x) * amount,
+                       Normalize(RaceVector3{previous.car.up.x + (next.car.up.x - previous.car.up.x) * amount,
                                          previous.car.up.y + (next.car.up.y - previous.car.up.y) * amount,
                                          previous.car.up.z + (next.car.up.z - previous.car.up.z) * amount}, previous.car.up),
                        previous.car.headingRadians + (next.car.headingRadians - previous.car.headingRadians) * amount,
@@ -232,19 +234,19 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
 
     const TrackContact contact = track_->QuerySurface(car_.position.x, car_.position.y, car_.position.z, 1.4f);
     const float grip = onTrack_ ? GripFor(surfaceMaterial_) : 0.20f;
-    Vector3 acceleration = Vector3{0.0f, -kGravity, 0.0f};
+    RaceVector3 acceleration = RaceVector3{0.0f, -kGravity, 0.0f};
 
     if (contact.found) {
-        const Vector3 normal = Normalize(Vector3{contact.surface.normalX, contact.surface.normalY, contact.surface.normalZ},
-                                         Vector3{0.0f, 1.0f, 0.0f});
-        const Vector3 surfacePoint = Vector3{contact.surface.x, contact.surface.y, contact.surface.z};
+        const RaceVector3 normal = Normalize(RaceVector3{contact.surface.normalX, contact.surface.normalY, contact.surface.normalZ},
+                                         RaceVector3{0.0f, 1.0f, 0.0f});
+        const RaceVector3 surfacePoint = RaceVector3{contact.surface.x, contact.surface.y, contact.surface.z};
         const float height = Dot(Add(car_.position, Scale(surfacePoint, -1.0f)), normal);
         const float normalVelocity = Dot(car_.velocity, normal);
         const float support = std::max(0.0f, (kCarRideHeight - height) * kSuspensionSpring -
                                              normalVelocity * kSuspensionDamping);
         acceleration = Add(acceleration, Scale(normal, support));
 
-        const Vector3 roadForward = Normalize(Vector3{contact.surface.tangentX, contact.surface.tangentY,
+        const RaceVector3 roadForward = Normalize(RaceVector3{contact.surface.tangentX, contact.surface.tangentY,
                                                        contact.surface.tangentZ}, car_.forward);
         car_.forward = Normalize(ProjectOnPlane(car_.forward, normal), roadForward);
         const float forwardSpeed = Dot(car_.velocity, car_.forward);
@@ -253,7 +255,7 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
         car_.forward = Normalize(RotateAround(car_.forward, normal, steeringRate * deltaTime), roadForward);
         car_.up = normal;
 
-        const Vector3 right = Normalize(Cross(car_.forward, normal), Vector3{0.0f, 0.0f, 1.0f});
+        const RaceVector3 right = Normalize(Cross(car_.forward, normal), RaceVector3{0.0f, 0.0f, 1.0f});
         const float lateralSpeed = Dot(car_.velocity, right);
         const float lateralForce = std::max(-kGravity * grip, std::min(kGravity * grip, -lateralSpeed / deltaTime));
         acceleration = Add(acceleration, Scale(right, lateralForce));
@@ -271,7 +273,7 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
         onTrack_ = true;
     } else {
         onTrack_ = false;
-        car_.up = Normalize(Add(Scale(car_.up, 0.98f), Vector3{0.0f, 0.02f, 0.0f}), Vector3{0.0f, 1.0f, 0.0f});
+        car_.up = Normalize(Add(Scale(car_.up, 0.98f), RaceVector3{0.0f, 0.02f, 0.0f}), RaceVector3{0.0f, 1.0f, 0.0f});
         statusMessage_ = "Airborne / off track: steering and traction reduced.";
     }
 
@@ -300,7 +302,7 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     const TrackPiece* startPiece = track_->GetPiece(track_->StartFinishPieceId());
     if (startPiece == 0) return;
     const TrackConnector start = startPiece->EntryConnector();
-    const Vector3 startDirection = Forward(StartHeading());
+    const RaceVector3 startDirection = Forward(StartHeading());
     const float dx = car_.position.x - static_cast<float>(start.position.x);
     const float dz = car_.position.z - static_cast<float>(start.position.z);
     const float projection = dx * startDirection.x + dz * startDirection.z;
@@ -335,24 +337,24 @@ void TimeTrial::CompleteLap() {
 void TimeTrial::ResetCarToStart() {
     car_.position = StartPosition();
     car_.headingRadians = StartHeading();
-    car_.velocity = Vector3{0.0f, 0.0f, 0.0f};
+    car_.velocity = RaceVector3{0.0f, 0.0f, 0.0f};
     car_.forward = Forward(car_.headingRadians);
-    car_.up = Vector3{0.0f, 1.0f, 0.0f};
+    car_.up = RaceVector3{0.0f, 1.0f, 0.0f};
     car_.speed = 0.0f;
     previousStartProjection_ = 0.0f;
 }
 
-Vector3 TimeTrial::StartPosition() const {
+RaceVector3 TimeTrial::StartPosition() const {
     const TrackPiece* startPiece = track_->GetPiece(track_->StartFinishPieceId());
     const TrackConnector start = startPiece->EntryConnector();
-    return Vector3{static_cast<float>(start.position.x), static_cast<float>(start.position.y) + kCarRideHeight,
+    return RaceVector3{static_cast<float>(start.position.x), static_cast<float>(start.position.y) + kCarRideHeight,
                    static_cast<float>(start.position.z)};
 }
 
 float TimeTrial::StartHeading() const {
     const TrackPiece* startPiece = track_->GetPiece(track_->StartFinishPieceId());
     const float heading = HeadingRadians(startPiece->EntryConnector().heading);
-    return track_->SelectedRaceDirection() == RaceDirection::Forward ? heading : heading + PI;
+    return track_->SelectedRaceDirection() == RaceDirection::Forward ? heading : heading + kPi;
 }
 
 const char* FormatRaceTime(float seconds) {

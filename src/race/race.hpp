@@ -1,23 +1,10 @@
 #pragma once
 
-#include <raylib.h>
+#include <vector>
 
+#include "race_contracts.hpp"
 #include "race_input.hpp"
 #include "../track/track.hpp"
-
-struct RaceCar {
-    Vector3 position;
-    Vector3 velocity;
-    Vector3 forward;
-    Vector3 up;
-    float headingRadians;
-    float speed;
-};
-
-struct GhostSample {
-    RaceCar car;
-    float time;
-};
 
 class TimeTrial {
 public:
@@ -47,7 +34,7 @@ private:
     void FixedUpdate(float deltaTime, const RaceInput& input);
     void CompleteLap();
     void ResetCarToStart();
-    Vector3 StartPosition() const;
+    RaceVector3 StartPosition() const;
     float StartHeading() const;
 
     const Track* track_;

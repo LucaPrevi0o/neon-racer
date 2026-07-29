@@ -23,8 +23,38 @@ RaceInput Input(float steering = 0.0f, float accelerate = 0.0f, float brake = 0.
     return RaceInput{steering, accelerate, brake, reverse, pausePressed, resetPressed};
 }
 
+void ExpectStartPose(const RaceCar& car, float expectedForwardX, float expectedHeading, const char* message) {
+    Expect(NearlyEqual(car.position.x, 0.0f) && NearlyEqual(car.position.y, 0.16f) &&
+               NearlyEqual(car.position.z, 0.0f) && NearlyEqual(car.velocity.x, 0.0f) &&
+               NearlyEqual(car.velocity.y, 0.0f) && NearlyEqual(car.velocity.z, 0.0f) &&
+               NearlyEqual(car.forward.x, expectedForwardX) && NearlyEqual(car.forward.y, 0.0f) &&
+               NearlyEqual(car.forward.z, 0.0f) && NearlyEqual(car.up.x, 0.0f) &&
+               NearlyEqual(car.up.y, 1.0f) && NearlyEqual(car.up.z, 0.0f) &&
+               NearlyEqual(car.headingRadians, expectedHeading) && NearlyEqual(car.speed, 0.0f),
+           message);
+}
+
 // TimeTrial stores a pointer to its track, so every test keeps its layout alive
 // for the entire trial rather than constructing it in a temporary helper.
+void TestStartAndResetPose() {
+    Track forwardTrack = Track::CreateSampleCircuit();
+    TimeTrial forwardTrial;
+    forwardTrial.Start(forwardTrack);
+    ExpectStartPose(forwardTrial.Car(), 1.0f, 0.0f,
+                    "a forward start uses the Raylib-free car contract's canonical pose");
+    forwardTrial.Update(kFixedStep, Input(0.0f, 1.0f));
+    forwardTrial.Reset();
+    ExpectStartPose(forwardTrial.Car(), 1.0f, 0.0f,
+                    "reset restores the exact forward start pose without a rendering dependency");
+
+    Track reverseTrack = Track::CreateSampleCircuit();
+    reverseTrack.SetStartFinish(reverseTrack.StartFinishPieceId(), RaceDirection::Reverse);
+    TimeTrial reverseTrial;
+    reverseTrial.Start(reverseTrack);
+    ExpectStartPose(reverseTrial.Car(), -1.0f, 3.14159265358979323846f,
+                    "a reverse start retains the canonical pi heading without Raylib constants");
+}
+
 void TestInjectedDriveInput() {
     const Track track = Track::CreateSampleCircuit();
     TimeTrial coasting;
@@ -90,6 +120,7 @@ void TestInvalidTrackIgnoresInjectedInput() {
 } // namespace
 
 int main() {
+    TestStartAndResetPose();
     TestInjectedDriveInput();
     TestHeldInputFeedsEveryFixedStep();
     TestPauseAndResetActions();
