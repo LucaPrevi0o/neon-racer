@@ -17,9 +17,9 @@ cmake --build build/cmake
 ctest --test-dir build/cmake --output-on-failure
 ```
 
-The domain tests must not include or link Raylib. Add behavior tests under
-`tests/unit` whenever changing track geometry, validation, serialization, or
-playable-export rules.
+The Raylib-free unit tests must not include or link Raylib. Add behavior tests
+under `tests/unit` whenever changing track geometry, validation, serialization,
+playable-export rules, or isolated race-dynamics math.
 
 ## Dependency rules
 

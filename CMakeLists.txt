@@ -33,7 +33,7 @@ add_executable(neon-racer
     src/app/main.cpp src/app/application.cpp
     src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
     src/editor/editor_library.cpp src/editor/editor_picking.cpp
-    src/race/race.cpp src/race/race_input.cpp
+    src/race/race.cpp src/race/race_input.cpp src/race/race_physics.cpp
     src/render/car_renderer.cpp src/render/race_scene.cpp src/render/track_renderer.cpp src/ui/neon.cpp
 )
 target_compile_options(neon-racer PRIVATE -Wall -Wextra)
@@ -44,3 +44,7 @@ add_executable(neon-racer-track-tests tests/unit/test_track.cpp)
 target_compile_options(neon-racer-track-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-track-tests PRIVATE neon_racer_domain)
 add_test(NAME neon-racer-track-tests COMMAND neon-racer-track-tests)
+
+add_executable(neon-racer-race-physics-tests tests/unit/test_race_physics.cpp src/race/race_physics.cpp)
+target_compile_options(neon-racer-race-physics-tests PRIVATE -Wall -Wextra)
+add_test(NAME neon-racer-race-physics-tests COMMAND neon-racer-race-physics-tests)

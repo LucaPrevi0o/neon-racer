@@ -12,6 +12,7 @@ RAYLIB_LIBS := $(if $(strip $(RAYLIB_LIBS)),$(RAYLIB_LIBS),-lraylib)
 BUILD_DIR := build
 APP := $(BUILD_DIR)/neon-racer
 TRACK_TEST := $(BUILD_DIR)/tests/track_tests
+RACE_PHYSICS_TEST := $(BUILD_DIR)/tests/race_physics_tests
 
 APP_SOURCES := src/app/main.cpp \
 	src/app/application.cpp \
@@ -24,6 +25,7 @@ APP_SOURCES := src/app/main.cpp \
 	src/persistence/draft_io.cpp \
 	src/race/race.cpp \
 	src/race/race_input.cpp \
+	src/race/race_physics.cpp \
 	src/render/car_renderer.cpp \
 	src/render/race_scene.cpp \
 	src/render/track_renderer.cpp \
@@ -50,13 +52,16 @@ TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
 	src/persistence/draft_io.cpp \
 	src/track/playable_export.cpp
 
+RACE_PHYSICS_TEST_SOURCES := tests/unit/test_race_physics.cpp \
+	src/race/race_physics.cpp
+
 .PHONY: all build run test clean help neon-racer racer racer-test
 
 help:
 	@echo "Usage:"
 	@echo "  make build                Build Neon Racer"
 	@echo "  make run                  Build and run Neon Racer"
-	@echo "  make test                 Build and run domain tests"
+	@echo "  make test                 Build and run Raylib-free unit tests"
 	@echo "  make clean                Remove generated build products"
 
 all: build
@@ -74,8 +79,13 @@ $(TRACK_TEST): $(TRACK_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(TRACK_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST)
+$(RACE_PHYSICS_TEST): $(RACE_PHYSICS_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -o $@ $(RACE_PHYSICS_TEST_SOURCES)
+
+test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST)
 	./$(TRACK_TEST)
+	./$(RACE_PHYSICS_TEST)
 
 clean:
 	$(RM) -r $(BUILD_DIR)

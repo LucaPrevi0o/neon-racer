@@ -48,9 +48,10 @@ editor-view pan, zoom, orbit, elevation, and reset transforms; and
 `editor_picking.cpp` converts editor rays into grid positions and nearest
 track-piece selections. `editor.cpp` remains the coordinator for input
 dispatch, mutable editor state, commands, and drawing.
-`race_input.cpp` translates Raylib devices into a plain `RaceInput`; later
-commits will split `race.cpp` into vehicle dynamics, time-trial, and
-ghost-replay services.
+`race_input.cpp` translates Raylib devices into a plain `RaceInput`, while the
+Raylib-free `race_physics.cpp` owns brake-damping policy and its digital-input
+cap. Later commits will split the rest of `race.cpp` into vehicle dynamics,
+time-trial, and ghost-replay services.
 
 ## Data locations
 

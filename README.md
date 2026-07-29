@@ -17,8 +17,9 @@ make test
 
 The root Makefile explicitly lists the application sources and links
 the UI module. It produces `build/neon-racer`; `make test` builds
-and runs the Raylib-independent track-domain tests. Raylib must be installed or
-supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS`, as documented in that Makefile.
+and runs the Raylib-independent track and race-physics unit tests. Raylib must
+be installed or supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS`, as documented
+in that Makefile.
 
 ## CMake build
 
@@ -63,10 +64,12 @@ system paths.
 ## Time trial controls
 
 - `Tab`: enter or leave the time trial (the editor layout must be race-ready).
-- Keyboard: `W`/up accelerates, `S`/down brakes, `X` reverses, `A`/`D` or left/
-  right steers, `R` restarts all three laps, and `P` pauses.
-- Gamepad: left stick steers; right/left trigger accelerate/brake; face buttons
-  provide acceleration, brake, and reverse fallbacks.
+- Keyboard: `W`/up accelerates, `S`/down applies a moderated digital brake,
+  `X` reverses, `A`/`D` or left/right steers, `R` restarts all three laps, and
+  `P` pauses.
+- Gamepad: left stick steers; right/left trigger accelerate/brake with their
+  full analogue range; face buttons provide acceleration, moderated brake, and
+  reverse fallbacks.
 
 ## Project structure
 

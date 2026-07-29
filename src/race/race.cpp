@@ -1,5 +1,6 @@
 #include "race.hpp"
 #include "race_input.hpp"
+#include "race_physics.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -248,7 +249,8 @@ void TimeTrial::FixedUpdate(float deltaTime) {
         if (std::fabs(forwardSpeed) < (driveInput >= 0.0f ? kMaxForwardSpeed : kMaxReverseSpeed)) {
             acceleration = Add(acceleration, Scale(car_.forward, driveInput * driveForce * DriveFor(contact.surface.material)));
         }
-        if (brake > 0.0f) acceleration = Add(acceleration, Scale(car_.velocity, -brake * 8.0f * grip));
+        if (brake > 0.0f)
+            acceleration = Add(acceleration, Scale(car_.velocity, -RacePhysics::BrakeDamping(brake, grip)));
         acceleration = Add(acceleration, Scale(car_.velocity, -0.75f));
         if (ResolveGuardrailContact(car_, contact, &acceleration)) statusMessage_ = "Guardrail impact.";
         surfaceMaterial_ = contact.surface.material;
