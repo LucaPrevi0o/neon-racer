@@ -35,6 +35,23 @@ CMake uses separate domain, application, and test targets. Set
 system paths. To build only the headless domain and race tests, configure with
 `-DNEON_RACER_BUILD_APP=OFF`; this mode does not discover or require Raylib.
 
+## GitHub releases
+
+Pushing one version tag beginning with `v` runs the GitHub release workflow. It
+builds and tests a Linux x86_64 binary, publishes a `.tar.gz` archive and its
+SHA-256 checksum, then creates or updates the matching GitHub prerelease for
+alpha, beta, and release-candidate tags.
+
+After tagging a commit already reachable from `main`, publish it with:
+
+```sh
+make publish-tag TAG=v0.2.0-alpha.17
+```
+
+The command pushes `main` and only that tag. GitHub Actions cannot see a tag
+that exists only in a local clone, so this explicit push is the handoff that
+starts the remote release.
+
 ## Current controls
 
 - `Tab`: switch between the editor and race-preview application states

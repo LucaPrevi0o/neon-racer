@@ -1,0 +1,104 @@
+name: Publish tagged release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build Linux x86_64 release
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify the tag belongs to main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          git merge-base --is-ancestor "$tag_commit" origin/main
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            cmake \
+            ninja-build \
+            libasound2-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libxrandr-dev
+
+      - name: Build and install Raylib
+        env:
+          RAYLIB_VERSION: "5.5"
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$RAYLIB_VERSION" https://github.com/raysan5/raylib.git "$RUNNER_TEMP/raylib-src"
+          cmake -S "$RUNNER_TEMP/raylib-src" -B "$RUNNER_TEMP/raylib-build" -G Ninja \
+            -DBUILD_EXAMPLES=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/raylib"
+          cmake --build "$RUNNER_TEMP/raylib-build" --parallel
+          cmake --install "$RUNNER_TEMP/raylib-build"
+
+      - name: Configure, build, and test Neon Racer
+        run: |
+          set -euo pipefail
+          cmake -S . -B build/release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib"
+          cmake --build build/release --parallel
+          ctest --test-dir build/release --output-on-failure
+
+      - name: Package the release archive
+        id: package
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          package_name="neon-racer-${tag}-linux-x86_64"
+          package_root="dist/$package_name"
+          archive="dist/${package_name}.tar.gz"
+          mkdir -p "$package_root"
+          install -m 755 build/release/neon-racer "$package_root/neon-racer"
+          install -m 644 README.md "$package_root/README.md"
+          tar -C dist -czf "$archive" "$package_name"
+          sha256sum "$archive" > "${archive}.sha256"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "checksum=${archive}.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$ARCHIVE" "$CHECKSUM" --clobber
+            exit 0
+          fi
+
+          prerelease=()
+          case "$tag" in
+            *-alpha.*|*-beta.*|*-rc.*) prerelease=(--prerelease) ;;
+          esac
+          gh release create "$tag" "$ARCHIVE" "$CHECKSUM" \
+            --title "Neon Racer $tag" \
+            --generate-notes \
+            "${prerelease[@]}"

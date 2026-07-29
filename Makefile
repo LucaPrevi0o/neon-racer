@@ -82,13 +82,14 @@ TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
 	$(RACE_CORE_SOURCES) \
 	$(RACE_TRACK_SOURCES)
 
-.PHONY: all build run test clean help neon-racer racer racer-test
+.PHONY: all build run test clean help publish-tag neon-racer racer racer-test
 
 help:
 	@echo "Usage:"
 	@echo "  make build                Build Neon Racer"
 	@echo "  make run                  Build and run Neon Racer"
 	@echo "  make test                 Build and run headless unit tests"
+	@echo "  make publish-tag TAG=vX   Push main and one version tag to GitHub"
 	@echo "  make clean                Remove generated build products"
 
 all: build
@@ -123,6 +124,15 @@ test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(T
 	./$(RACE_PHYSICS_TEST)
 	./$(VEHICLE_DYNAMICS_TEST)
 	./$(TIME_TRIAL_TEST)
+
+# GitHub Actions receives a tag only after Git pushes it. Publish exactly one
+# validated main-history version tag so a release workflow gets one event.
+publish-tag:
+	@test -n "$(TAG)" || { echo "Usage: make publish-tag TAG=vX.Y.Z"; exit 2; }
+	@case "$(TAG)" in v*) ;; *) echo "TAG must begin with v"; exit 2;; esac
+	@git rev-parse --verify --quiet "refs/tags/$(TAG)" >/dev/null || { echo "Unknown tag: $(TAG)"; exit 2; }
+	@git merge-base --is-ancestor "$(TAG)" main || { echo "Tag $(TAG) is not reachable from main"; exit 2; }
+	git push origin main "refs/tags/$(TAG)"
 
 clean:
 	$(RM) -r $(BUILD_DIR)

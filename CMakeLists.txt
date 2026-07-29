@@ -34,15 +34,23 @@ target_compile_options(neon_racer_race PRIVATE -Wall -Wextra)
 target_link_libraries(neon_racer_race PUBLIC neon_racer_domain neon_racer_vehicle_dynamics)
 
 if(NEON_RACER_BUILD_APP)
-    find_path(RAYLIB_INCLUDE_DIR raylib.h)
-    find_library(RAYLIB_LIBRARY NAMES raylib)
-    if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIBRARY)
-        message(FATAL_ERROR "Raylib was not found. Set RAYLIB_INCLUDE_DIR and RAYLIB_LIBRARY if it is installed outside standard paths.")
-    endif()
-
     add_library(neon_racer_raylib INTERFACE)
-    target_include_directories(neon_racer_raylib INTERFACE ${RAYLIB_INCLUDE_DIR})
-    target_link_libraries(neon_racer_raylib INTERFACE ${RAYLIB_LIBRARY})
+    # Prefer Raylib's exported CMake target when available. It carries the
+    # platform libraries needed by a static Raylib build, so tagged release
+    # builds link consistently. Preserve the manual-library fallback used by
+    # simple local installations.
+    find_package(raylib CONFIG QUIET)
+    if(TARGET raylib)
+        target_link_libraries(neon_racer_raylib INTERFACE raylib)
+    else()
+        find_path(RAYLIB_INCLUDE_DIR raylib.h)
+        find_library(RAYLIB_LIBRARY NAMES raylib)
+        if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIBRARY)
+            message(FATAL_ERROR "Raylib was not found. Set RAYLIB_INCLUDE_DIR and RAYLIB_LIBRARY if it is installed outside standard paths.")
+        endif()
+        target_include_directories(neon_racer_raylib INTERFACE ${RAYLIB_INCLUDE_DIR})
+        target_link_libraries(neon_racer_raylib INTERFACE ${RAYLIB_LIBRARY})
+    endif()
 
     add_executable(neon-racer
         src/app/main.cpp src/app/application.cpp src/app/raylib_race_input.cpp

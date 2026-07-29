@@ -62,5 +62,11 @@ coherent change, for example `refactor/editor-commands` or
 before committing. Tag release candidates and releases with semantic versions,
 for example `v0.2.0-alpha.0`.
 
+To publish a tagged GitHub release, make sure the tag is reachable from `main`
+and run `make publish-tag TAG=<version>`. The release workflow is triggered by
+that one pushed tag; it builds and tests the Linux x86_64 archive before
+creating or updating the GitHub release. A local tag alone cannot trigger a
+GitHub workflow.
+
 Do not commit generated executables, build directories, or editable user drafts.
 Versioned example tracks belong in `assets/tracks/examples`.
