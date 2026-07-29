@@ -39,6 +39,11 @@ geometry remain independently understandable and reusable. When those modules
 change, manually verify grid preview placement, piece selection, right-drag
 orbiting, WASD/QE movement, shift-wheel zoom limits, and Home reset.
 
+New editor sessions start with an empty layout. `CLEAR TRACK` must clear only
+the current in-memory layout, reset its start/finish state, remain undoable with
+`Ctrl+Z`, and leave saved custom drafts untouched. Manually check those cases
+after changing editor commands or history.
+
 ## Git workflow
 
 `main` represents integrated, verified releases. Create a focused branch for a

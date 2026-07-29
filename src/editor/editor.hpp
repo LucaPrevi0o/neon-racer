@@ -36,6 +36,7 @@ private:
     void TransformSelected();
     void DuplicateSelected();
     void DeleteSelected();
+    void ClearTrack();
     void SetStartFinish();
     bool UpdateTrackLibraryInput();
     void DrawTrackLibrary() const;

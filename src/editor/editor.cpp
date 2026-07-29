@@ -19,6 +19,10 @@ Rectangle StartFinishButtonBounds() {
     return Rectangle{static_cast<float>(kPanelX + 18), 600.0f, 260.0f, 34.0f};
 }
 
+Rectangle ClearTrackButtonBounds() {
+    return Rectangle{320.0f, 600.0f, 160.0f, 34.0f};
+}
+
 Rectangle HelpToggleBounds(bool expanded) {
     return expanded ? Rectangle{412.0f, 88.0f, 68.0f, 26.0f} :
         Rectangle{28.0f, 80.0f, 206.0f, 38.0f};
@@ -106,12 +110,12 @@ bool SamePieceShape(const TrackPiece& first, const TrackPiece& second) {
 } // namespace
 
 TrackEditor::TrackEditor()
-    : track_(Track::CreateSampleCircuit()),
+    : track_(),
       preview_{0, TrackPieceType::Straight, GridPosition{0, 0, -5}, Heading::East, 5, 5, 4,
                CurveTurn::Right, 4, 90, 0, 0, 0, SurfaceMaterial::Regular},
       selectedPieceId_(0),
       selectedPropertyIndex_(0),
-      message_("Place a component, or select one to transform it."),
+      message_("Start with an empty track: place a component or load a draft."),
       libraryOpen_(false),
       helpPanelExpanded_(true),
       namingDraft_(false),
@@ -215,12 +219,17 @@ void TrackEditor::Update(Camera3D& camera) {
         }
     }
 
-    const bool startFinishClicked = !libraryConsumed && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-        track_.IsLayoutValid() && CheckCollisionPointRec(GetMousePosition(), StartFinishButtonBounds());
-    if (startFinishClicked) {
+    const bool leftClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    const bool clearTrackClicked = !libraryConsumed && helpPanelExpanded_ && leftClick &&
+        CheckCollisionPointRec(GetMousePosition(), ClearTrackButtonBounds());
+    const bool startFinishClicked = !libraryConsumed && helpPanelExpanded_ && leftClick &&
+        CheckCollisionPointRec(GetMousePosition(), StartFinishButtonBounds());
+    if (clearTrackClicked) {
+        ClearTrack();
+    } else if (startFinishClicked) {
         SetStartFinish();
-    } else if (!libraryConsumed && (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsKeyPressed(KEY_ENTER))) {
-        const std::uint32_t pickedPieceId = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ?
+    } else if (!libraryConsumed && (leftClick || IsKeyPressed(KEY_ENTER))) {
+        const std::uint32_t pickedPieceId = leftClick ?
             EditorPicking::PickPieceFromRay(GetMouseRay(GetMousePosition(), camera), track_.Pieces()) : 0;
         if (pickedPieceId != 0 && pickedPieceId != selectedPieceId_) {
             selectedPieceId_ = pickedPieceId;
@@ -369,9 +378,15 @@ void TrackEditor::DrawInterface() const {
                  static_cast<int>(button.x) + 12, static_cast<int>(button.y) + 9, 14,
                  eligible ? BLACK : Fade(RAYWHITE, 0.62f));
     } else {
-        DrawText("Complete the closed loop to unlock start/finish placement.", kPanelX + 18, 610,
+        DrawText("Close the loop to unlock start/finish.", kPanelX + 18, 610,
                  14, Fade(RAYWHITE, 0.56f));
     }
+    const bool canClear = !track_.Pieces().empty();
+    const Rectangle clearButton = ClearTrackButtonBounds();
+    DrawRectangleRec(clearButton, canClear ? Fade(Neon::Orange, 0.86f) : Fade(Neon::Panel, 0.90f));
+    DrawRectangleLinesEx(clearButton, 2.0f, canClear ? Neon::Orange : Fade(RAYWHITE, 0.36f));
+    DrawText("CLEAR TRACK", static_cast<int>(clearButton.x) + 28, static_cast<int>(clearButton.y) + 9, 14,
+             canClear ? BLACK : Fade(RAYWHITE, 0.62f));
     DrawPropertyPanel();
     DrawTrackLibrary();
 }

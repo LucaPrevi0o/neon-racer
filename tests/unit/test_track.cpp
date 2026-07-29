@@ -29,6 +29,39 @@ void TestSurfaceContracts() {
            "verification starts invalid");
 }
 
+void TestEmptyTrackClearInvariant() {
+    Track fresh;
+    const TrackValidation freshValidation = fresh.Validate();
+    Expect(fresh.Pieces().empty() && !fresh.HasStartFinish() && fresh.StartFinishPieceId() == 0 &&
+               fresh.SelectedRaceDirection() == RaceDirection::Forward && fresh.Connections().empty(),
+           "a new track starts as an empty forward draft");
+    Expect(!freshValidation.raceReady && freshValidation.issues.size() == 1 &&
+               freshValidation.issues.front().kind == TrackIssueKind::NotOneClosedLoop,
+           "an empty track reports that it needs a closed loop");
+    Expect(!fresh.QuerySurface(0.0f, 0.0f, 0.0f).found,
+           "an empty track has no drivable surface");
+
+    Track track;
+    const std::uint32_t pieceId = track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
+    Expect(pieceId != 0 && track.SetStartFinish(pieceId, RaceDirection::Reverse),
+           "clear-invariant setup creates a reverse start/finish");
+    const std::uint32_t revisionBeforeClear = track.LayoutRevision();
+    track.Clear();
+
+    const TrackValidation clearedValidation = track.Validate();
+    Expect(track.Pieces().empty() && !track.HasStartFinish() && track.StartFinishPieceId() == 0 &&
+               track.SelectedRaceDirection() == fresh.SelectedRaceDirection() && track.Connections().empty(),
+           "clearing restores the fresh empty-track state");
+    Expect(!clearedValidation.raceReady && clearedValidation.issues.size() == 1 &&
+               clearedValidation.issues.front().kind == TrackIssueKind::NotOneClosedLoop &&
+               !track.QuerySurface(0.0f, 0.0f, 0.0f).found,
+           "a cleared track exposes no stale validation or surface state");
+    Expect(track.LayoutRevision() > revisionBeforeClear,
+           "clearing advances the layout revision for dependent editor caches");
+    Expect(track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4) == 1,
+           "clearing resets the next component ID");
+}
+
 void TestDraftV1Load() {
     const std::string path = "/tmp/neon_racer_draft_v1_test.draft";
     std::ofstream file(path.c_str());
@@ -263,6 +296,7 @@ void TestLoopDraftRoundTrip() {
 
 int main() {
     TestSurfaceContracts();
+    TestEmptyTrackClearInvariant();
     TestDraftV1Load();
     TestDraftV2RoundTrip();
     TestVariableStraightSurface();

@@ -71,6 +71,7 @@ std::uint32_t Track::Add(const TrackPiece& piece) {
 void Track::Clear() {
     pieces_.clear();
     startFinishPieceId_ = 0;
+    raceDirection_ = RaceDirection::Forward;
     nextPieceId_ = 1;
     InvalidateValidation();
 }

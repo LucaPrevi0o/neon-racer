@@ -53,7 +53,9 @@ system paths.
   Click `HIDE` in the left editor panel to collapse its instructions; click
   `SHOW EDITOR HELP` to restore them.
   After the closed loop is complete, select a straight and click `SET START /
-  FINISH`.
+  FINISH`. New editor sessions start with an empty layout; `CLEAR TRACK` resets
+  only the current in-memory layout and `Ctrl+Z` restores it. Saved drafts are
+  never deleted by that action.
   `Ctrl+S` opens the name-and-save menu; `Ctrl+O` (or `F5`) opens the saved
   custom-track library. This is draft-only storage: no playable export or
   verification replay is created yet.

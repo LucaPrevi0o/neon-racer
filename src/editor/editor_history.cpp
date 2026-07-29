@@ -16,6 +16,7 @@ void TrackEditor::Redo() {
     undoStates_.push_back(track_);
     track_ = redoStates_.back();
     redoStates_.pop_back();
+    if (track_.GetPiece(selectedPieceId_) == 0) selectedPieceId_ = 0;
     SetMessage("Edit restored.");
 }
 

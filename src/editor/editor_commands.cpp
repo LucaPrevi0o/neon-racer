@@ -41,6 +41,15 @@ void TrackEditor::DeleteSelected() {
     selectedPieceId_ = 0; SetMessage("Component deleted.");
 }
 
+void TrackEditor::ClearTrack() {
+    if (track_.Pieces().empty()) { SetMessage("Track is already empty."); return; }
+    SaveUndoState();
+    track_.Clear();
+    selectedPieceId_ = 0;
+    preview_.id = 0;
+    SetMessage("Track cleared. Ctrl+Z restores it.");
+}
+
 void TrackEditor::SetStartFinish() {
     if (!track_.IsLayoutValid()) { SetMessage("Finish placement unlocks after all connectors form one closed loop."); return; }
     const TrackPiece* selected = track_.GetPiece(selectedPieceId_);
