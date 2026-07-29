@@ -32,6 +32,7 @@ APP_SOURCES := src/app/main.cpp \
 	src/track/playable_export.cpp \
 	src/track/track_graph.cpp \
 	src/track/track_rules.cpp \
+	src/track/track_road_geometry.cpp \
 	src/track/track_surface_geometry.cpp \
 	src/track/track_surface_query.cpp \
 	src/track/track_validation.cpp \
@@ -46,6 +47,7 @@ TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
 	src/track/track_overlap.cpp \
 	src/track/track_graph.cpp \
 	src/track/track_rules.cpp \
+	src/track/track_road_geometry.cpp \
 	src/track/track_surface_geometry.cpp \
 	src/track/track_surface_query.cpp \
 	src/track/track_validation.cpp \

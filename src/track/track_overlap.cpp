@@ -1,7 +1,6 @@
-#include "track.hpp"
+#include "track_road_geometry.hpp"
 
 #include <algorithm>
-#include <cmath>
 
 namespace {
 
@@ -71,37 +70,15 @@ RoadPoint OffsetRoadPoint(const TrackPiece& piece, const TrackSurfaceSample& sam
         case Heading::West: sideZ = -1.0f; break;
         }
     } else {
-        sideX = sample.tangentY * sample.normalZ - sample.tangentZ * sample.normalY;
-        sideY = sample.tangentZ * sample.normalX - sample.tangentX * sample.normalZ;
-        sideZ = sample.tangentX * sample.normalY - sample.tangentY * sample.normalX;
+        const TrackRoadAxis axis = TrackRoadGeometry::SurfaceRightAxis(sample);
+        sideX = axis.x;
+        sideY = axis.y;
+        sideZ = axis.z;
     }
     return RoadPoint{sample.x + sideX * side, sample.y + sideY * side, sample.z + sideZ * side};
 }
 
-std::vector<RoadQuad> RoadQuads(const TrackPiece& piece) {
-    if (piece.type == TrackPieceType::Branch) {
-        TrackPiece rightArm = piece;
-        rightArm.type = TrackPieceType::Straight;
-        TrackPiece leftArm = rightArm;
-        leftArm.lateralOffset = -leftArm.lateralOffset;
-        std::vector<RoadQuad> quads = RoadQuads(rightArm);
-        const std::vector<RoadQuad> leftQuads = RoadQuads(leftArm);
-        quads.insert(quads.end(), leftQuads.begin(), leftQuads.end());
-        return quads;
-    }
-    if (piece.type == TrackPieceType::Merge) {
-        std::vector<RoadQuad> quads;
-        const std::vector<TrackConnector> entries = piece.EntryConnectors();
-        for (std::size_t index = 0; index < entries.size(); ++index) {
-            TrackPiece arm = piece;
-            arm.type = TrackPieceType::Straight;
-            arm.entryPosition = entries[index].position;
-            arm.lateralOffset = index == 0 ? -std::abs(arm.lateralOffset) : std::abs(arm.lateralOffset);
-            const std::vector<RoadQuad> armQuads = RoadQuads(arm);
-            quads.insert(quads.end(), armQuads.begin(), armQuads.end());
-        }
-        return quads;
-    }
+std::vector<RoadQuad> RoadQuadsForArm(const TrackPiece& piece) {
     const std::vector<TrackSurfaceSample> samples = piece.SurfaceSamples();
     std::vector<RoadQuad> quads;
     for (std::size_t index = 0; index + 1 < samples.size(); ++index) {
@@ -115,6 +92,16 @@ std::vector<RoadQuad> RoadQuads(const TrackPiece& piece) {
             quad.maximumY = std::max(quad.maximumY, quad.corners[corner].y);
         }
         quads.push_back(quad);
+    }
+    return quads;
+}
+
+std::vector<RoadQuad> RoadQuads(const TrackPiece& piece) {
+    std::vector<RoadQuad> quads;
+    const std::vector<TrackPiece> arms = TrackRoadGeometry::PhysicalRoadArms(piece);
+    for (std::vector<TrackPiece>::const_iterator arm = arms.begin(); arm != arms.end(); ++arm) {
+        const std::vector<RoadQuad> armQuads = RoadQuadsForArm(*arm);
+        quads.insert(quads.end(), armQuads.begin(), armQuads.end());
     }
     return quads;
 }

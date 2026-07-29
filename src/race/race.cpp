@@ -2,6 +2,8 @@
 #include "race_input.hpp"
 #include "race_physics.hpp"
 
+#include "../track/track_road_geometry.hpp"
+
 #include <cmath>
 #include <cstdio>
 
@@ -53,10 +55,22 @@ Vector3 RotateAround(Vector3 vector, Vector3 axis, float radians) {
 }
 
 Vector3 RoadSide(const TrackSurfaceSample& surface, Vector3 fallback) {
+    // Contacts normally come from Track::QuerySurface(), whose frame is
+    // already valid. Retain the historic fallback policy as well, so a
+    // synthesized or malformed contact cannot destabilize guardrail response.
     const Vector3 tangent = Normalize(Vector3{surface.tangentX, surface.tangentY, surface.tangentZ}, fallback);
     const Vector3 normal = Normalize(Vector3{surface.normalX, surface.normalY, surface.normalZ},
                                      Vector3{0.0f, 1.0f, 0.0f});
-    return Normalize(Cross(tangent, normal), fallback);
+    TrackSurfaceSample normalizedSurface = surface;
+    normalizedSurface.tangentX = tangent.x;
+    normalizedSurface.tangentY = tangent.y;
+    normalizedSurface.tangentZ = tangent.z;
+    normalizedSurface.normalX = normal.x;
+    normalizedSurface.normalY = normal.y;
+    normalizedSurface.normalZ = normal.z;
+    TrackRoadAxis axis;
+    if (!TrackRoadGeometry::NormalizedSurfaceRightAxis(normalizedSurface, axis)) return fallback;
+    return Vector3{axis.x, axis.y, axis.z};
 }
 
 // `TrackContact::surface` sits on the closest road edge when guardrailHit is

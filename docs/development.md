@@ -44,6 +44,12 @@ the current in-memory layout, reset its start/finish state, remain undoable with
 `Ctrl+Z`, and leave saved custom drafts untouched. Manually check those cases
 after changing editor commands or history.
 
+When changing shared road geometry, place a branch and a merge in an editor
+preview. Check that both visible arms can be selected, that their neon rails
+only follow exposed road borders, and that a car can enter either arm without a
+wall appearing across the road. The domain tests cover arm expansion and
+surface contact; this smoke check covers the Raylib-facing picker and renderer.
+
 ## Git workflow
 
 `main` represents integrated, verified releases. Create a focused branch for a

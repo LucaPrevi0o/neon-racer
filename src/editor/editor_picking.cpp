@@ -1,5 +1,7 @@
 #include "editor_picking.hpp"
 
+#include "../track/track_road_geometry.hpp"
+
 #include <cmath>
 
 namespace {
@@ -15,9 +17,8 @@ Vector3 HeadingVector(Heading heading) {
 }
 
 Vector3 SurfaceRight(const TrackSurfaceSample& sample) {
-    return Vector3{sample.tangentY * sample.normalZ - sample.tangentZ * sample.normalY,
-                   sample.tangentZ * sample.normalX - sample.tangentX * sample.normalZ,
-                   sample.tangentX * sample.normalY - sample.tangentY * sample.normalX};
+    const TrackRoadAxis axis = TrackRoadGeometry::SurfaceRightAxis(sample);
+    return Vector3{axis.x, axis.y, axis.z};
 }
 
 void ConsiderTriangle(const Ray& ray, Vector3 first, Vector3 second, Vector3 third,
@@ -73,14 +74,16 @@ void ConsiderCurvedSurface(const Ray& ray, const TrackPiece& piece, float& neare
     }
 }
 
-void ConsiderBranchSurface(const Ray& ray, const TrackPiece& piece, float& nearestDistance,
-                           std::uint32_t& pickedId) {
-    TrackPiece rightArm = piece;
-    rightArm.type = TrackPieceType::Straight;
-    TrackPiece leftArm = rightArm;
-    leftArm.lateralOffset = -leftArm.lateralOffset;
-    ConsiderStraightSurface(ray, rightArm, nearestDistance, pickedId);
-    ConsiderStraightSurface(ray, leftArm, nearestDistance, pickedId);
+void ConsiderRoadSurface(const Ray& ray, const TrackPiece& piece, float& nearestDistance,
+                         std::uint32_t& pickedId) {
+    const std::vector<TrackPiece> arms = TrackRoadGeometry::PhysicalRoadArms(piece);
+    for (std::vector<TrackPiece>::const_iterator arm = arms.begin(); arm != arms.end(); ++arm) {
+        if (arm->type == TrackPieceType::Straight) {
+            ConsiderStraightSurface(ray, *arm, nearestDistance, pickedId);
+        } else {
+            ConsiderCurvedSurface(ray, *arm, nearestDistance, pickedId);
+        }
+    }
 }
 
 } // namespace
@@ -101,9 +104,7 @@ std::uint32_t PickPieceFromRay(const Ray& ray, const std::vector<TrackPiece>& pi
     float nearestDistance = 1000000.0f;
     std::uint32_t picked = 0;
     for (std::vector<TrackPiece>::const_iterator piece = pieces.begin(); piece != pieces.end(); ++piece) {
-        if (piece->type == TrackPieceType::Straight) ConsiderStraightSurface(ray, *piece, nearestDistance, picked);
-        else if (piece->type == TrackPieceType::Branch) ConsiderBranchSurface(ray, *piece, nearestDistance, picked);
-        else ConsiderCurvedSurface(ray, *piece, nearestDistance, picked);
+        ConsiderRoadSurface(ray, *piece, nearestDistance, picked);
     }
     return picked;
 }

@@ -1,5 +1,7 @@
 #include "track_renderer.hpp"
 
+#include "../track/track_road_geometry.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -20,6 +22,11 @@ Vector3 RightVector(Heading heading) {
     case Heading::West: return Vector3{0.0f, 0.0f, -1.0f};
     }
     return Vector3{0.0f, 0.0f, 0.0f};
+}
+
+Vector3 SurfaceRight(const TrackSurfaceSample& sample) {
+    const TrackRoadAxis axis = TrackRoadGeometry::SurfaceRightAxis(sample);
+    return Vector3{axis.x, axis.y, axis.z};
 }
 
 struct RoadQuad {
@@ -280,36 +287,15 @@ void DrawBranchMergeSurface(const std::vector<TrackPiece>& arms, Color surfaceCo
     }
 }
 
-std::vector<TrackPiece> BranchMergeArms(const TrackPiece& piece) {
-    if (piece.type == TrackPieceType::Branch) {
-        TrackPiece rightArm = piece;
-        rightArm.type = TrackPieceType::Straight;
-        TrackPiece leftArm = rightArm;
-        leftArm.lateralOffset = -leftArm.lateralOffset;
-        return std::vector<TrackPiece>{rightArm, leftArm};
-    }
-
-    std::vector<TrackPiece> arms;
-    const std::vector<TrackConnector> entries = piece.EntryConnectors();
-    for (std::size_t index = 0; index < entries.size(); ++index) {
-        TrackPiece arm = piece;
-        arm.type = TrackPieceType::Straight;
-        arm.entryPosition = entries[index].position;
-        arm.lateralOffset = index == 0 ? -std::abs(piece.lateralOffset) : std::abs(piece.lateralOffset);
-        arms.push_back(arm);
-    }
-    return arms;
-}
-
 } // namespace
 
 void DrawTrackPieceSurface(const TrackPiece& piece, Color surfaceColor, Color edgeColor) {
     if (piece.type == TrackPieceType::Branch) {
-        DrawBranchMergeSurface(BranchMergeArms(piece), surfaceColor, edgeColor);
+        DrawBranchMergeSurface(TrackRoadGeometry::PhysicalRoadArms(piece), surfaceColor, edgeColor);
         return;
     }
     if (piece.type == TrackPieceType::Merge) {
-        DrawBranchMergeSurface(BranchMergeArms(piece), surfaceColor, edgeColor);
+        DrawBranchMergeSurface(TrackRoadGeometry::PhysicalRoadArms(piece), surfaceColor, edgeColor);
         return;
     }
     if (piece.type == TrackPieceType::Straight) {
@@ -324,12 +310,8 @@ void DrawTrackPieceSurface(const TrackPiece& piece, Color surfaceColor, Color ed
     for (std::size_t index = 0; index + 1 < samples.size(); ++index) {
         const TrackSurfaceSample& from = samples[index];
         const TrackSurfaceSample& to = samples[index + 1];
-        const Vector3 fromRight = Vector3{from.tangentY * from.normalZ - from.tangentZ * from.normalY,
-                                          from.tangentZ * from.normalX - from.tangentX * from.normalZ,
-                                          from.tangentX * from.normalY - from.tangentY * from.normalX};
-        const Vector3 toRight = Vector3{to.tangentY * to.normalZ - to.tangentZ * to.normalY,
-                                        to.tangentZ * to.normalX - to.tangentX * to.normalZ,
-                                        to.tangentX * to.normalY - to.tangentY * to.normalX};
+        const Vector3 fromRight = SurfaceRight(from);
+        const Vector3 toRight = SurfaceRight(to);
         rlVertex3f(from.x + fromRight.x * from.halfWidth, from.y + fromRight.y * from.halfWidth + 0.08f,
                    from.z + fromRight.z * from.halfWidth);
         rlVertex3f(to.x + toRight.x * to.halfWidth, to.y + toRight.y * to.halfWidth + 0.08f,
@@ -344,12 +326,8 @@ void DrawTrackPieceSurface(const TrackPiece& piece, Color surfaceColor, Color ed
     for (std::size_t index = 0; index + 1 < samples.size(); ++index) {
         const TrackSurfaceSample& from = samples[index];
         const TrackSurfaceSample& to = samples[index + 1];
-        const Vector3 fromRight = Vector3{from.tangentY * from.normalZ - from.tangentZ * from.normalY,
-                                          from.tangentZ * from.normalX - from.tangentX * from.normalZ,
-                                          from.tangentX * from.normalY - from.tangentY * from.normalX};
-        const Vector3 toRight = Vector3{to.tangentY * to.normalZ - to.tangentZ * to.normalY,
-                                        to.tangentZ * to.normalX - to.tangentX * to.normalZ,
-                                        to.tangentX * to.normalY - to.tangentY * to.normalX};
+        const Vector3 fromRight = SurfaceRight(from);
+        const Vector3 toRight = SurfaceRight(to);
         DrawLine3D(Vector3{from.x + fromRight.x * from.halfWidth, from.y + fromRight.y * from.halfWidth + 0.10f,
                            from.z + fromRight.z * from.halfWidth},
                    Vector3{to.x + toRight.x * to.halfWidth, to.y + toRight.y * to.halfWidth + 0.10f,

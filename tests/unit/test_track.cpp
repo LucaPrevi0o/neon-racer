@@ -1,7 +1,9 @@
 #include "../../src/persistence/draft_io.hpp"
 #include "../../src/track/playable_export.hpp"
 #include "../../src/track/track.hpp"
+#include "../../src/track/track_road_geometry.hpp"
 
+#include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -15,6 +17,10 @@ void Expect(bool condition, const char* message) {
     if (condition) return;
     std::cerr << "FAILED: " << message << "\n";
     ++failures;
+}
+
+bool NearlyEqual(float first, float second) {
+    return std::fabs(first - second) < 0.0001f;
 }
 
 void TestSurfaceContracts() {
@@ -258,6 +264,62 @@ void TestBranchMergeDraftRoundTrip() {
     std::remove(path.c_str());
 }
 
+void TestSharedRoadGeometry() {
+    Track branchTrack;
+    const std::uint32_t branchId = branchTrack.AddBranch(GridPosition{0, 0, 0}, Heading::East, 6, 3);
+    const TrackPiece* branch = branchTrack.GetPiece(branchId);
+    Expect(branch != 0, "branch setup succeeds for shared road geometry");
+    if (branch != 0) {
+        const std::vector<TrackPiece> branchArms = TrackRoadGeometry::PhysicalRoadArms(*branch);
+        Expect(branchArms.size() == 2 && branchArms[0].type == TrackPieceType::Straight &&
+                   branchArms[1].type == TrackPieceType::Straight && branchArms[0].id == branchId &&
+                   branchArms[1].id == branchId && branchArms[0].entryPosition == branch->entryPosition &&
+                   branchArms[0].lateralOffset == branch->lateralOffset &&
+                   branchArms[1].lateralOffset == -branch->lateralOffset,
+               "branch expansion owns both physical straight arms in stable order");
+        const std::vector<TrackSurfaceSample> branchSamples =
+            TrackRoadGeometry::PhysicalRoadSurfaceSamples(*branch);
+        Expect(branchSamples.size() == branchArms[0].SurfaceSamples().size() + branchArms[1].SurfaceSamples().size() &&
+                   branchSamples.front().pieceId == branchId && branchSamples.back().pieceId == branchId,
+               "physical branch samples preserve both drivable arms and their component ID");
+    }
+
+    Track mergeTrack;
+    const std::uint32_t mergeId = mergeTrack.AddMerge(GridPosition{20, 0, 0}, Heading::East, 6, 3);
+    const TrackPiece* merge = mergeTrack.GetPiece(mergeId);
+    Expect(merge != 0, "merge setup succeeds for shared road geometry");
+    if (merge != 0) {
+        const std::vector<TrackConnector> entries = merge->EntryConnectors();
+        const std::vector<TrackPiece> mergeArms = TrackRoadGeometry::PhysicalRoadArms(*merge);
+        Expect(mergeArms.size() == 2 && mergeArms[0].type == TrackPieceType::Straight &&
+                   mergeArms[1].type == TrackPieceType::Straight && mergeArms[0].entryPosition == entries[0].position &&
+                   mergeArms[1].entryPosition == entries[1].position && mergeArms[0].lateralOffset == -3 &&
+                   mergeArms[1].lateralOffset == 3,
+               "merge expansion follows its entry connector order and converges both arms");
+
+        TrackPiece negativeOffsetMerge = *merge;
+        negativeOffsetMerge.lateralOffset = -4;
+        const std::vector<TrackPiece> negativeOffsetArms = TrackRoadGeometry::PhysicalRoadArms(negativeOffsetMerge);
+        Expect(negativeOffsetArms.size() == 2 && negativeOffsetArms[0].lateralOffset == -4 &&
+                   negativeOffsetArms[1].lateralOffset == 4,
+               "merge expansion normalizes arm sign independently of the stored offset sign");
+    }
+
+    const TrackSurfaceSample tilted = {0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 4.0f,
+                                       0.0f, 2.0f, 0.0f, 2.5f, SurfaceMaterial::Regular, 1};
+    const TrackRoadAxis rawAxis = TrackRoadGeometry::SurfaceRightAxis(tilted);
+    TrackRoadAxis normalizedAxis;
+    Expect(NearlyEqual(rawAxis.x, -8.0f) && NearlyEqual(rawAxis.y, 0.0f) && NearlyEqual(rawAxis.z, 6.0f) &&
+               TrackRoadGeometry::NormalizedSurfaceRightAxis(tilted, normalizedAxis) &&
+               NearlyEqual(normalizedAxis.x, -0.8f) && NearlyEqual(normalizedAxis.y, 0.0f) &&
+               NearlyEqual(normalizedAxis.z, 0.6f),
+           "shared road-axis helpers retain the sampled frame and provide a unit contact axis");
+    TrackSurfaceSample degenerate = tilted;
+    degenerate.tangentX = degenerate.tangentY = degenerate.tangentZ = 0.0f;
+    Expect(!TrackRoadGeometry::NormalizedSurfaceRightAxis(degenerate, normalizedAxis),
+           "shared road-axis helpers reject a degenerate surface frame");
+}
+
 void TestPlayableExport() {
     PlayableTrack playable;
     std::string error;
@@ -308,6 +370,7 @@ int main() {
     TestBranchMergeGuardrailsFollowOuterBoundary();
     TestBranchUsesDistinctExitConnectors();
     TestBranchMergeDraftRoundTrip();
+    TestSharedRoadGeometry();
     TestPlayableExport();
     TestLoopDraftRoundTrip();
     if (failures == 0) std::cout << "Neon Racer track tests passed.\n";
