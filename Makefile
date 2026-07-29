@@ -20,11 +20,13 @@ APP_SOURCES := src/app/main.cpp \
 	src/race/race.cpp \
 	src/render/track_renderer.cpp \
 	src/track/playable_export.cpp \
+	src/track/track_rules.cpp \
 	src/track/track.cpp \
 	src/ui/neon.cpp
 
 TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
 	src/track/track.cpp \
+	src/track/track_rules.cpp \
 	src/persistence/draft_io.cpp \
 	src/track/playable_export.cpp
 

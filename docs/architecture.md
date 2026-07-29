@@ -31,8 +31,9 @@ the modules together.
 ## Current refactoring boundaries
 
 The present folders establish module ownership without changing gameplay.
-Subsequent refactors will split `track.cpp` into model, geometry, query, and
-validation services; split `editor.cpp` into editor state, commands/history,
+`track_rules.cpp` owns component admissibility and the sample circuit; later
+commits will split the remaining `track.cpp` into model, geometry, query, and
+graph-validation services. They will also split `editor.cpp` into editor state, commands/history,
 picking, and UI; and split `race.cpp` into input, vehicle dynamics, time-trial,
 and ghost-replay services.
 

@@ -786,20 +786,6 @@ std::vector<TrackConnection> Track::Connections() const {
     return connections;
 }
 
-Track Track::CreateSampleCircuit() {
-    Track track;
-    const std::uint32_t start = track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 6);
-    track.AddCurve(GridPosition{6, 0, 0}, Heading::East, CurveTurn::Right, 4);
-    track.AddStraight(GridPosition{10, 0, 4}, Heading::South, 6);
-    track.AddCurve(GridPosition{10, 0, 10}, Heading::South, CurveTurn::Right, 4);
-    track.AddStraight(GridPosition{6, 0, 14}, Heading::West, 6);
-    track.AddCurve(GridPosition{0, 0, 14}, Heading::West, CurveTurn::Right, 4);
-    track.AddStraight(GridPosition{-4, 0, 10}, Heading::North, 6);
-    track.AddCurve(GridPosition{-4, 0, 4}, Heading::North, CurveTurn::Right, 4);
-    track.SetStartFinish(start, RaceDirection::Forward);
-    return track;
-}
-
 std::uint32_t Track::AddPiece(const TrackPiece& piece) {
     TrackPiece candidate = piece;
     if (!IsValidPiece(candidate)) return 0;
@@ -816,41 +802,9 @@ void Track::InvalidateValidation() {
     ++layoutRevision_;
 }
 
-bool Track::IsValidPiece(const TrackPiece& piece) {
-    if (piece.width < 5 || piece.width > 11 || piece.exitWidth < 5 || piece.exitWidth > 11) return false;
-    if (piece.type == TrackPieceType::Straight || piece.type == TrackPieceType::Twist) {
-        const int maximumOffset = piece.length < 4 ? 2 : 3;
-        return piece.length >= 3 && piece.length <= 20 && std::abs(piece.lateralOffset) <= maximumOffset;
-    }
-    if (piece.type == TrackPieceType::Loop) {
-        return piece.curveRadius >= 3 && piece.curveRadius <= 10 && std::abs(piece.lateralOffset) <= 10;
-    }
-    if (piece.type == TrackPieceType::Branch) {
-        return piece.length >= 3 && piece.length <= 20 && std::abs(piece.lateralOffset) >= 1 &&
-            std::abs(piece.lateralOffset) <= 10 && piece.elevationDelta == 0;
-    }
-    if (piece.type == TrackPieceType::Merge) {
-        return piece.length >= 3 && piece.length <= 20 && std::abs(piece.lateralOffset) >= 1 &&
-            std::abs(piece.lateralOffset) <= 10 && piece.elevationDelta == 0;
-    }
-    return piece.curveRadius >= 3 && piece.curveRadius <= 20 && piece.lateralOffset == 0 &&
-        (piece.curveDegrees == 90 || piece.curveDegrees == 180 || piece.curveDegrees == 270) &&
-        std::abs(piece.bankAngleDegrees) <= 45;
-}
-
 const TrackPiece* Track::FindPiece(std::uint32_t id) const {
     for (std::vector<TrackPiece>::const_iterator it = pieces_.begin(); it != pieces_.end(); ++it) {
         if (it->id == id) return &(*it);
     }
     return 0;
-}
-
-const char* HeadingName(Heading heading) {
-    switch (heading) {
-    case Heading::North: return "North";
-    case Heading::East: return "East";
-    case Heading::South: return "South";
-    case Heading::West: return "West";
-    }
-    return "Unknown";
 }
