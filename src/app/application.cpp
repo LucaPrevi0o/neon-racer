@@ -1,4 +1,5 @@
 #include "application.hpp"
+#include "app_settings.hpp"
 
 #include "../render/track_renderer.hpp"
 #include "../ui/neon.hpp"
@@ -8,9 +9,6 @@
 #include <sstream>
 
 namespace {
-
-const int kScreenWidth = 1280;
-const int kScreenHeight = 720;
 
 void DrawGridFloor(int slices, float spacing, Color color) {
 
@@ -136,7 +134,7 @@ void RacerApplication::Update(float frameTime) {
 }
 
 void RacerApplication::Draw() const {
-    Neon::DrawBackground(kScreenWidth, kScreenHeight);
+    Neon::DrawBackground(AppSettings::kWindowWidth, AppSettings::kWindowHeight);
 
     if (state_ == AppState::Editor) {
         DrawEditor();
@@ -171,7 +169,7 @@ void RacerApplication::DrawEditor() const {
     editor_.DrawTrack3D();
     EndMode3D();
 
-    Neon::DrawHeader("NEON RACER  //  TRACK EDITOR", kScreenWidth);
+    Neon::DrawHeader("NEON RACER  //  TRACK EDITOR", AppSettings::kWindowWidth);
     editor_.DrawInterface();
 }
 
@@ -183,7 +181,7 @@ void RacerApplication::DrawRace() const {
     if (race_.IsReady()) DrawNeonCar(race_.Car());
     EndMode3D();
 
-    Neon::DrawHeader("NEON RACER  //  TIME TRIAL", kScreenWidth);
+    Neon::DrawHeader("NEON RACER  //  TIME TRIAL", AppSettings::kWindowWidth);
     Neon::DrawOverlayPanel(Rectangle{28.0f, 80.0f, 300.0f, 198.0f});
     if (!race_.IsReady()) {
         DrawText("TRACK NOT READY", 46, 100, 20, Neon::Orange);
@@ -210,6 +208,6 @@ void RacerApplication::DrawRace() const {
 }
 
 void RacerApplication::DrawStateHint() const {
-    Neon::DrawOverlayPanel(Rectangle{28.0f, static_cast<float>(kScreenHeight - 58), 460.0f, 34.0f}, 0.72f);
-    DrawText("TAB: switch editor / race preview    ESC: quit", 42, kScreenHeight - 49, 17, Neon::Yellow);
+    Neon::DrawOverlayPanel(Rectangle{28.0f, static_cast<float>(AppSettings::kWindowHeight - 58), 460.0f, 34.0f}, 0.72f);
+    DrawText("TAB: switch editor / race preview    ESC: quit", 42, AppSettings::kWindowHeight - 49, 17, Neon::Yellow);
 }

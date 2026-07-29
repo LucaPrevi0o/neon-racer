@@ -1,13 +1,11 @@
 #include <raylib.h>
 
 #include "application.hpp"
+#include "app_settings.hpp"
 
 int main() {
-    constexpr int kScreenWidth = 1280;
-    constexpr int kScreenHeight = 720;
-
     SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(kScreenWidth, kScreenHeight, "Neon Racer");
+    InitWindow(AppSettings::kWindowWidth, AppSettings::kWindowHeight, "Neon Racer");
     SetTargetFPS(60);
 
     RacerApplication application;
