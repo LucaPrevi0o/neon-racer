@@ -37,8 +37,10 @@ link only the domain library.
 
 The present folders establish module ownership without changing gameplay.
 `track_rules.cpp` owns component admissibility and the sample circuit.
-`track_surface_query.cpp` owns road contact and guardrail queries. Later commits
-will split the remaining `track.cpp` into model and geometry services.
+`track_layout.cpp` owns mutable layout state, `track_piece_geometry.cpp` owns
+piece grid and path geometry, `track_surface_geometry.cpp` owns sampled road
+geometry, and `track_overlap.cpp` owns overlap checks.
+`track_surface_query.cpp` owns road contact and guardrail queries.
 `track_graph.cpp` owns indexed connector matching and `track_validation.cpp`
 owns race-readiness policy. `editor_history.cpp` owns undo/redo snapshots;
 `editor_library.cpp` owns draft-library interaction; later commits will split

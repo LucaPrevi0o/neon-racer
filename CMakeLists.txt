@@ -18,9 +18,9 @@ target_link_libraries(neon_racer_raylib INTERFACE ${RAYLIB_LIBRARY})
 add_library(neon_racer_domain
     src/persistence/draft_io.cpp
     src/track/playable_export.cpp
-    src/track/track.cpp
     src/track/track_layout.cpp
     src/track/track_piece_geometry.cpp
+    src/track/track_overlap.cpp
     src/track/track_graph.cpp
     src/track/track_rules.cpp
     src/track/track_surface_geometry.cpp

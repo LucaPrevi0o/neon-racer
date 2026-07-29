@@ -33,13 +33,13 @@ APP_SOURCES := src/app/main.cpp \
 	src/track/track_validation.cpp \
 	src/track/track_layout.cpp \
 	src/track/track_piece_geometry.cpp \
-	src/track/track.cpp \
+	src/track/track_overlap.cpp \
 	src/ui/neon.cpp
 
 TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
-	src/track/track.cpp \
 	src/track/track_layout.cpp \
 	src/track/track_piece_geometry.cpp \
+	src/track/track_overlap.cpp \
 	src/track/track_graph.cpp \
 	src/track/track_rules.cpp \
 	src/track/track_surface_geometry.cpp \
