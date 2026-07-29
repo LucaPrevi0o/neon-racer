@@ -13,9 +13,11 @@ BUILD_DIR := build
 APP := $(BUILD_DIR)/neon-racer
 TRACK_TEST := $(BUILD_DIR)/tests/track_tests
 RACE_PHYSICS_TEST := $(BUILD_DIR)/tests/race_physics_tests
+TIME_TRIAL_TEST := $(BUILD_DIR)/tests/time_trial_tests
 
 APP_SOURCES := src/app/main.cpp \
 	src/app/application.cpp \
+	src/app/raylib_race_input.cpp \
 	src/editor/editor.cpp \
 	src/editor/editor_camera.cpp \
 	src/editor/editor_commands.cpp \
@@ -24,7 +26,6 @@ APP_SOURCES := src/app/main.cpp \
 	src/editor/editor_picking.cpp \
 	src/persistence/draft_io.cpp \
 	src/race/race.cpp \
-	src/race/race_input.cpp \
 	src/race/race_physics.cpp \
 	src/render/car_renderer.cpp \
 	src/render/race_scene.cpp \
@@ -57,13 +58,26 @@ TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
 RACE_PHYSICS_TEST_SOURCES := tests/unit/test_race_physics.cpp \
 	src/race/race_physics.cpp
 
+TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
+	src/race/race.cpp \
+	src/race/race_physics.cpp \
+	src/track/track_layout.cpp \
+	src/track/track_piece_geometry.cpp \
+	src/track/track_overlap.cpp \
+	src/track/track_graph.cpp \
+	src/track/track_rules.cpp \
+	src/track/track_road_geometry.cpp \
+	src/track/track_surface_geometry.cpp \
+	src/track/track_surface_query.cpp \
+	src/track/track_validation.cpp
+
 .PHONY: all build run test clean help neon-racer racer racer-test
 
 help:
 	@echo "Usage:"
 	@echo "  make build                Build Neon Racer"
 	@echo "  make run                  Build and run Neon Racer"
-	@echo "  make test                 Build and run Raylib-free unit tests"
+	@echo "  make test                 Build and run headless unit tests"
 	@echo "  make clean                Remove generated build products"
 
 all: build
@@ -85,9 +99,14 @@ $(RACE_PHYSICS_TEST): $(RACE_PHYSICS_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(RACE_PHYSICS_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST)
+$(TIME_TRIAL_TEST): $(TIME_TRIAL_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(RAYLIB_CFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
+
+test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(TIME_TRIAL_TEST)
 	./$(TRACK_TEST)
 	./$(RACE_PHYSICS_TEST)
+	./$(TIME_TRIAL_TEST)
 
 clean:
 	$(RM) -r $(BUILD_DIR)

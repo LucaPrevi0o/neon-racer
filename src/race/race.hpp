@@ -2,6 +2,7 @@
 
 #include <raylib.h>
 
+#include "race_input.hpp"
 #include "../track/track.hpp"
 
 struct RaceCar {
@@ -23,7 +24,7 @@ public:
     TimeTrial();
 
     void Start(const Track& track);
-    void Update(float frameTime);
+    void Update(float frameTime, const RaceInput& input);
     void Reset();
     void TogglePause();
 
@@ -43,7 +44,7 @@ public:
     const char* StatusMessage() const;
 
 private:
-    void FixedUpdate(float deltaTime);
+    void FixedUpdate(float deltaTime, const RaceInput& input);
     void CompleteLap();
     void ResetCarToStart();
     Vector3 StartPosition() const;

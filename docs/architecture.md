@@ -20,8 +20,7 @@ the frozen playable-track snapshot. It must stay free of Raylib types.
 `src/editor` owns mutable editing state and communicates with the track domain
 through its public model API. `src/persistence` reads and writes drafts without
 knowing how they are displayed. `src/race` uses track surface queries to run a
-time trial and should eventually receive a plain input value instead of polling
-Raylib directly.
+time trial from a plain input snapshot supplied by the application boundary.
 
 `src/render` and `src/ui` are presentation code. They may depend on Raylib and
 on read-only domain types, but neither may define game rules. `src/app` is the
@@ -50,10 +49,11 @@ editor-view pan, zoom, orbit, elevation, and reset transforms; and
 `editor_picking.cpp` converts editor rays into grid positions and nearest
 track-piece selections. `editor.cpp` remains the coordinator for input
 dispatch, mutable editor state, commands, and drawing.
-`race_input.cpp` translates Raylib devices into a plain `RaceInput`, while the
-Raylib-free `race_physics.cpp` owns brake-damping policy and its digital-input
-cap. Later commits will split the rest of `race.cpp` into vehicle dynamics,
-time-trial, and ghost-replay services.
+`app/raylib_race_input.cpp` translates Raylib devices into a plain `RaceInput`;
+`TimeTrial` receives that frame snapshot and reuses its held axes for every
+fixed step. The Raylib-free `race_physics.cpp` owns brake-damping policy and
+its digital-input cap. Later commits will split the rest of `race.cpp` into
+vehicle dynamics, time-trial, and ghost-replay services.
 
 ## Data locations
 

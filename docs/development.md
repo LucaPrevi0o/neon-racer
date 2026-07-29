@@ -17,9 +17,12 @@ cmake --build build/cmake
 ctest --test-dir build/cmake --output-on-failure
 ```
 
-The Raylib-free unit tests must not include or link Raylib. Add behavior tests
-under `tests/unit` whenever changing track geometry, validation, serialization,
-playable-export rules, or isolated race-dynamics math.
+Track and isolated race-physics tests must not include or link Raylib. The
+headless time-trial test temporarily needs Raylib headers because `RaceCar`
+still exposes `Vector3`; the next race-core split will remove that dependency.
+Add behavior tests under `tests/unit` whenever changing track geometry,
+validation, serialization, playable-export rules, or isolated race-dynamics
+math.
 
 ## Dependency rules
 

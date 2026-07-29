@@ -1,12 +1,14 @@
-#include "race_input.hpp"
-#include "race_physics.hpp"
+#include "raylib_race_input.hpp"
+
+#include "../race/race_physics.hpp"
 
 #include <algorithm>
 #include <cmath>
+
 #include <raylib.h>
 
-RaceInput ReadRaceInput() {
-    RaceInput input = {0.0f, 0.0f, 0.0f, 0.0f};
+RaceInput ReadRaylibRaceInput() {
+    RaceInput input = {0.0f, 0.0f, 0.0f, 0.0f, false, false};
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) input.steering -= 1.0f;
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) input.steering += 1.0f;
     if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) input.accelerate = 1.0f;
@@ -14,6 +16,8 @@ RaceInput ReadRaceInput() {
     // full brake range for a real trigger below.
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) input.brake = RacePhysics::kDigitalBrakeAxis;
     if (IsKeyDown(KEY_X)) input.reverse = 1.0f;
+    input.pausePressed = IsKeyPressed(KEY_P) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+    input.resetPressed = IsKeyPressed(KEY_R) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_LEFT);
 
     if (!IsGamepadAvailable(0)) return input;
     const float stick = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);

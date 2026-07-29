@@ -1,5 +1,6 @@
 #include "application.hpp"
 #include "app_settings.hpp"
+#include "raylib_race_input.hpp"
 
 #include "../render/car_renderer.hpp"
 #include "../render/race_scene.hpp"
@@ -115,7 +116,7 @@ void RacerApplication::UpdateEditor() {
 }
 
 void RacerApplication::UpdateRace(float frameTime) {
-    race_.Update(frameTime);
+    race_.Update(frameTime, ReadRaylibRaceInput());
     if (!race_.IsReady()) return;
 
     const RaceCar& car = race_.Car();

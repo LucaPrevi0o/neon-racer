@@ -1,5 +1,4 @@
 #include "race.hpp"
-#include "race_input.hpp"
 #include "race_physics.hpp"
 
 #include "../track/track_road_geometry.hpp"
@@ -146,15 +145,17 @@ void TimeTrial::Start(const Track& track) {
     Reset();
 }
 
-void TimeTrial::Update(float frameTime) {
+void TimeTrial::Update(float frameTime, const RaceInput& input) {
     if (!ready_) return;
-    if (IsKeyPressed(KEY_P) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) TogglePause();
-    if (IsKeyPressed(KEY_R) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_LEFT)) Reset();
+    // Preserve the existing ordering when both actions arrive together: reset
+    // follows pause and therefore resumes the time trial before simulation.
+    if (input.pausePressed) TogglePause();
+    if (input.resetPressed) Reset();
     if (paused_ || finished_) return;
 
     accumulator_ += std::fmin(frameTime, kMaxFrameTime);
     while (accumulator_ >= kFixedStep) {
-        FixedUpdate(kFixedStep);
+        FixedUpdate(kFixedStep, input);
         accumulator_ -= kFixedStep;
     }
 }
@@ -223,8 +224,7 @@ RaceCar TimeTrial::GhostCar() const {
 }
 const char* TimeTrial::StatusMessage() const { return statusMessage_; }
 
-void TimeTrial::FixedUpdate(float deltaTime) {
-    const RaceInput input = ReadRaceInput();
+void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     const float steering = input.steering;
     const float accelerate = input.accelerate;
     const float brake = input.brake;
