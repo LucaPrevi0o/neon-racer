@@ -20,6 +20,7 @@ add_library(neon_racer_domain
     src/track/playable_export.cpp
     src/track/track.cpp
     src/track/track_layout.cpp
+    src/track/track_piece_geometry.cpp
     src/track/track_graph.cpp
     src/track/track_rules.cpp
     src/track/track_surface_geometry.cpp
