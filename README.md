@@ -20,6 +20,18 @@ the UI module. It produces `build/neon-racer`; `make test` builds
 and runs the Raylib-independent track-domain tests. Raylib must be installed or
 supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS`, as documented in that Makefile.
 
+## CMake build
+
+```sh
+cmake -S . -B build/cmake
+cmake --build build/cmake
+ctest --test-dir build/cmake --output-on-failure
+```
+
+CMake uses separate domain, application, and test targets. Set
+`RAYLIB_INCLUDE_DIR` and `RAYLIB_LIBRARY` if Raylib is installed outside normal
+system paths.
+
 ## Current controls
 
 - `Tab`: switch between the editor and race-preview application states

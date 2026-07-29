@@ -28,6 +28,11 @@ on read-only domain types, but neither may define game rules. `src/app` is the
 composition root: it creates the window, chooses the active screen, and wires
 the modules together.
 
+The CMake build mirrors these boundaries: `neon_racer_domain` is the
+Raylib-independent track and persistence library, while the `neon-racer`
+executable links it to the Raylib-backed application modules. The track tests
+link only the domain library.
+
 ## Current refactoring boundaries
 
 The present folders establish module ownership without changing gameplay.

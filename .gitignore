@@ -1,5 +1,6 @@
 # Build products
 /build/
+/cmake-build-*/
 /neon-racer/main
 /neon-racer/tests/test_track
 
