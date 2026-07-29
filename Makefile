@@ -20,6 +20,7 @@ APP_SOURCES := src/app/main.cpp \
 	src/race/race.cpp \
 	src/render/track_renderer.cpp \
 	src/track/playable_export.cpp \
+	src/track/track_graph.cpp \
 	src/track/track_rules.cpp \
 	src/track/track_surface_query.cpp \
 	src/track/track.cpp \
@@ -27,6 +28,7 @@ APP_SOURCES := src/app/main.cpp \
 
 TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
 	src/track/track.cpp \
+	src/track/track_graph.cpp \
 	src/track/track_rules.cpp \
 	src/track/track_surface_query.cpp \
 	src/persistence/draft_io.cpp \

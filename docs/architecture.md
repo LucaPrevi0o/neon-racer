@@ -33,8 +33,9 @@ the modules together.
 The present folders establish module ownership without changing gameplay.
 `track_rules.cpp` owns component admissibility and the sample circuit.
 `track_surface_query.cpp` owns road contact and guardrail queries. Later commits
-will split the remaining `track.cpp` into model, geometry, and graph-validation
-services. They will also split `editor.cpp` into editor state, commands/history,
+will split the remaining `track.cpp` into model, geometry, and validation
+services. `track_graph.cpp` owns the indexed connector graph used by validation.
+They will also split `editor.cpp` into editor state, commands/history,
 picking, and UI; and split `race.cpp` into input, vehicle dynamics, time-trial,
 and ghost-replay services.
 

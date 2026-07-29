@@ -700,26 +700,6 @@ TrackValidation Track::Validate() const {
     return cachedValidation_;
 }
 
-std::vector<TrackConnection> Track::Connections() const {
-    std::vector<TrackConnection> connections;
-    for (std::vector<TrackPiece>::const_iterator piece = pieces_.begin(); piece != pieces_.end(); ++piece) {
-        const std::vector<TrackConnector> exits = piece->ExitConnectors();
-        for (std::vector<TrackPiece>::const_iterator other = pieces_.begin(); other != pieces_.end(); ++other) {
-            if (piece->id == other->id) continue;
-            const std::vector<TrackConnector> entries = other->EntryConnectors();
-            for (std::size_t exitIndex = 0; exitIndex < exits.size(); ++exitIndex) {
-                for (std::size_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex) {
-                    if (Connects(exits[exitIndex], entries[entryIndex])) {
-                        connections.push_back(TrackConnection{
-                            TrackConnectorRef{piece->id, exitIndex}, TrackConnectorRef{other->id, entryIndex}});
-                    }
-                }
-            }
-        }
-    }
-    return connections;
-}
-
 std::uint32_t Track::AddPiece(const TrackPiece& piece) {
     TrackPiece candidate = piece;
     if (!IsValidPiece(candidate)) return 0;
