@@ -37,10 +37,12 @@ system paths.
 
 - `Tab`: switch between the editor and race-preview application states
 - `Esc`: quit
-- Editor: move the mouse to position the grid-snapped preview; left-click a
-  placed component to select it, left-click empty space to place/apply it, and
-  use the mouse wheel to rotate the preview. `1`/`2`/`3` choose straight/curve/loop;
-  `R` rotates; `Ctrl` + mouse wheel changes its length/radius; `Ctrl+Z`/`Ctrl+Y`
+- Editor: move the mouse to position the grid-snapped preview; **Shift** +
+  left-click a placed component to select it for editing. Plain left-click
+  places the preview even over existing road geometry when it does not collide,
+  or applies an active edit; use the mouse wheel to rotate the preview.
+  `1`–`6` choose the component type; `R` rotates; `Ctrl` + mouse wheel changes
+  its length/radius; `Ctrl+Z`/`Ctrl+Y`
   undo/redo. The **Piece Properties** panel
   uses Up/Down to select a property
   and Left/Right to adjust it; it contains all size, width, height, ramp,

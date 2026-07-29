@@ -182,7 +182,8 @@ void TrackEditor::Update(Camera3D& camera) {
         SetMessage("Two-arm merge selected for placement.");
     }
     const float wheel = GetMouseWheelMove();
-    const bool zooming = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    const bool zooming = shift;
     if (control && wheel > 0.0f) ChangeDimension(1);
     if (control && wheel < 0.0f) ChangeDimension(-1);
     if (!control && zooming && wheel != 0.0f) EditorCamera::Zoom(camera, wheel);
@@ -220,6 +221,7 @@ void TrackEditor::Update(Camera3D& camera) {
     }
 
     const bool leftClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    const bool selectionClick = leftClick && shift;
     const bool clearTrackClicked = !libraryConsumed && helpPanelExpanded_ && leftClick &&
         CheckCollisionPointRec(GetMousePosition(), ClearTrackButtonBounds());
     const bool startFinishClicked = !libraryConsumed && helpPanelExpanded_ && leftClick &&
@@ -228,16 +230,24 @@ void TrackEditor::Update(Camera3D& camera) {
         ClearTrack();
     } else if (startFinishClicked) {
         SetStartFinish();
-    } else if (!libraryConsumed && (leftClick || IsKeyPressed(KEY_ENTER))) {
-        const std::uint32_t pickedPieceId = leftClick ?
-            EditorPicking::PickPieceFromRay(GetMouseRay(GetMousePosition(), camera), track_.Pieces()) : 0;
+    } else if (!libraryConsumed && selectionClick) {
+        const std::uint32_t pickedPieceId =
+            EditorPicking::PickPieceFromRay(GetMouseRay(GetMousePosition(), camera), track_.Pieces());
         if (pickedPieceId != 0 && pickedPieceId != selectedPieceId_) {
-            selectedPieceId_ = pickedPieceId;
-            const TrackPiece* selected = track_.GetPiece(selectedPieceId_);
-            preview_ = *selected;
-            preview_.id = selectedPieceId_;
-            SetMessage("Component selected. Adjust its panel properties, then click empty space to apply.");
-        } else if (selectedPieceId_ == 0) PlacePreview();
+            const TrackPiece* selected = track_.GetPiece(pickedPieceId);
+            if (selected != 0) {
+                selectedPieceId_ = pickedPieceId;
+                preview_ = *selected;
+                preview_.id = selectedPieceId_;
+                SetMessage("Component selected. Adjust its panel properties, then click or press M to apply.");
+            }
+        } else if (pickedPieceId == 0) {
+            SetMessage("No component under the pointer to select.");
+        }
+    } else if (!libraryConsumed && (leftClick || IsKeyPressed(KEY_ENTER))) {
+        // Plain clicks never ray-pick. They place a free preview or apply an
+        // already selected edit, so nearby road surfaces cannot steal a click.
+        if (selectedPieceId_ == 0) PlacePreview();
         else TransformSelected();
     }
     if (IsKeyPressed(KEY_M)) TransformSelected();
@@ -357,7 +367,7 @@ void TrackEditor::DrawInterface() const {
              13, Fade(RAYWHITE, 0.82f));
     DrawText("Their arrows must point in the same travel direction and have equal width.", kPanelX + 18,
              kPanelY + 256 + detailOffset, 13, Fade(RAYWHITE, 0.82f));
-    DrawText("Mouse: left select/place/apply, right-drag look, wheel rotate", kPanelX + 18, kPanelY + 280 + detailOffset,
+    DrawText("Mouse: left place/apply, Shift+left select, wheel rotate", kPanelX + 18, kPanelY + 280 + detailOffset,
              13, Fade(RAYWHITE, 0.72f));
     DrawText("Camera: WASD move, Q/E vertical, right-drag look, Shift+wheel zoom", kPanelX + 18,
              kPanelY + 297 + detailOffset,

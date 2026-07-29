@@ -36,8 +36,9 @@ Editor camera and picking code is Raylib-facing presentation code. Keep device
 polling and interaction ordering in `TrackEditor::Update`; pass `Camera3D` or
 `Ray` values into extracted helpers so camera transforms and piece-picking
 geometry remain independently understandable and reusable. When those modules
-change, manually verify grid preview placement, piece selection, right-drag
-orbiting, WASD/QE movement, shift-wheel zoom limits, and Home reset.
+change, manually verify grid preview placement, Shift+left piece selection,
+plain-left placement near existing geometry, right-drag orbiting, WASD/QE
+movement, shift-wheel zoom limits, and Home reset.
 
 New editor sessions start with an empty layout. `CLEAR TRACK` must clear only
 the current in-memory layout, reset its start/finish state, remain undoable with
@@ -45,10 +46,11 @@ the current in-memory layout, reset its start/finish state, remain undoable with
 after changing editor commands or history.
 
 When changing shared road geometry, place a branch and a merge in an editor
-preview. Check that both visible arms can be selected, that their neon rails
-only follow exposed road borders, and that a car can enter either arm without a
-wall appearing across the road. The domain tests cover arm expansion and
-surface contact; this smoke check covers the Raylib-facing picker and renderer.
+preview. Check that both visible arms can be selected with Shift+left-click,
+that their neon rails only follow exposed road borders, and that a car can enter
+either arm without a wall appearing across the road. The domain tests cover arm
+expansion and surface contact; this smoke check covers the Raylib-facing picker
+and renderer.
 
 ## Git workflow
 
