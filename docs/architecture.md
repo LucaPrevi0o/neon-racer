@@ -36,7 +36,8 @@ The present folders establish module ownership without changing gameplay.
 will split the remaining `track.cpp` into model and geometry services.
 `track_graph.cpp` owns indexed connector matching and `track_validation.cpp`
 owns race-readiness policy. `editor_history.cpp` owns undo/redo snapshots;
-later commits will split the remaining editor code into state, picking, and UI.
+`editor_library.cpp` owns draft-library interaction; later commits will split
+the remaining editor code into state, picking, and UI.
 They will also split `race.cpp` into input, vehicle dynamics, time-trial,
 and ghost-replay services.
 
