@@ -16,9 +16,11 @@ TRACK_TEST := $(BUILD_DIR)/tests/track_tests
 APP_SOURCES := src/app/main.cpp \
 	src/app/application.cpp \
 	src/editor/editor.cpp \
+	src/editor/editor_camera.cpp \
 	src/editor/editor_commands.cpp \
 	src/editor/editor_history.cpp \
 	src/editor/editor_library.cpp \
+	src/editor/editor_picking.cpp \
 	src/persistence/draft_io.cpp \
 	src/race/race.cpp \
 	src/race/race_input.cpp \

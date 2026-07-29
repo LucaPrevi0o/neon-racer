@@ -43,8 +43,11 @@ geometry, and `track_overlap.cpp` owns overlap checks.
 `track_surface_query.cpp` owns road contact and guardrail queries.
 `track_graph.cpp` owns indexed connector matching and `track_validation.cpp`
 owns race-readiness policy. `editor_history.cpp` owns undo/redo snapshots;
-`editor_library.cpp` owns draft-library interaction; later commits will split
-the remaining editor code into state, picking, and UI.
+`editor_library.cpp` owns draft-library interaction; `editor_camera.cpp` owns
+editor-view pan, zoom, orbit, elevation, and reset transforms; and
+`editor_picking.cpp` converts editor rays into grid positions and nearest
+track-piece selections. `editor.cpp` remains the coordinator for input
+dispatch, mutable editor state, commands, and drawing.
 `race_input.cpp` translates Raylib devices into a plain `RaceInput`; later
 commits will split `race.cpp` into vehicle dynamics, time-trial, and
 ghost-replay services.

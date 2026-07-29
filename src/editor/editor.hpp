@@ -20,8 +20,6 @@ public:
 
 private:
     TrackPiece BuildPreview() const;
-    bool MouseGridPosition(const Camera3D& camera, GridPosition& position) const;
-    std::uint32_t PickPieceAtMouse(const Camera3D& camera) const;
     void MovePreview(int x, int z);
     void RotatePreview();
     void ChangeDimension(int amount);

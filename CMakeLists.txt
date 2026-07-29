@@ -31,7 +31,8 @@ target_compile_options(neon_racer_domain PRIVATE -Wall -Wextra)
 
 add_executable(neon-racer
     src/app/main.cpp src/app/application.cpp
-    src/editor/editor.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp src/editor/editor_library.cpp
+    src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
+    src/editor/editor_library.cpp src/editor/editor_picking.cpp
     src/race/race.cpp src/race/race_input.cpp
     src/render/car_renderer.cpp src/render/race_scene.cpp src/render/track_renderer.cpp src/ui/neon.cpp
 )

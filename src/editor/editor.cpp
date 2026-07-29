@@ -1,5 +1,8 @@
 #include "editor.hpp"
 
+#include "editor_camera.hpp"
+#include "editor_picking.hpp"
+
 #include "../persistence/draft_io.hpp"
 #include "../render/track_renderer.hpp"
 #include "../ui/neon.hpp"
@@ -33,62 +36,6 @@ Rectangle RefreshDraftButtonBounds() {
     return Rectangle{1035.0f, 132.0f, 180.0f, 34.0f};
 }
 
-void PanCamera(Camera3D& camera, Vector2 mouseDelta) {
-    Vector3 forward = Vector3{camera.target.x - camera.position.x, 0.0f,
-                              camera.target.z - camera.position.z};
-    const float forwardLength = std::sqrt(forward.x * forward.x + forward.z * forward.z);
-    if (forwardLength < 0.001f) return;
-    forward.x /= forwardLength;
-    forward.z /= forwardLength;
-    const Vector3 right = Vector3{-forward.z, 0.0f, forward.x};
-    const float scale = 0.035f;
-    const Vector3 offset = Vector3{right.x * -mouseDelta.x * scale + forward.x * mouseDelta.y * scale,
-                                   0.0f,
-                                   right.z * -mouseDelta.x * scale + forward.z * mouseDelta.y * scale};
-    camera.position.x += offset.x;
-    camera.position.z += offset.z;
-    camera.target.x += offset.x;
-    camera.target.z += offset.z;
-}
-
-void ZoomCamera(Camera3D& camera, float wheelMovement) {
-    const Vector3 offset = Vector3{camera.position.x - camera.target.x, camera.position.y - camera.target.y,
-                                   camera.position.z - camera.target.z};
-    const float distance = std::sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
-    if (distance < 0.001f) return;
-    const float nextDistance = std::max(7.0f, std::min(55.0f, distance - wheelMovement * 2.0f));
-    const float scale = nextDistance / distance;
-    camera.position = Vector3{camera.target.x + offset.x * scale, camera.target.y + offset.y * scale,
-                              camera.target.z + offset.z * scale};
-}
-
-void OrbitCamera(Camera3D& camera, Vector2 mouseDelta) {
-    Vector3 offset = Vector3{camera.position.x - camera.target.x, camera.position.y - camera.target.y,
-                             camera.position.z - camera.target.z};
-    const float distance = std::sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
-    if (distance < 0.001f) return;
-
-    float yaw = std::atan2(offset.z, offset.x);
-    float pitch = std::asin(offset.y / distance);
-    yaw -= mouseDelta.x * 0.010f;
-    pitch = std::max(0.12f, std::min(1.45f, pitch + mouseDelta.y * 0.010f));
-    const float horizontalDistance = distance * std::cos(pitch);
-    camera.position = Vector3{camera.target.x + horizontalDistance * std::cos(yaw),
-                              camera.target.y + distance * std::sin(pitch),
-                              camera.target.z + horizontalDistance * std::sin(yaw)};
-}
-
-void RaiseCamera(Camera3D& camera, float amount) {
-    camera.position.y += amount;
-    camera.target.y += amount;
-}
-
-void ResetEditorCamera(Camera3D& camera) {
-    camera.position = Vector3{18.0f, 18.0f, 18.0f};
-    camera.target = Vector3{0.0f, 0.0f, 0.0f};
-    camera.up = Vector3{0.0f, 1.0f, 0.0f};
-}
-
 Vector3 HeadingVector(Heading heading) {
     switch (heading) {
     case Heading::North: return Vector3{0.0f, 0.0f, -1.0f};
@@ -97,75 +44,6 @@ Vector3 HeadingVector(Heading heading) {
     case Heading::West: return Vector3{-1.0f, 0.0f, 0.0f};
     }
     return Vector3{0.0f, 0.0f, 0.0f};
-}
-
-Vector3 SurfaceRight(const TrackSurfaceSample& sample) {
-    return Vector3{sample.tangentY * sample.normalZ - sample.tangentZ * sample.normalY,
-                   sample.tangentZ * sample.normalX - sample.tangentX * sample.normalZ,
-                   sample.tangentX * sample.normalY - sample.tangentY * sample.normalX};
-}
-
-void ConsiderTriangle(const Ray& ray, Vector3 first, Vector3 second, Vector3 third,
-                      std::uint32_t pieceId, float& nearestDistance, std::uint32_t& pickedId) {
-    const RayCollision hit = GetRayCollisionTriangle(ray, first, second, third);
-    if (hit.hit && hit.distance < nearestDistance) {
-        nearestDistance = hit.distance;
-        pickedId = pieceId;
-    }
-}
-
-void ConsiderStraightSurface(const Ray& ray, const TrackPiece& piece, float& nearestDistance,
-                             std::uint32_t& pickedId) {
-    const TrackConnector entry = piece.EntryConnector();
-    const TrackConnector exit = piece.ExitConnector();
-    const Vector3 right = HeadingVector(static_cast<Heading>((static_cast<int>(piece.entryHeading) + 1) % 4));
-    const float entryHalfWidth = piece.WidthAt(0.0f) * 0.5f;
-    const float exitHalfWidth = piece.WidthAt(1.0f) * 0.5f;
-    const Vector3 from = Vector3{static_cast<float>(entry.position.x), static_cast<float>(entry.position.y) + 0.08f,
-                                 static_cast<float>(entry.position.z)};
-    const Vector3 to = Vector3{static_cast<float>(exit.position.x), static_cast<float>(exit.position.y) + 0.08f,
-                               static_cast<float>(exit.position.z)};
-    const Vector3 fromRight = Vector3{from.x + right.x * entryHalfWidth, from.y, from.z + right.z * entryHalfWidth};
-    const Vector3 fromLeft = Vector3{from.x - right.x * entryHalfWidth, from.y, from.z - right.z * entryHalfWidth};
-    const Vector3 toRight = Vector3{to.x + right.x * exitHalfWidth, to.y, to.z + right.z * exitHalfWidth};
-    const Vector3 toLeft = Vector3{to.x - right.x * exitHalfWidth, to.y, to.z - right.z * exitHalfWidth};
-    ConsiderTriangle(ray, fromRight, toRight, toLeft, piece.id, nearestDistance, pickedId);
-    ConsiderTriangle(ray, fromRight, toLeft, fromLeft, piece.id, nearestDistance, pickedId);
-}
-
-void ConsiderCurvedSurface(const Ray& ray, const TrackPiece& piece, float& nearestDistance,
-                           std::uint32_t& pickedId) {
-    const std::vector<TrackSurfaceSample> samples = piece.SurfaceSamples();
-    for (std::size_t index = 0; index + 1 < samples.size(); ++index) {
-        const TrackSurfaceSample& from = samples[index];
-        const TrackSurfaceSample& to = samples[index + 1];
-        const Vector3 fromRightAxis = SurfaceRight(from);
-        const Vector3 toRightAxis = SurfaceRight(to);
-        const Vector3 fromRight = Vector3{from.x + fromRightAxis.x * from.halfWidth,
-                                          from.y + fromRightAxis.y * from.halfWidth + 0.08f,
-                                          from.z + fromRightAxis.z * from.halfWidth};
-        const Vector3 fromLeft = Vector3{from.x - fromRightAxis.x * from.halfWidth,
-                                         from.y - fromRightAxis.y * from.halfWidth + 0.08f,
-                                         from.z - fromRightAxis.z * from.halfWidth};
-        const Vector3 toRight = Vector3{to.x + toRightAxis.x * to.halfWidth,
-                                        to.y + toRightAxis.y * to.halfWidth + 0.08f,
-                                        to.z + toRightAxis.z * to.halfWidth};
-        const Vector3 toLeft = Vector3{to.x - toRightAxis.x * to.halfWidth,
-                                       to.y - toRightAxis.y * to.halfWidth + 0.08f,
-                                       to.z - toRightAxis.z * to.halfWidth};
-        ConsiderTriangle(ray, fromRight, toRight, toLeft, piece.id, nearestDistance, pickedId);
-        ConsiderTriangle(ray, fromRight, toLeft, fromLeft, piece.id, nearestDistance, pickedId);
-    }
-}
-
-void ConsiderBranchSurface(const Ray& ray, const TrackPiece& piece, float& nearestDistance,
-                           std::uint32_t& pickedId) {
-    TrackPiece rightArm = piece;
-    rightArm.type = TrackPieceType::Straight;
-    TrackPiece leftArm = rightArm;
-    leftArm.lateralOffset = -leftArm.lateralOffset;
-    ConsiderStraightSurface(ray, rightArm, nearestDistance, pickedId);
-    ConsiderStraightSurface(ray, leftArm, nearestDistance, pickedId);
 }
 
 Color PieceColor(const TrackPiece& piece, std::uint32_t selectedId) {
@@ -303,14 +181,14 @@ void TrackEditor::Update(Camera3D& camera) {
     const bool zooming = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     if (control && wheel > 0.0f) ChangeDimension(1);
     if (control && wheel < 0.0f) ChangeDimension(-1);
-    if (!control && zooming && wheel != 0.0f) ZoomCamera(camera, wheel);
+    if (!control && zooming && wheel != 0.0f) EditorCamera::Zoom(camera, wheel);
     if (!control && !zooming && wheel > 0.0f) RotatePreview();
     if (!control && !zooming && wheel < 0.0f) {
         preview_.entryHeading = static_cast<Heading>((static_cast<int>(preview_.entryHeading) + 3) % 4);
         SetMessage("Preview rotated 90 degrees.");
     }
-    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) OrbitCamera(camera, GetMouseDelta());
-    if (IsKeyPressed(KEY_HOME)) ResetEditorCamera(camera);
+    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) EditorCamera::Orbit(camera, GetMouseDelta());
+    if (IsKeyPressed(KEY_HOME)) EditorCamera::Reset(camera);
     if (IsKeyPressed(KEY_R)) RotatePreview();
     if (!libraryConsumed && IsKeyPressed(KEY_UP)) CycleProperty(-1);
     if (!libraryConsumed && IsKeyPressed(KEY_DOWN)) CycleProperty(1);
@@ -329,9 +207,12 @@ void TrackEditor::Update(Camera3D& camera) {
     // A selected component stays anchored while its properties are edited.
     // Without this guard, merely moving the mouse before applying a turn flip
     // silently changed its entry position and made its connectors appear wrong.
-    if (selectedPieceId_ == 0 && MouseGridPosition(camera, mousePosition)) {
-        preview_.entryPosition.x = mousePosition.x;
-        preview_.entryPosition.z = mousePosition.z;
+    if (selectedPieceId_ == 0) {
+        const Ray mouseRay = GetMouseRay(GetMousePosition(), camera);
+        if (EditorPicking::GridPositionFromRay(mouseRay, mousePosition)) {
+            preview_.entryPosition.x = mousePosition.x;
+            preview_.entryPosition.z = mousePosition.z;
+        }
     }
 
     const bool startFinishClicked = !libraryConsumed && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
@@ -339,7 +220,8 @@ void TrackEditor::Update(Camera3D& camera) {
     if (startFinishClicked) {
         SetStartFinish();
     } else if (!libraryConsumed && (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsKeyPressed(KEY_ENTER))) {
-        const std::uint32_t pickedPieceId = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ? PickPieceAtMouse(camera) : 0;
+        const std::uint32_t pickedPieceId = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ?
+            EditorPicking::PickPieceFromRay(GetMouseRay(GetMousePosition(), camera), track_.Pieces()) : 0;
         if (pickedPieceId != 0 && pickedPieceId != selectedPieceId_) {
             selectedPieceId_ = pickedPieceId;
             const TrackPiece* selected = track_.GetPiece(selectedPieceId_);
@@ -353,12 +235,12 @@ void TrackEditor::Update(Camera3D& camera) {
     if (IsKeyPressed(KEY_C)) DuplicateSelected();
     if (IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_X)) DeleteSelected();
     const float pan = 0.35f;
-    if (IsKeyDown(KEY_A)) PanCamera(camera, Vector2{pan / 0.035f, 0.0f});
-    if (IsKeyDown(KEY_D)) PanCamera(camera, Vector2{-pan / 0.035f, 0.0f});
-    if (IsKeyDown(KEY_W)) PanCamera(camera, Vector2{0.0f, pan / 0.035f});
-    if (IsKeyDown(KEY_S)) PanCamera(camera, Vector2{0.0f, -pan / 0.035f});
-    if (IsKeyDown(KEY_Q)) RaiseCamera(camera, pan);
-    if (IsKeyDown(KEY_E)) RaiseCamera(camera, -pan);
+    if (IsKeyDown(KEY_A)) EditorCamera::Pan(camera, Vector2{pan / 0.035f, 0.0f});
+    if (IsKeyDown(KEY_D)) EditorCamera::Pan(camera, Vector2{-pan / 0.035f, 0.0f});
+    if (IsKeyDown(KEY_W)) EditorCamera::Pan(camera, Vector2{0.0f, pan / 0.035f});
+    if (IsKeyDown(KEY_S)) EditorCamera::Pan(camera, Vector2{0.0f, -pan / 0.035f});
+    if (IsKeyDown(KEY_Q)) EditorCamera::Raise(camera, pan);
+    if (IsKeyDown(KEY_E)) EditorCamera::Raise(camera, -pan);
 }
 
 void TrackEditor::DrawTrack3D() const {
@@ -511,30 +393,6 @@ bool TrackEditor::PreviewOverlaps(const TrackPiece& candidate) const {
         previewOverlapCacheValid_ = true;
     }
     return cachedPreviewOverlaps_;
-}
-
-bool TrackEditor::MouseGridPosition(const Camera3D& camera, GridPosition& position) const {
-    const Ray ray = GetMouseRay(GetMousePosition(), camera);
-    if (std::fabs(ray.direction.y) < 0.0001f) return false;
-    const float distance = -ray.position.y / ray.direction.y;
-    if (distance < 0.0f) return false;
-    const Vector3 hit = Vector3{ray.position.x + ray.direction.x * distance, 0.0f,
-                                ray.position.z + ray.direction.z * distance};
-    position = GridPosition{static_cast<int>(std::round(hit.x)), 0, static_cast<int>(std::round(hit.z))};
-    return true;
-}
-
-std::uint32_t TrackEditor::PickPieceAtMouse(const Camera3D& camera) const {
-    const Ray ray = GetMouseRay(GetMousePosition(), camera);
-    float nearestDistance = 1000000.0f;
-    std::uint32_t picked = 0;
-    for (std::vector<TrackPiece>::const_iterator piece = track_.Pieces().begin();
-         piece != track_.Pieces().end(); ++piece) {
-        if (piece->type == TrackPieceType::Straight) ConsiderStraightSurface(ray, *piece, nearestDistance, picked);
-        else if (piece->type == TrackPieceType::Branch) ConsiderBranchSurface(ray, *piece, nearestDistance, picked);
-        else ConsiderCurvedSurface(ray, *piece, nearestDistance, picked);
-    }
-    return picked;
 }
 
 void TrackEditor::MovePreview(int x, int z) {

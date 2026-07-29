@@ -32,6 +32,13 @@ Before adding a new source file, add it explicitly to both the Makefile and the
 appropriate CMake target. This is intentional: a missing module should fail a
 review visibly rather than being silently discovered by a wildcard.
 
+Editor camera and picking code is Raylib-facing presentation code. Keep device
+polling and interaction ordering in `TrackEditor::Update`; pass `Camera3D` or
+`Ray` values into extracted helpers so camera transforms and piece-picking
+geometry remain independently understandable and reusable. When those modules
+change, manually verify grid preview placement, piece selection, right-drag
+orbiting, WASD/QE movement, shift-wheel zoom limits, and Home reset.
+
 ## Git workflow
 
 `main` represents integrated, verified releases. Create a focused branch for a
