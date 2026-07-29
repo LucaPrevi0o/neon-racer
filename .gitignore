@@ -1,0 +1,16 @@
+# Build products
+/build/
+/neon-racer/main
+/neon-racer/tests/test_track
+
+# Historical local binaries (kept on disk, never versioned)
+/neon-racer/Neon Racer - Alpha v1.0.0
+/neon-racer/neon-racer-v1.0
+/neon-racer/neon-racer-v1.1
+
+# Local editor and OS state
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
