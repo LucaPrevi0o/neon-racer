@@ -854,26 +854,4 @@ void TrackEditor::LoadDraft(const std::string& name) {
     SetMessage("Custom editable draft loaded: " + name + ".");
 }
 
-void TrackEditor::Undo() {
-    if (undoStates_.empty()) { SetMessage("Nothing to undo."); return; }
-    redoStates_.push_back(track_);
-    track_ = undoStates_.back();
-    undoStates_.pop_back();
-    if (track_.GetPiece(selectedPieceId_) == 0) selectedPieceId_ = 0;
-    SetMessage("Edit undone.");
-}
-
-void TrackEditor::Redo() {
-    if (redoStates_.empty()) { SetMessage("Nothing to redo."); return; }
-    undoStates_.push_back(track_);
-    track_ = redoStates_.back();
-    redoStates_.pop_back();
-    SetMessage("Edit restored.");
-}
-
-void TrackEditor::SaveUndoState() {
-    undoStates_.push_back(track_);
-    redoStates_.clear();
-}
-
 void TrackEditor::SetMessage(const std::string& message) { message_ = message; }

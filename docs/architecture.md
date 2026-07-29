@@ -35,8 +35,9 @@ The present folders establish module ownership without changing gameplay.
 `track_surface_query.cpp` owns road contact and guardrail queries. Later commits
 will split the remaining `track.cpp` into model and geometry services.
 `track_graph.cpp` owns indexed connector matching and `track_validation.cpp`
-owns race-readiness policy. They will also split `editor.cpp` into editor state, commands/history,
-picking, and UI; and split `race.cpp` into input, vehicle dynamics, time-trial,
+owns race-readiness policy. `editor_history.cpp` owns undo/redo snapshots;
+later commits will split the remaining editor code into state, picking, and UI.
+They will also split `race.cpp` into input, vehicle dynamics, time-trial,
 and ghost-replay services.
 
 ## Data locations
