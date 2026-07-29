@@ -2,6 +2,7 @@
 #include "app_settings.hpp"
 
 #include "../render/car_renderer.hpp"
+#include "../render/race_scene.hpp"
 #include "../render/track_renderer.hpp"
 #include "../ui/neon.hpp"
 
@@ -10,7 +11,7 @@
 
 namespace {
 
-void DrawGridFloor(int slices, float spacing, Color color) {
+/*void DrawGridFloor(int slices, float spacing, Color color) {
 
     const float extent = static_cast<float>(slices) * spacing * 0.5f;
     for (int i = 0; i <= slices; ++i) {
@@ -45,9 +46,16 @@ void DrawRaceTrack(const Track& track) {
                      0.95f, 0.10f, 0.95f, Neon::Green);
         }
     }
-}
+}*/
 
 } // namespace
+
+namespace {
+Vector3 LerpVector3(Vector3 from, Vector3 to, float amount) {
+    return Vector3{from.x + (to.x - from.x) * amount, from.y + (to.y - from.y) * amount,
+                   from.z + (to.z - from.z) * amount};
+}
+}
 
 RacerApplication::RacerApplication()
     : state_(AppState::Editor),
@@ -133,7 +141,7 @@ void RacerApplication::DrawEditor() const {
 void RacerApplication::DrawRace() const {
     BeginMode3D(raceCamera_);
     DrawGridFloor(40, 1.0f, Fade(Neon::Cyan, 0.15f));
-    DrawRaceTrack(race_.IsReady() ? playableTrack_.layout : editor_.GetTrack());
+    DrawRaceTrackScene(race_.IsReady() ? playableTrack_.layout : editor_.GetTrack());
     if (race_.IsReady() && race_.HasVerifiedGhost()) DrawGhostRaceCar(race_.GhostCar());
     if (race_.IsReady()) DrawRaceCar(race_.Car());
     EndMode3D();
