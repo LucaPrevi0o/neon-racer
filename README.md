@@ -80,6 +80,8 @@ system paths.
 - `assets/tracks/examples`: versioned example drafts.
 
 See `docs/architecture.md` for dependency rules and the planned internal splits.
+See `docs/development.md` for contributor workflow and `docs/track-format.md`
+for the editable draft format.
 
 ## Data and compatibility baseline
 
