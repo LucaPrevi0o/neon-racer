@@ -38,8 +38,9 @@ will split the remaining `track.cpp` into model and geometry services.
 owns race-readiness policy. `editor_history.cpp` owns undo/redo snapshots;
 `editor_library.cpp` owns draft-library interaction; later commits will split
 the remaining editor code into state, picking, and UI.
-They will also split `race.cpp` into input, vehicle dynamics, time-trial,
-and ghost-replay services.
+`race_input.cpp` translates Raylib devices into a plain `RaceInput`; later
+commits will split `race.cpp` into vehicle dynamics, time-trial, and
+ghost-replay services.
 
 ## Data locations
 

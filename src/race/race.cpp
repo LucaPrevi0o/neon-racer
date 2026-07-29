@@ -1,4 +1,5 @@
 #include "race.hpp"
+#include "race_input.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -167,28 +168,11 @@ RaceCar TimeTrial::GhostCar() const {
 const char* TimeTrial::StatusMessage() const { return statusMessage_; }
 
 void TimeTrial::FixedUpdate(float deltaTime) {
-    float steering = 0.0f;
-    float accelerate = 0.0f;
-    float brake = 0.0f;
-    float reverse = 0.0f;
-
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) steering -= 1.0f;
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) steering += 1.0f;
-    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) accelerate = 1.0f;
-    if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) brake = 1.0f;
-    if (IsKeyDown(KEY_X)) reverse = 1.0f;
-
-    if (IsGamepadAvailable(0)) {
-        const float stick = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
-        const float rightTrigger = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER);
-        const float leftTrigger = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER);
-        if (std::fabs(stick) > 0.12f) steering = stick;
-        if (rightTrigger > 0.05f) accelerate = rightTrigger;
-        if (leftTrigger > 0.05f) brake = leftTrigger;
-        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) accelerate = 1.0f;
-        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) brake = 1.0f;
-        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) reverse = 1.0f;
-    }
+    const RaceInput input = ReadRaceInput();
+    const float steering = input.steering;
+    const float accelerate = input.accelerate;
+    const float brake = input.brake;
+    const float reverse = input.reverse;
 
     const TrackContact contact = track_->QuerySurface(car_.position.x, car_.position.y, car_.position.z, 1.4f);
     const float grip = onTrack_ ? GripFor(surfaceMaterial_) : 0.20f;
