@@ -16,14 +16,6 @@ GridPosition Add(GridPosition position, int dx, int dz) {
     return position;
 }
 
-float Clamp(float value, float minimum, float maximum) {
-    return std::max(minimum, std::min(maximum, value));
-}
-
-float Length(float x, float y, float z) {
-    return std::sqrt(x * x + y * y + z * z);
-}
-
 struct RoadPoint {
     float x;
     float y;
@@ -352,82 +344,6 @@ std::vector<TrackPathPoint> TrackPiece::PathPoints(int curveSubdivisions) const 
                 static_cast<float>(side.z) * sideDistance});
     }
     return points;
-}
-
-float TrackPiece::WidthAt(float progress) const {
-    const float clamped = Clamp(progress, 0.0f, 1.0f);
-    return static_cast<float>(width) + static_cast<float>(exitWidth - width) * clamped;
-}
-
-std::vector<TrackSurfaceSample> TrackPiece::SurfaceSamples(int subdivisions) const {
-    const int requestedSubdivisions = subdivisions > 0 ? subdivisions :
-        ((type == TrackPieceType::Straight || type == TrackPieceType::Twist) ? std::max(2, length) :
-         (type == TrackPieceType::Loop ? std::max(24, curveRadius * 12) : std::max(12, curveRadius * 8)));
-    const std::vector<TrackPathPoint> points = PathPoints(requestedSubdivisions);
-    std::vector<TrackSurfaceSample> samples;
-    if (points.empty()) return samples;
-
-    for (std::size_t index = 0; index < points.size(); ++index) {
-        const TrackPathPoint& current = points[index];
-        const TrackPathPoint& before = points[index == 0 ? index : index - 1];
-        const TrackPathPoint& after = points[index + 1 < points.size() ? index + 1 : index];
-        float tangentX = after.x - before.x;
-        float tangentY = after.y - before.y;
-        float tangentZ = after.z - before.z;
-        const float tangentLength = Length(tangentX, tangentY, tangentZ);
-        if (tangentLength > 0.0001f) {
-            tangentX /= tangentLength;
-            tangentY /= tangentLength;
-            tangentZ /= tangentLength;
-        } else {
-            tangentX = 1.0f;
-            tangentY = 0.0f;
-            tangentZ = 0.0f;
-        }
-        const float horizontalLength = std::sqrt(tangentX * tangentX + tangentZ * tangentZ);
-        float normalX = -tangentY * tangentX;
-        float normalY = horizontalLength;
-        float normalZ = -tangentY * tangentZ;
-        const float normalLength = Length(normalX, normalY, normalZ);
-        if (normalLength > 0.0001f) {
-            normalX /= normalLength;
-            normalY /= normalLength;
-            normalZ /= normalLength;
-        }
-        if (type == TrackPieceType::Loop) {
-            // A vertical loop keeps its road width on one fixed horizontal
-            // lateral axis. Deriving the normal from that axis avoids the
-            // horizontal-slope normal degenerating at the loop's verticals.
-            const GridPosition lateral = Right(entryHeading);
-            normalX = -static_cast<float>(lateral.z) * tangentY;
-            normalY = static_cast<float>(lateral.z) * tangentX - static_cast<float>(lateral.x) * tangentZ;
-            normalZ = static_cast<float>(lateral.x) * tangentY;
-            const float loopNormalLength = Length(normalX, normalY, normalZ);
-            if (loopNormalLength > 0.0001f) {
-                normalX /= loopNormalLength;
-                normalY /= loopNormalLength;
-                normalZ /= loopNormalLength;
-            }
-        }
-        const float progress = points.size() <= 1 ? 0.0f :
-            static_cast<float>(index) / static_cast<float>(points.size() - 1);
-        const float bankRadians = type == TrackPieceType::Curve
-            ? static_cast<float>(bankAngleDegrees) * kPi / 180.0f * std::sin(kPi * progress)
-            : (type == TrackPieceType::Twist ? 2.0f * kPi * progress : 0.0f);
-        const float crossX = tangentY * normalZ - tangentZ * normalY;
-        const float crossY = tangentZ * normalX - tangentX * normalZ;
-        const float crossZ = tangentX * normalY - tangentY * normalX;
-        const float cosine = std::cos(bankRadians);
-        const float sine = std::sin(bankRadians);
-        normalX = normalX * cosine + crossX * sine;
-        normalY = normalY * cosine + crossY * sine;
-        normalZ = normalZ * cosine + crossZ * sine;
-        samples.push_back(TrackSurfaceSample{current.x, current.y, current.z,
-                                             tangentX, tangentY, tangentZ,
-                                             normalX, normalY, normalZ,
-                                             WidthAt(progress) * 0.5f, material, id});
-    }
-    return samples;
 }
 
 Track::Track()

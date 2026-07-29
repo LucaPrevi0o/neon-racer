@@ -21,6 +21,7 @@ add_library(neon_racer_domain
     src/track/track.cpp
     src/track/track_graph.cpp
     src/track/track_rules.cpp
+    src/track/track_surface_geometry.cpp
     src/track/track_surface_query.cpp
     src/track/track_validation.cpp
 )
