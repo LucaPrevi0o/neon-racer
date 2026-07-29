@@ -1,11 +1,11 @@
 #include "application.hpp"
 #include "app_settings.hpp"
 
+#include "../render/car_renderer.hpp"
 #include "../render/track_renderer.hpp"
 #include "../ui/neon.hpp"
 
 #include <cmath>
-#include <rlgl.h>
 #include <sstream>
 
 namespace {
@@ -19,49 +19,6 @@ void DrawGridFloor(int slices, float spacing, Color color) {
         DrawLine3D(Vector3{offset, 0.0f, -extent}, Vector3{offset, 0.0f, extent}, color);
         DrawLine3D(Vector3{-extent, 0.0f, offset}, Vector3{extent, 0.0f, offset}, color);
     }
-}
-
-Vector3 Cross(Vector3 first, Vector3 second) {
-
-    return Vector3{first.y * second.z - first.z * second.y,
-                   first.z * second.x - first.x * second.z,
-                   first.x * second.y - first.y * second.x};
-}
-
-void DrawNeonCar(const RaceCar& car) {
-
-    // The car is deliberately smaller than the one-metre grid cell: 1.1 m
-    // long, 0.8 m wide. The local forward axis is +X, matching race physics.
-    rlPushMatrix();
-    rlTranslatef(car.position.x, car.position.y, car.position.z);
-    const Vector3 right = Cross(car.forward, car.up);
-    const Matrix basis = Matrix{car.forward.x, car.forward.y, car.forward.z, 0.0f,
-                                car.up.x, car.up.y, car.up.z, 0.0f,
-                                right.x, right.y, right.z, 0.0f,
-                                0.0f, 0.0f, 0.0f, 1.0f};
-    rlMultMatrixf(reinterpret_cast<const float*>(&basis));
-
-    DrawCube(Vector3{0.0f, 0.0f, 0.0f}, 1.1f, 0.28f, 0.8f, Neon::Pink);
-    DrawCube(Vector3{-0.05f, 0.22f, 0.0f}, 0.50f, 0.22f, 0.56f, Neon::Cyan);
-    DrawCubeWires(Vector3{0.0f, 0.0f, 0.0f}, 1.12f, 0.30f, 0.82f, Neon::Yellow);
-    DrawLine3D(Vector3{0.0f, 0.17f, 0.0f}, Vector3{0.65f, 0.17f, 0.0f}, Neon::Yellow);
-    rlPopMatrix();
-}
-
-void DrawGhostCar(const RaceCar& car) {
-
-    rlPushMatrix();
-    rlTranslatef(car.position.x, car.position.y, car.position.z);
-    const Vector3 right = Cross(car.forward, car.up);
-    const Matrix basis = Matrix{car.forward.x, car.forward.y, car.forward.z, 0.0f,
-                                car.up.x, car.up.y, car.up.z, 0.0f,
-                                right.x, right.y, right.z, 0.0f,
-                                0.0f, 0.0f, 0.0f, 1.0f};
-    rlMultMatrixf(reinterpret_cast<const float*>(&basis));
-
-    DrawCube(Vector3{0.0f, 0.0f, 0.0f}, 1.1f, 0.28f, 0.8f, Fade(Neon::Cyan, 0.25f));
-    DrawCubeWires(Vector3{0.0f, 0.0f, 0.0f}, 1.12f, 0.30f, 0.82f, Fade(Neon::Cyan, 0.75f));
-    rlPopMatrix();
 }
 
 Vector3 LerpVector3(Vector3 from, Vector3 to, float amount) {
@@ -177,8 +134,8 @@ void RacerApplication::DrawRace() const {
     BeginMode3D(raceCamera_);
     DrawGridFloor(40, 1.0f, Fade(Neon::Cyan, 0.15f));
     DrawRaceTrack(race_.IsReady() ? playableTrack_.layout : editor_.GetTrack());
-    if (race_.IsReady() && race_.HasVerifiedGhost()) DrawGhostCar(race_.GhostCar());
-    if (race_.IsReady()) DrawNeonCar(race_.Car());
+    if (race_.IsReady() && race_.HasVerifiedGhost()) DrawGhostRaceCar(race_.GhostCar());
+    if (race_.IsReady()) DrawRaceCar(race_.Car());
     EndMode3D();
 
     Neon::DrawHeader("NEON RACER  //  TIME TRIAL", AppSettings::kWindowWidth);

@@ -31,7 +31,7 @@ add_executable(neon-racer
     src/app/main.cpp src/app/application.cpp
     src/editor/editor.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp src/editor/editor_library.cpp
     src/race/race.cpp src/race/race_input.cpp
-    src/render/track_renderer.cpp src/ui/neon.cpp
+    src/render/car_renderer.cpp src/render/track_renderer.cpp src/ui/neon.cpp
 )
 target_compile_options(neon-racer PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer PRIVATE neon_racer_domain neon_racer_raylib)

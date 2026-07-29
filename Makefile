@@ -22,6 +22,7 @@ APP_SOURCES := src/app/main.cpp \
 	src/persistence/draft_io.cpp \
 	src/race/race.cpp \
 	src/race/race_input.cpp \
+	src/render/car_renderer.cpp \
 	src/render/track_renderer.cpp \
 	src/track/playable_export.cpp \
 	src/track/track_graph.cpp \
