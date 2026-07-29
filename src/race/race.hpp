@@ -4,6 +4,7 @@
 
 #include "race_contracts.hpp"
 #include "race_input.hpp"
+#include "vehicle_dynamics.hpp"
 #include "../track/track.hpp"
 
 class TimeTrial {
@@ -38,7 +39,7 @@ private:
     float StartHeading() const;
 
     const Track* track_;
-    RaceCar car_;
+    VehicleDynamics vehicle_;
     float accumulator_;
     float currentLapTime_;
     float bestLapTime_;
@@ -49,8 +50,6 @@ private:
     bool paused_;
     bool finished_;
     bool ready_;
-    bool onTrack_;
-    SurfaceMaterial surfaceMaterial_;
     std::vector<GhostSample> recordingSamples_;
     std::vector<GhostSample> verifiedGhostSamples_;
     float nextGhostSampleTime_;

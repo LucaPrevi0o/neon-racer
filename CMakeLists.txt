@@ -22,12 +22,16 @@ add_library(neon_racer_domain
 )
 target_compile_options(neon_racer_domain PRIVATE -Wall -Wextra)
 
-add_library(neon_racer_race
-    src/race/race.cpp
+add_library(neon_racer_vehicle_dynamics
     src/race/race_physics.cpp
+    src/race/vehicle_dynamics.cpp
 )
+target_compile_options(neon_racer_vehicle_dynamics PRIVATE -Wall -Wextra)
+target_link_libraries(neon_racer_vehicle_dynamics PUBLIC neon_racer_domain)
+
+add_library(neon_racer_race src/race/race.cpp)
 target_compile_options(neon_racer_race PRIVATE -Wall -Wextra)
-target_link_libraries(neon_racer_race PUBLIC neon_racer_domain)
+target_link_libraries(neon_racer_race PUBLIC neon_racer_domain neon_racer_vehicle_dynamics)
 
 if(NEON_RACER_BUILD_APP)
     find_path(RAYLIB_INCLUDE_DIR raylib.h)
@@ -59,6 +63,11 @@ add_test(NAME neon-racer-track-tests COMMAND neon-racer-track-tests)
 add_executable(neon-racer-race-physics-tests tests/unit/test_race_physics.cpp src/race/race_physics.cpp)
 target_compile_options(neon-racer-race-physics-tests PRIVATE -Wall -Wextra)
 add_test(NAME neon-racer-race-physics-tests COMMAND neon-racer-race-physics-tests)
+
+add_executable(neon-racer-vehicle-dynamics-tests tests/unit/test_vehicle_dynamics.cpp)
+target_compile_options(neon-racer-vehicle-dynamics-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-vehicle-dynamics-tests PRIVATE neon_racer_vehicle_dynamics)
+add_test(NAME neon-racer-vehicle-dynamics-tests COMMAND neon-racer-vehicle-dynamics-tests)
 
 add_executable(neon-racer-time-trial-tests
     tests/unit/test_time_trial.cpp

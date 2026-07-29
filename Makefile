@@ -13,10 +13,14 @@ BUILD_DIR := build
 APP := $(BUILD_DIR)/neon-racer
 TRACK_TEST := $(BUILD_DIR)/tests/track_tests
 RACE_PHYSICS_TEST := $(BUILD_DIR)/tests/race_physics_tests
+VEHICLE_DYNAMICS_TEST := $(BUILD_DIR)/tests/vehicle_dynamics_tests
 TIME_TRIAL_TEST := $(BUILD_DIR)/tests/time_trial_tests
 
-RACE_CORE_SOURCES := src/race/race.cpp \
+RACE_VEHICLE_SOURCES := src/race/vehicle_dynamics.cpp \
 	src/race/race_physics.cpp
+
+RACE_CORE_SOURCES := src/race/race.cpp \
+	$(RACE_VEHICLE_SOURCES)
 
 APP_SOURCES := src/app/main.cpp \
 	src/app/application.cpp \
@@ -60,9 +64,7 @@ TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
 RACE_PHYSICS_TEST_SOURCES := tests/unit/test_race_physics.cpp \
 	src/race/race_physics.cpp
 
-TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
-	$(RACE_CORE_SOURCES) \
-	src/track/track_layout.cpp \
+RACE_TRACK_SOURCES := src/track/track_layout.cpp \
 	src/track/track_piece_geometry.cpp \
 	src/track/track_overlap.cpp \
 	src/track/track_graph.cpp \
@@ -71,6 +73,14 @@ TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
 	src/track/track_surface_geometry.cpp \
 	src/track/track_surface_query.cpp \
 	src/track/track_validation.cpp
+
+VEHICLE_DYNAMICS_TEST_SOURCES := tests/unit/test_vehicle_dynamics.cpp \
+	$(RACE_VEHICLE_SOURCES) \
+	$(RACE_TRACK_SOURCES)
+
+TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
+	$(RACE_CORE_SOURCES) \
+	$(RACE_TRACK_SOURCES)
 
 .PHONY: all build run test clean help neon-racer racer racer-test
 
@@ -100,13 +110,18 @@ $(RACE_PHYSICS_TEST): $(RACE_PHYSICS_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(RACE_PHYSICS_TEST_SOURCES)
 
+$(VEHICLE_DYNAMICS_TEST): $(VEHICLE_DYNAMICS_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -o $@ $(VEHICLE_DYNAMICS_TEST_SOURCES)
+
 $(TIME_TRIAL_TEST): $(TIME_TRIAL_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(TIME_TRIAL_TEST)
+test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(TIME_TRIAL_TEST)
 	./$(TRACK_TEST)
 	./$(RACE_PHYSICS_TEST)
+	./$(VEHICLE_DYNAMICS_TEST)
 	./$(TIME_TRIAL_TEST)
 
 clean:

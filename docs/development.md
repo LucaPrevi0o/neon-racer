@@ -17,16 +17,17 @@ cmake --build build/cmake
 ctest --test-dir build/cmake --output-on-failure
 ```
 
-Track, race-physics, and time-trial tests must not include or link Raylib.
+Track, race-physics, vehicle-dynamics, and time-trial tests must not include
+or link Raylib.
 Add behavior tests under `tests/unit` whenever changing track geometry,
 validation, serialization, playable-export rules, or isolated race-dynamics
 math.
 
 ## Dependency rules
 
-`src/track` and `src/persistence` are the domain layer and must remain free of
-Raylib types. `src/editor`, `src/race`, `src/render`, and `src/ui` may use
-Raylib, but rendering and input adapters must not define track or race rules.
+`src/track`, `src/persistence`, and `src/race` are Raylib-free core modules.
+`src/editor`, `src/render`, and `src/ui` may use Raylib, but rendering and
+input adapters must not define track or race rules.
 `src/app` is the composition root.
 
 Before adding a new source file, add it explicitly to both the Makefile and the

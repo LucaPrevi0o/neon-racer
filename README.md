@@ -17,7 +17,8 @@ make test
 
 The root Makefile explicitly lists the application sources and links
 the UI module. It produces `build/neon-racer`; `make test` builds
-and runs Raylib-free track, race-physics, and input-injected time-trial tests.
+and runs Raylib-free track, race-physics, vehicle-dynamics, and input-injected
+time-trial tests.
 Only building or running the graphical application requires Raylib, installed
 or supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS` as documented there.
 

@@ -28,9 +28,11 @@ composition root: it creates the window, chooses the active screen, and wires
 the modules together.
 
 The CMake build mirrors these boundaries: `neon_racer_domain` owns the
-Raylib-independent track and persistence layer, and `neon_racer_race` is a
-separate Raylib-free simulation library built on top of it. The `neon-racer`
-executable links those libraries to the Raylib-backed application modules.
+Raylib-independent track and persistence layer;
+`neon_racer_vehicle_dynamics` builds vehicle simulation on that domain; and
+`neon_racer_race` adds time-trial orchestration on top. The `neon-racer`
+executable links those Raylib-free libraries to the Raylib-backed application
+modules.
 
 ## Current refactoring boundaries
 
@@ -52,9 +54,13 @@ dispatch, mutable editor state, commands, and drawing.
 `app/raylib_race_input.cpp` translates Raylib devices into a plain `RaceInput`;
 `TimeTrial` receives that frame snapshot and reuses its held axes for every
 fixed step. `race_contracts.hpp` owns the simulation's vector, vehicle, and
-ghost values; the Raylib-free `race_physics.cpp` owns brake-damping policy and
-its digital-input cap. Later commits will split the rest of `race.cpp` into
-vehicle dynamics, time-trial, and ghost-replay services.
+ghost values. `vehicle_dynamics.hpp/.cpp` owns surface-query-driven suspension,
+steering, traction, braking, air drag, and guardrail response behind a narrow
+`VehicleSurfaceQuery` interface. `race.cpp` now keeps the `TimeTrial` facade,
+fixed-step scheduling, lap policy, ghost recording/playback, and player-facing
+status messages. The Raylib-free `race_physics.cpp` owns brake-damping policy
+and its digital-input cap. A later commit will extract ghost replay from the
+time-trial coordinator.
 
 ## Data locations
 
