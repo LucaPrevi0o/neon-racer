@@ -17,8 +17,6 @@ public:
 // should not make vehicle simulation depend on UI status text or lap rules.
 struct VehicleStepResult {
     bool guardrailImpact;
-    bool hasSurfaceContact;
-    std::uint32_t surfacePieceId;
 };
 
 // Raylib-free vehicle simulation. It owns the car pose and the contact history
