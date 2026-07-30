@@ -46,7 +46,9 @@ struct VerificationState {
     bool hasSavedGhost;
     bool isVerifiedForPlayableExport;
     std::uint32_t verifiedLayoutRevision;
+    std::uint64_t verifiedLayoutFingerprint;
 
     VerificationState()
-        : hasSavedGhost(false), isVerifiedForPlayableExport(false), verifiedLayoutRevision(0) {}
+        : hasSavedGhost(false), isVerifiedForPlayableExport(false), verifiedLayoutRevision(0),
+          verifiedLayoutFingerprint(0) {}
 };
