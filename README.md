@@ -17,8 +17,8 @@ make test
 
 The root Makefile explicitly lists the application sources and links
 the UI module. It produces `build/neon-racer`; `make test` builds
-and runs Raylib-free track, race-physics, vehicle-dynamics, ghost-replay, and
-input-injected time-trial tests.
+and runs Raylib-free track, race-physics, vehicle-dynamics, ghost-replay,
+time-trial, and playable-package tests.
 Only building or running the graphical application requires Raylib, installed
 or supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS` as documented there.
 
@@ -79,8 +79,11 @@ starts the remote release.
   only the current in-memory layout and `Ctrl+Z` restores it. Saved drafts are
   never deleted by that action.
   `Ctrl+S` opens the name-and-save menu; `Ctrl+O` (or `F5`) opens the saved
-  custom-track library. This is draft-only storage: it does not export a
-  playable file or persist a verification replay.
+  editable-draft library. `Ctrl+P` (or `F6`) opens the separate playable
+  time-trial library; its frozen packages launch directly into a race with
+  their saved verification ghost. The library paginates larger collections.
+  Draft storage remains draft-only:
+  it never contains replay data.
 
 ## Time trial controls
 
@@ -91,23 +94,32 @@ starts the remote release.
 - Gamepad: left stick steers; right/left trigger accelerate/brake with their
   full analogue range; face buttons provide acceleration, moderated brake, and
   reverse fallbacks.
+- After a completed verified three-lap run, `E` opens the playable-package
+  export form. Enter a track name, creator, and description; the export stores
+  the frozen raced layout and its fastest verified ghost. Re-exporting the
+  same name atomically replaces that package's current file with a higher
+  version; it does not edit an existing artifact in place.
 
 ## Project structure
 
-- `src/app`: Raylib window lifecycle and application-state coordination.
+- `src/app`: Raylib window lifecycle, application-state coordination, and
+  playable-library/export UI.
 - `src/editor`: track editing interaction and editor interface.
-- `src/persistence`: draft-format serialization and draft library access.
+- `src/persistence`: draft and playable-package serialization, storage paths,
+  and the shared structural layout codec.
+- `src/playable`: frozen playable-package contracts and export eligibility.
 - `src/race`: time-trial state and vehicle simulation.
 - `src/render`: track, car, and time-trial presentation.
 - `src/track`: grid track model, geometry, validation, surface sampling, and
-  playable-export contracts.
+  durable layout fingerprints.
 - `src/ui`: shared neon visual primitives.
 - `tests/unit`: Raylib-independent domain tests.
 - `assets/tracks/examples`: versioned example drafts.
 
 See `docs/architecture.md` for dependency rules and the planned internal splits.
-See `docs/development.md` for contributor workflow and `docs/track-format.md`
-for the editable draft format.
+See `docs/development.md` for contributor workflow, `docs/track-format.md` for
+the editable draft format, and `docs/playable-track-format.md` for the saved
+time-trial package format.
 
 ## Data and compatibility baseline
 
@@ -116,12 +128,15 @@ Custom editable layouts are stored outside the repository: under
 `NEON_RACER_DATA_DIR` to override that location. Shipped examples remain in
 `assets/tracks/examples`.
 New saves use `NEON_RACER_DRAFT 5`; the loader continues to accept milestone-one
-`NEON_RACER_DRAFT 1` through `NEON_RACER_DRAFT 4` files. Draft files remain editable-only at this stage and
-contain no verification replay or playable-export status.
+`NEON_RACER_DRAFT 1` through `NEON_RACER_DRAFT 4` files. Draft files remain
+editable-only and contain no verification replay or playable-export status.
 
-The track domain exposes Raylib-independent surface/contact and export-metadata
-contracts. Time trials and in-memory verification ghosts are active; persistent
-playable-file export and replay storage remain later phases.
+Saved playable packages live separately under
+`$XDG_DATA_HOME/neon-racer/playables` with the `.nrplay` suffix. Each package
+contains one frozen race-ready layout, its required metadata and export
+version, and one fastest verified three-lap ghost. The package loader validates
+the layout fingerprint before a race starts; malformed packages leave the
+active editor/race session unchanged.
 
 ## Track-domain foundation
 

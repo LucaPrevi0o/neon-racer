@@ -17,15 +17,16 @@ cmake --build build/cmake
 ctest --test-dir build/cmake --output-on-failure
 ```
 
-Track, race-physics, vehicle-dynamics, ghost-replay, and time-trial tests must
-not include or link Raylib.
+Track, race-physics, vehicle-dynamics, ghost-replay, time-trial, and
+playable-package tests must not include or link Raylib.
 Add behavior tests under `tests/unit` whenever changing track geometry,
-validation, serialization, playable-export rules, or isolated race-dynamics
+validation, serialization, playable-package rules, or isolated race-dynamics
 math.
 
 ## Dependency rules
 
-`src/track`, `src/persistence`, and `src/race` are Raylib-free core modules.
+`src/track`, `src/persistence`, `src/playable`, and `src/race` are Raylib-free
+core modules.
 `src/editor`, `src/render`, and `src/ui` may use Raylib, but rendering and
 input adapters must not define track or race rules.
 `src/app` is the composition root.
@@ -58,6 +59,16 @@ When changing time-trial presentation, manually open a race-ready editor layout
 with `Tab`. Check the follow camera, the regular car and verified ghost draw
 order, off-track and guardrail status messages, pause/reset feedback, and the
 HUD's lap, timing, speed, and surface values.
+
+When changing playable-package behavior, keep `Tab` as a transient preview:
+create a race-ready draft, finish three laps, and use `E` to enter metadata and
+save it. Confirm the package appears under `Ctrl+P`/`F6`, can be launched into
+race mode with its ghost, and increments its version on a second export with the
+same name. Add enough packages to use the library's next page, then launch one
+from each page. Put a deliberately malformed `.nrplay` file in the playable
+data folder and confirm its error leaves the current editor/race state
+untouched. Also verify that an externally copied package whose filename contains
+spaces launches correctly; the library must retain its exact discovered path.
 
 ## Git workflow
 
