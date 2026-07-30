@@ -70,7 +70,8 @@ BranchedCircuit CreateBranchedCircuit() {
     circuit.sharedReturn.push_back(circuit.track.AddStraight(GridPosition{30, 0, 4}, Heading::South, 8));
     circuit.sharedReturn.push_back(circuit.track.AddCurve(GridPosition{30, 0, 12}, Heading::South,
                                                          CurveTurn::Right, 4));
-    circuit.sharedReturn.push_back(circuit.track.AddStraight(GridPosition{26, 0, 16}, Heading::West, 26));
+    circuit.sharedReturn.push_back(circuit.track.AddStraight(GridPosition{26, 0, 16}, Heading::West, 20));
+    circuit.sharedReturn.push_back(circuit.track.AddStraight(GridPosition{6, 0, 16}, Heading::West, 6));
     circuit.sharedReturn.push_back(circuit.track.AddCurve(GridPosition{0, 0, 16}, Heading::West,
                                                          CurveTurn::Right, 4));
     circuit.sharedReturn.push_back(circuit.track.AddStraight(GridPosition{-4, 0, 12}, Heading::North, 8));
