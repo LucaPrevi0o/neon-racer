@@ -38,6 +38,8 @@ TIME_TRIAL_SOURCES := src/race/time_trial.cpp \
 
 APP_SOURCES := src/app/main.cpp \
 	src/app/application.cpp \
+	src/app/main_menu.cpp \
+	src/app/main_menu_flow.cpp \
 	src/app/playable_library.cpp \
 	src/app/raylib_race_input.cpp \
 	src/editor/editor.cpp \

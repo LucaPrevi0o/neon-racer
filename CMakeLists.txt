@@ -65,7 +65,8 @@ if(NEON_RACER_BUILD_APP)
     endif()
 
     add_executable(neon-racer
-        src/app/main.cpp src/app/application.cpp src/app/playable_library.cpp src/app/raylib_race_input.cpp
+        src/app/main.cpp src/app/application.cpp src/app/main_menu.cpp src/app/main_menu_flow.cpp
+        src/app/playable_library.cpp src/app/raylib_race_input.cpp
         src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
         src/editor/editor_library.cpp src/editor/editor_picking.cpp
         src/render/car_renderer.cpp src/render/race_scene.cpp src/render/time_trial_renderer.cpp
