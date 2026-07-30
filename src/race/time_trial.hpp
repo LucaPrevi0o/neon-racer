@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ghost_replay.hpp"
-#include "internal/route_progress.hpp"
+#include "internal/track_position_tracker.hpp"
 #include "race_contracts.hpp"
 #include "race_input.hpp"
 #include "vehicle_dynamics.hpp"
@@ -50,14 +50,13 @@ private:
 
     const Track* track_;
     VehicleDynamics vehicle_;
-    RouteProgress routeProgress_;
+    TrackPositionTracker trackPosition_;
     float accumulator_;
     float currentLapTime_;
     float bestLapTime_;
     float totalTime_;
     float previousStartProjection_;
     int completedLaps_;
-    bool routeTrackingArmed_;
     bool paused_;
     bool finished_;
     bool ready_;
