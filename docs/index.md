@@ -10,6 +10,7 @@ in several files.
 | --- | --- | --- |
 | Build, launch, controls, repository overview | [`../README.md`](../README.md) | User and newcomer entry point |
 | Module ownership and dependency rules | [`architecture.md`](architecture.md) | Current code architecture |
+| Header/source placement and directory conventions | [`source-layout.md`](source-layout.md) | Physical C++ module layout |
 | Contributor workflow, testing, and releases | [`development.md`](development.md) | Engineering process |
 | Product intent and design invariants | [`design-specification.md`](design-specification.md) | Current product direction |
 | Editable draft serialization | [`track-format.md`](track-format.md) | Normative `.draft` specification |
@@ -23,8 +24,10 @@ in several files.
    change with them.
 3. Put product behavior and design invariants in `design-specification.md`.
 4. Put code ownership and dependency decisions in `architecture.md`.
-5. Put testing and release procedures in `development.md`, not in the README.
-6. When a value is duplicated for usability, prefer a link and a short summary
+5. Put physical header/source placement and directory conventions in
+   `source-layout.md`.
+6. Put testing and release procedures in `development.md`, not in the README.
+7. When a value is duplicated for usability, prefer a link and a short summary
    over copying a full list that can drift.
 
 ## Status language

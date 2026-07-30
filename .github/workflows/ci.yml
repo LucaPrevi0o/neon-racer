@@ -30,6 +30,51 @@ jobs:
       - name: Test
         run: ctest --test-dir build/headless --output-on-failure
 
+  cmake-application:
+    name: CMake graphical application
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            cmake \
+            ninja-build \
+            libasound2-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libxrandr-dev
+
+      - name: Build and install Raylib
+        env:
+          RAYLIB_VERSION: "5.5"
+        run: |
+          git clone --depth 1 --branch "$RAYLIB_VERSION" https://github.com/raysan5/raylib.git "$RUNNER_TEMP/raylib-src"
+          cmake -S "$RUNNER_TEMP/raylib-src" -B "$RUNNER_TEMP/raylib-build" -G Ninja \
+            -DBUILD_EXAMPLES=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/raylib"
+          cmake --build "$RUNNER_TEMP/raylib-build" --parallel
+          cmake --install "$RUNNER_TEMP/raylib-build"
+
+      - name: Configure application
+        run: |
+          cmake -S . -B build/application -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib"
+
+      - name: Build application
+        run: cmake --build build/application --parallel --target neon-racer
+
   makefile-tests:
     name: Makefile tests
     runs-on: ubuntu-24.04

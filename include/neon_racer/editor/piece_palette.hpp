@@ -2,11 +2,11 @@
 
 #include <raylib.h>
 
-#include "piece_catalog.hpp"
+#include "neon_racer/editor/piece_catalog.hpp"
 
-// Raylib-facing presentation for the editor component catalogue.  The palette
-// owns hover animation and pointer hit testing, but leaves the actual preview
-// mutation to TrackEditor so placement and edit semantics stay centralized.
+// Raylib-facing presentation for the editor component catalogue. The palette
+// owns hover animation and pointer hit testing, but leaves preview mutation to
+// TrackEditor so placement and edit semantics stay centralized.
 class PiecePalette {
 public:
     PiecePalette();
