@@ -59,7 +59,8 @@ if(NEON_RACER_BUILD_APP)
         src/app/main.cpp src/app/application.cpp src/app/raylib_race_input.cpp
         src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
         src/editor/editor_library.cpp src/editor/editor_picking.cpp
-        src/render/car_renderer.cpp src/render/race_scene.cpp src/render/track_renderer.cpp src/ui/neon.cpp
+        src/render/car_renderer.cpp src/render/race_scene.cpp src/render/time_trial_renderer.cpp
+        src/render/track_renderer.cpp src/ui/neon.cpp
     )
     target_compile_options(neon-racer PRIVATE -Wall -Wextra)
     target_link_libraries(neon-racer PRIVATE neon_racer_time_trial neon_racer_raylib)

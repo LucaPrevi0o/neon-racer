@@ -54,6 +54,11 @@ either arm without a wall appearing across the road. The domain tests cover arm
 expansion and surface contact; this smoke check covers the Raylib-facing picker
 and renderer.
 
+When changing time-trial presentation, manually open a race-ready editor layout
+with `Tab`. Check the follow camera, the regular car and verified ghost draw
+order, off-track and guardrail status messages, pause/reset feedback, and the
+HUD's lap, timing, speed, and surface values.
+
 ## Git workflow
 
 `main` represents integrated, verified releases. Create a focused branch for a

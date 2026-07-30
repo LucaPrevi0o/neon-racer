@@ -4,6 +4,7 @@
 
 #include "../editor/editor.hpp"
 #include "../race/time_trial.hpp"
+#include "../render/time_trial_renderer.hpp"
 #include "../track/playable_export.hpp"
 
 // The application owns only high-level flow. Track editing, validation and
@@ -29,8 +30,8 @@ private:
 
     AppState state_;
     Camera3D editorCamera_;
-    Camera3D raceCamera_;
     TrackEditor editor_;
     PlayableTrack playableTrack_;
     TimeTrial timeTrial_;
+    TimeTrialRenderer timeTrialRenderer_;
 };

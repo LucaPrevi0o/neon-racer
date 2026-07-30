@@ -39,6 +39,7 @@ APP_SOURCES := src/app/main.cpp \
 	$(TIME_TRIAL_SOURCES) \
 	src/render/car_renderer.cpp \
 	src/render/race_scene.cpp \
+	src/render/time_trial_renderer.cpp \
 	src/render/track_renderer.cpp \
 	src/track/playable_export.cpp \
 	src/track/track_graph.cpp \

@@ -61,7 +61,8 @@ capture, fastest-run replacement, replay interpolation, and looping playback.
 `time_trial.cpp` keeps the `TimeTrial` facade, fixed-step scheduling, lap policy,
 layout-revision invalidation, verification policy, and player-facing status
 messages. The Raylib-free `race_physics.cpp` owns brake-damping policy and its
-digital-input cap.
+digital-input cap. `time_trial_renderer.cpp` owns the chase camera, 3D race
+composition, and time-trial HUD; it only reads `TimeTrial` and track state.
 
 ## Data locations
 

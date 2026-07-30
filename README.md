@@ -17,8 +17,8 @@ make test
 
 The root Makefile explicitly lists the application sources and links
 the UI module. It produces `build/neon-racer`; `make test` builds
-and runs Raylib-free track, race-physics, vehicle-dynamics, and input-injected
-time-trial tests.
+and runs Raylib-free track, race-physics, vehicle-dynamics, ghost-replay, and
+input-injected time-trial tests.
 Only building or running the graphical application requires Raylib, installed
 or supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS` as documented there.
 
@@ -79,8 +79,8 @@ starts the remote release.
   only the current in-memory layout and `Ctrl+Z` restores it. Saved drafts are
   never deleted by that action.
   `Ctrl+S` opens the name-and-save menu; `Ctrl+O` (or `F5`) opens the saved
-  custom-track library. This is draft-only storage: no playable export or
-  verification replay is created yet.
+  custom-track library. This is draft-only storage: it does not export a
+  playable file or persist a verification replay.
 
 ## Time trial controls
 
@@ -94,11 +94,11 @@ starts the remote release.
 
 ## Project structure
 
-- `src/app`: Raylib window lifecycle, application states, and cameras.
+- `src/app`: Raylib window lifecycle and application-state coordination.
 - `src/editor`: track editing interaction and editor interface.
 - `src/persistence`: draft-format serialization and draft library access.
 - `src/race`: time-trial state and vehicle simulation.
-- `src/render`: track surface rendering.
+- `src/render`: track, car, and time-trial presentation.
 - `src/track`: grid track model, geometry, validation, surface sampling, and
   playable-export contracts.
 - `src/ui`: shared neon visual primitives.
@@ -120,8 +120,8 @@ New saves use `NEON_RACER_DRAFT 5`; the loader continues to accept milestone-one
 contain no verification replay or playable-export status.
 
 The track domain exposes Raylib-independent surface/contact and export-metadata
-contracts. They are scaffolding for later editor, physics, replay, and
-playable-export phases; current racing behavior is unchanged.
+contracts. Time trials and in-memory verification ghosts are active; persistent
+playable-file export and replay storage remain later phases.
 
 ## Track-domain foundation
 
