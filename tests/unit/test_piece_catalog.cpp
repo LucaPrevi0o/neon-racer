@@ -1,5 +1,5 @@
-#include "../../src/editor/piece_catalog.hpp"
-#include "../../src/track/track_road_geometry.hpp"
+#include "neon_racer/editor/piece_catalog.hpp"
+#include "track/track_road_geometry.hpp"
 
 #include <iostream>
 #include <set>
