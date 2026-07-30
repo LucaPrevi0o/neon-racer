@@ -52,7 +52,7 @@ target_link_libraries(neon_racer_playable PUBLIC neon_racer_domain neon_racer_gh
 
 add_library(neon_racer_time_trial
     src/race/time_trial.cpp
-    src/race/time_trial/route_progress.cpp
+    src/race/time_trial/track_position_tracker.cpp
 )
 target_compile_options(neon_racer_time_trial PRIVATE -Wall -Wextra)
 target_link_libraries(neon_racer_time_trial PUBLIC neon_racer_domain neon_racer_vehicle_dynamics neon_racer_ghost_replay)
@@ -120,10 +120,10 @@ target_compile_options(neon-racer-time-trial-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-time-trial-tests PRIVATE neon_racer_time_trial)
 add_test(NAME neon-racer-time-trial-tests COMMAND neon-racer-time-trial-tests)
 
-add_executable(neon-racer-route-progress-tests tests/unit/test_route_progress.cpp)
-target_compile_options(neon-racer-route-progress-tests PRIVATE -Wall -Wextra)
-target_link_libraries(neon-racer-route-progress-tests PRIVATE neon_racer_time_trial)
-add_test(NAME neon-racer-route-progress-tests COMMAND neon-racer-route-progress-tests)
+add_executable(neon-racer-track-position-tests tests/unit/test_track_position_tracker.cpp)
+target_compile_options(neon-racer-track-position-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-track-position-tests PRIVATE neon_racer_time_trial)
+add_test(NAME neon-racer-track-position-tests COMMAND neon-racer-track-position-tests)
 
 add_executable(neon-racer-playable-io-tests tests/unit/test_playable_io.cpp)
 target_compile_options(neon-racer-playable-io-tests PRIVATE -Wall -Wextra)
