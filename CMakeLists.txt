@@ -50,7 +50,10 @@ target_include_directories(neon_racer_playable PUBLIC ${NEON_RACER_INCLUDE_DIR})
 target_compile_options(neon_racer_playable PRIVATE -Wall -Wextra)
 target_link_libraries(neon_racer_playable PUBLIC neon_racer_domain neon_racer_ghost_replay)
 
-add_library(neon_racer_time_trial src/race/time_trial.cpp)
+add_library(neon_racer_time_trial
+    src/race/time_trial.cpp
+    src/race/time_trial/route_progress.cpp
+)
 target_compile_options(neon_racer_time_trial PRIVATE -Wall -Wextra)
 target_link_libraries(neon_racer_time_trial PUBLIC neon_racer_domain neon_racer_vehicle_dynamics neon_racer_ghost_replay)
 
@@ -116,6 +119,11 @@ add_executable(neon-racer-time-trial-tests tests/unit/test_time_trial.cpp)
 target_compile_options(neon-racer-time-trial-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-time-trial-tests PRIVATE neon_racer_time_trial)
 add_test(NAME neon-racer-time-trial-tests COMMAND neon-racer-time-trial-tests)
+
+add_executable(neon-racer-route-progress-tests tests/unit/test_route_progress.cpp)
+target_compile_options(neon-racer-route-progress-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-route-progress-tests PRIVATE neon_racer_time_trial)
+add_test(NAME neon-racer-route-progress-tests COMMAND neon-racer-route-progress-tests)
 
 add_executable(neon-racer-playable-io-tests tests/unit/test_playable_io.cpp)
 target_compile_options(neon-racer-playable-io-tests PRIVATE -Wall -Wextra)
