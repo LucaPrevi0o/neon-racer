@@ -22,11 +22,15 @@ MAIN_MENU_FLOW_TEST := $(BUILD_DIR)/tests/main_menu_flow_tests
 PIECE_CATALOG_TEST := $(BUILD_DIR)/tests/piece_catalog_tests
 REPOSITORY_HARDENING_TEST := $(BUILD_DIR)/tests/repository_hardening_tests
 
-DRAFT_PERSISTENCE_SOURCES := src/persistence/draft_io.cpp \
+DRAFT_PERSISTENCE_SOURCES := src/persistence/common/atomic_file_writer.cpp \
+	src/persistence/draft_io.cpp \
 	src/persistence/storage_paths.cpp \
 	src/persistence/track_layout_codec.cpp
 
-PLAYABLE_PERSISTENCE_SOURCES := src/persistence/playable_track_io.cpp
+PLAYABLE_PERSISTENCE_SOURCES := src/persistence/playable/playable_library_storage.cpp \
+	src/persistence/playable/playable_package_codec.cpp \
+	src/persistence/playable/playable_package_store.cpp \
+	src/persistence/playable/playable_package_validation.cpp
 
 PLAYABLE_SOURCES := src/playable/playable_export.cpp
 
