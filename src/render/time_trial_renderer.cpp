@@ -80,4 +80,8 @@ void TimeTrialRenderer::DrawHud(const TimeTrial& timeTrial) const {
     if (timeTrial.HasVerifiedGhost()) DrawText("VERIFIED GHOST ACTIVE", 46, 282, 13, Neon::Green);
     Neon::DrawOverlayPanel(Rectangle{28.0f, 296.0f, 420.0f, 34.0f}, 0.72f);
     DrawText("WASD / arrows drive  X reverse  R reset  P pause", 42, 305, 16, Neon::Yellow);
+    if (timeTrial.IsFinished() && timeTrial.HasVerifiedGhost()) {
+        Neon::DrawOverlayPanel(Rectangle{28.0f, 338.0f, 304.0f, 34.0f}, 0.72f);
+        DrawText("E: SAVE PLAYABLE TRACK", 42, 347, 16, Neon::Green);
+    }
 }

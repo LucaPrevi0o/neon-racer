@@ -3,9 +3,10 @@
 #include <raylib.h>
 
 #include "../editor/editor.hpp"
+#include "playable_library.hpp"
 #include "../race/time_trial.hpp"
 #include "../render/time_trial_renderer.hpp"
-#include "../track/playable_export.hpp"
+#include "../playable/playable_export.hpp"
 
 // The application owns only high-level flow. Track editing, validation and
 // simulation live in dedicated modules as they are introduced in later phases.
@@ -24,6 +25,9 @@ public:
 private:
     void UpdateEditor();
     void UpdateRace(float frameTime);
+    void UpdatePlayableLibrary();
+    void LaunchPlayableTrack(const std::string& path);
+    void ExportVerifiedPlayable(TrackMetadata metadata);
     void DrawEditor() const;
     void DrawRace() const;
     void DrawStateHint() const;
@@ -34,4 +38,5 @@ private:
     PlayableTrack playableTrack_;
     TimeTrial timeTrial_;
     TimeTrialRenderer timeTrialRenderer_;
+    PlayableLibrary playableLibrary_;
 };
