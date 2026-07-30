@@ -43,6 +43,14 @@ change, manually verify grid preview placement, Shift+left piece selection,
 plain-left placement near existing geometry, right-drag orbiting, WASD/QE
 movement, shift-wheel zoom limits, and Home reset.
 
+The component catalogue is Raylib-free so the keyboard shortcuts and visual
+piece library cannot drift apart. When changing the bottom hover palette,
+verify that its collapsed handle expands smoothly, each illustrated card picks
+the expected component without placing it, `1`–`6` still choose the same types,
+and pointer actions over the palette do not rotate, select, or place in the
+world. Open the custom-draft library as well: the piece palette must become
+inert behind that modal.
+
 New editor sessions start with an empty layout. `CLEAR TRACK` must clear only
 the current in-memory layout, reset its start/finish state, remain undoable with
 `Ctrl+Z`, and leave saved custom drafts untouched. Manually check those cases

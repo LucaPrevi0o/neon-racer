@@ -65,7 +65,9 @@ starts the remote release.
   left-click a placed component to select it for editing. Plain left-click
   places the preview even over existing road geometry when it does not collide,
   or applies an active edit; use the mouse wheel to rotate the preview.
-  `1`–`6` choose the component type; `R` rotates; `Ctrl` + mouse wheel changes
+  Hover the **Piece Library** bar at the bottom-right to raise illustrated
+  cards for every component; click a card to select it without placing it.
+  `1`–`6` remain component-type shortcuts; `R` rotates; `Ctrl` + mouse wheel changes
   its length/radius; `Ctrl+Z`/`Ctrl+Y`
   undo/redo. The **Piece Properties** panel
   uses Up/Down to select a property
