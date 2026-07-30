@@ -145,6 +145,15 @@ TrackEditor::TrackEditor()
       cachedPreviewOverlaps_(false) {
 }
 
+void TrackEditor::BeginNewTrack() {
+    // Keep the startup defaults in one place: a fresh editor must reset its
+    // placement preview, selection, undo/redo history, and transient draft UI
+    // just as if the application had been launched again. This affects only
+    // the in-memory session; DraftIO-owned files remain untouched.
+    *this = TrackEditor();
+    SetMessage("New empty track ready. Saved drafts are unchanged.");
+}
+
 void TrackEditor::Update(Camera3D& camera) {
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     if (control && IsKeyPressed(KEY_Z)) Undo();

@@ -12,6 +12,10 @@ class TrackEditor {
 public:
     TrackEditor();
 
+    // Discards this in-memory editing session and restores the same empty
+    // defaults used at startup. Stored custom drafts are never changed.
+    void BeginNewTrack();
+
     void Update(Camera3D& camera);
     void DrawTrack3D() const;
     void DrawInterface() const;
