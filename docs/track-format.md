@@ -1,60 +1,111 @@
-# Draft track format
+# Editable draft track format
 
-Editable tracks use a whitespace-delimited text format. They are drafts, not
-playable exports: they may be incomplete and never contain a ghost recording.
-The shared structural records are also embedded in saved playable packages, but
-the `.draft` file itself always remains editable-only; see
-`playable-track-format.md` for that separate artifact.
+## Purpose
+
+Editable custom tracks use a versioned, whitespace-delimited `.draft` format.
+A draft may be incomplete or invalid for racing. It never contains replay data,
+verification authority, or playable-export status.
+
+Playable packages embed the same structural layout records, but are a separate
+artifact documented in [`playable-track-format.md`](playable-track-format.md).
+
+## Version 6 grammar
 
 ```text
 NEON_RACER_DRAFT 6
 STATUS DRAFT
 START <piece-id> <race-direction>
 PIECES <count>
-PIECE <id> <type> <entry-x> <entry-y> <entry-z> <heading> <width> <exit-width>
-      <length> <curve-turn> <curve-radius> <elevation-delta> <lateral-offset>
-      <surface-material> <curve-degrees> <bank-angle-degrees>
+PIECE <id> <type> <entry-x> <entry-y> <entry-z> <heading>
+      <width> <exit-width> <length> <curve-turn> <curve-radius>
+      <elevation-delta> <lateral-offset> <surface-material>
+      <curve-degrees> <bank-angle-degrees>
 ```
 
-All positions and structural dimensions are integer grid values. One grid unit
-is one metre. Enum fields are stored as their numeric C++ enum values, so they
-must only be changed through a documented format-version migration.
+There is one `PIECE` record for each declared piece.
 
-## Safety limits
+## Field semantics
 
-Persisted entry coordinates are accepted in the broad inclusive range
-`-1,000,000` through `1,000,000`; a piece's elevation delta uses the same
-range. These are arithmetic-safety bounds, not ordinary editor-world limits.
-Each persisted layout may contain at most 128 pieces. The shared codec applies
-these limits to both drafts and embedded playable layouts before road geometry
-is evaluated, preventing malformed files from overflowing grid arithmetic or
-triggering pathological overlap work.
+- Positions and structural dimensions are integer grid values.
+- One grid unit represents one metre.
+- `width` and `exit-width` describe the road width at the two connectors.
+- `length`, `curve-radius`, `curve-degrees`, `bank-angle-degrees`,
+  `elevation-delta`, and `lateral-offset` are interpreted according to the piece
+  type.
+- Version 6 stores an explicit corkscrew radius for a Twist.
+- `START` stores the selected start/finish piece and race direction.
+- Enum fields are serialized as their numeric C++ values. They must change only
+  through a documented format-version migration.
 
-Draft loaders accept only regular files no larger than 2 MiB and constrain
-format labels to 64 bytes before comparing them. This keeps malformed text
-from turning a filename or a single unbounded token into excessive parser work.
+The shared structural codec is also used inside `.nrplay` packages.
 
 ## Compatibility
 
-The writer emits version 6. The loader accepts versions 1 through 6:
+The current writer emits version 6. The loader accepts versions 1 through 6.
 
-- v1: basic pieces and start/finish;
-- v2: explicit `STATUS DRAFT` record;
-- v3: endpoint width, elevation, lateral offset, and surface material;
-- v4: curve extent (90°, 180°, or 270°);
-- v5: curve bank angle (−45° through 45°).
-- v6: an explicit Twist corkscrew radius. Versions 1–5 retain their flat
-  rolling-Twist geometry when loaded.
+| Version | Added serialized meaning |
+| --- | --- |
+| v1 | Basic pieces and start/finish |
+| v2 | Explicit `STATUS DRAFT` record |
+| v3 | Endpoint width, elevation, lateral offset, and surface material |
+| v4 | Curve extent: 90°, 180°, or 270° |
+| v5 | Curve bank angle from −45° through 45° |
+| v6 | Explicit Twist corkscrew radius |
 
-When extending the format, increment the version, retain old-reader behavior
-where practical, add a fixture or unit test for the prior version, and update
-this document.
+Versions 1 through 5 did not store a corkscrew radius. Their Twist pieces are
+loaded with the legacy flat rolling-Twist geometry so old layouts preserve
+their path and connector semantics when loaded and re-saved.
 
-## Storage
+## Validation and safety limits
 
-Shipped examples live in `assets/tracks/examples`. Personal drafts live under
-`$XDG_DATA_HOME/neon-racer/tracks`, falling back to
-`~/.local/share/neon-racer/tracks`. `NEON_RACER_DATA_DIR` overrides the base
-directory for development and portable installs. When the draft library opens,
-the game imports legacy `tracks/custom/*.draft` files from the old repository
-location without overwriting an existing user-data draft of the same name.
+The loader applies structural limits before evaluating road geometry:
+
+- entry coordinates: `-1,000,000` through `1,000,000`, inclusive;
+- elevation delta: `-1,000,000` through `1,000,000`, inclusive;
+- maximum persisted pieces: 128;
+- maximum draft file size: 2 MiB;
+- maximum format-label length: 64 bytes;
+- input must be a regular file.
+
+These broad numeric limits protect arithmetic and parser resources. They are
+not normal editor-world limits.
+
+A malformed or unsupported draft fails with an error and does not replace the
+caller's current layout.
+
+## Storage and migration
+
+Shipped examples live in:
+
+```text
+assets/tracks/examples
+```
+
+Personal drafts live in:
+
+```text
+$XDG_DATA_HOME/neon-racer/tracks
+```
+
+When `XDG_DATA_HOME` is unset, the fallback is:
+
+```text
+~/.local/share/neon-racer/tracks
+```
+
+`NEON_RACER_DATA_DIR` overrides the base application-data directory.
+
+When the draft library opens, it imports legacy
+`tracks/custom/*.draft` files from the old repository-local location. It does
+not overwrite a user-data draft with the same name.
+
+## Changing the format
+
+When serialized layout meaning changes:
+
+1. increment the layout version;
+2. preserve old-reader behavior where practical;
+3. add a prior-version fixture or migration test;
+4. update this document and the playable-format compatibility statement;
+5. keep enum migrations explicit;
+6. verify malformed input leaves caller state unchanged.

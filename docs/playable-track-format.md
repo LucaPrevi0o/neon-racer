@@ -1,11 +1,22 @@
-# Playable time-trial package format
+# Frozen playable time-trial package format
+
+## Purpose
 
 Saved playable time trials use a versioned, human-readable `.nrplay` format.
-They are frozen race artifacts, distinct from editable `.draft` files: one
-package contains one race-ready layout snapshot, its export metadata, and one
-verified three-lap ghost for that exact layout. The game never edits a package
-in place. Re-exporting the same name writes a new snapshot and atomically
-replaces that file's current version.
+They are frozen race artifacts, not editable drafts.
+
+One package contains:
+
+- one race-ready layout snapshot;
+- required export metadata;
+- a durable layout fingerprint;
+- one verified three-lap ghost for that exact layout.
+
+The game never edits a loaded package in place. Re-exporting the same metadata
+name creates a new complete snapshot and atomically replaces that filename's
+current package.
+
+## Package version 1 grammar
 
 ```text
 NEON_RACER_PLAYABLE 1
@@ -21,7 +32,7 @@ LAYOUT_FINGERPRINT <uint64>
 LAYOUT <layout-version>
 START <piece-id> <race-direction>
 PIECES <count>
-PIECE <same structural fields as a v6 draft>
+PIECE <same structural fields as the selected draft layout version>
 ...
 VERIFICATION_GHOST 1 <sample-count> <duration-seconds>
 GHOST_SAMPLE <time> <position xyz> <velocity xyz> <forward xyz> <up xyz>
@@ -30,60 +41,130 @@ GHOST_SAMPLE <time> <position xyz> <velocity xyz> <forward xyz> <up xyz>
 END_PLAYABLE
 ```
 
-The byte-count fields preserve spaces in metadata without needing a
-non-C++11 quoting convention. Metadata must be non-empty, printable,
-single-line text. Writers use round-trip-safe float precision for ghost
-samples.
+The current writer emits package version 1 with layout version 6.
 
-## Validation and compatibility
+## Metadata encoding
 
-The current writer emits package version 1 and layout version 6. A v1 package
-reader accepts supported embedded layout versions 1 through 6, so an older
-layout schema remains readable as long as its structural codec is supported.
+`NAME_BYTES`, `CREATOR_BYTES`, and `DESCRIPTION_BYTES` are followed by exactly
+the declared number of bytes. This preserves spaces without relying on a
+non-C++11 quoting convention.
 
-The loader rejects unsupported versions, non-race-ready layouts, incomplete
-metadata, zero or non-finite replay duration, empty or oversized replay data,
-non-monotonic timestamps, invalid vehicle orientations, a mismatched layout
-fingerprint, or non-whitespace data after `END_PLAYABLE`. A failed read never
-replaces the caller's current package.
+Metadata must be:
 
-For resource safety, a package must be a regular file no larger than 64 MiB;
-format labels are limited to 64 bytes. A ghost may contain at most 250,000
-samples, last at most two hours, and use finite gameplay values within the
-bounded replay envelope. Those checks happen before a package becomes active,
-so malformed files cannot feed non-finite transforms to rendering.
+- non-empty;
+- printable;
+- single-line text.
 
-Embedded layouts use the same safety envelope as drafts: entry coordinates and
-elevation deltas must be between `-1,000,000` and `1,000,000`, and a persisted
-layout has at most 128 pieces. The codec rejects violations before evaluating
-road geometry.
+Ghost floats are written with round-trip-safe precision.
+
+## Layout identity
 
 `LAYOUT_FINGERPRINT` is a stable FNV-1a identity over persisted layout
-semantics: piece order and fields, selected start/finish piece ordinal, and
-race direction. It deliberately excludes generated piece IDs and the runtime
-`LayoutRevision`, because neither survives a save/load cycle as a durable
-identity. The verification state itself is derived on load from a valid bundled
-ghost and matching fingerprint; it is not serialized as authority.
+semantics:
 
-## Export policy
+- piece order and persisted piece fields;
+- selected start/finish piece ordinal;
+- selected race direction.
 
-`Tab` creates only an in-memory preview, allowing a new race-ready draft to be
-driven for the first time. A persistent export is enabled only after a completed
-verified three-lap run for the unchanged frozen layout. Press `E` in the finished
-time trial, enter a name, creator, and description, then save. Re-exporting the
-same safe filename increments `EXPORT_VERSION` and atomically replaces that
-filename's current package; this is latest-version storage, not a historical
-archive. An unreadable, corrupt, oversized, or special existing path is never
-silently overwritten. If two display names sanitize to the same filename, the
-second export is rejected unless it is exactly the same metadata name.
+It excludes generated piece IDs and runtime `LayoutRevision`, because neither
+is a durable save/load identity.
 
-## Storage
+For embedded layout versions 1 through 5, the reader first validates the
+serialized fingerprint using the historical flat-Twist representation. It then
+binds the in-memory package and ghost to the migrated runtime fingerprint. This
+preserves old package verification while allowing version-6 runtime semantics
+to distinguish legacy flat Twists from configurable corkscrews.
 
-Personal packages live under `$XDG_DATA_HOME/neon-racer/playables`, falling
-back to `~/.local/share/neon-racer/playables`. `NEON_RACER_DATA_DIR` overrides
-the base directory. Names are converted to safe filename stems containing only
-letters, digits, `_`, and `-` (spaces become `_`) and use the `.nrplay` suffix.
-The library can also load a regular externally copied `.nrplay` file with
-another filename and preserves that exact path when launching it. Writes use a
-unique temporary sibling file, flush it, and rename it only after the complete
-package is written.
+Verification state is derived from a valid bundled ghost and matching
+fingerprint. It is never trusted as a separately serialized flag.
+
+## Reader validation
+
+The reader rejects:
+
+- unsupported package or embedded layout versions;
+- a layout that is not race-ready;
+- incomplete or invalid metadata;
+- a mismatched layout fingerprint;
+- a missing, empty, or oversized ghost;
+- zero, negative, non-finite, or excessive replay duration;
+- non-monotonic sample timestamps;
+- non-finite or out-of-envelope vehicle values;
+- invalid vehicle orientation vectors;
+- non-whitespace data after `END_PLAYABLE`;
+- non-regular or oversized input files.
+
+Resource limits:
+
+| Resource | Limit |
+| --- | --- |
+| Package file | 64 MiB |
+| Format label | 64 bytes |
+| Ghost samples | 250,000 |
+| Ghost duration | Two hours |
+| Embedded layout pieces | 128 |
+| Entry coordinates | `-1,000,000` through `1,000,000` |
+| Elevation delta | `-1,000,000` through `1,000,000` |
+
+Validation completes before the package becomes active. A failed load never
+replaces the caller's current package, editor, or race state.
+
+## Export lifecycle
+
+`Tab` starts only an in-memory preview of a race-ready editor layout.
+
+Persistent export becomes available after a completed verified three-lap run
+for the unchanged frozen layout:
+
+1. finish the run;
+2. press `E`;
+3. enter a name, creator, and description;
+4. save the package.
+
+The package stores the exact raced layout and its fastest verified ghost.
+
+Re-exporting the same metadata name increments `EXPORT_VERSION` and atomically
+replaces the package stored under that safe filename. This is latest-version
+storage, not an archive of every historical export.
+
+The exporter does not silently overwrite an unreadable, corrupt, oversized, or
+special destination. If two display names sanitize to the same filename, the
+second export is rejected unless it uses exactly the same metadata name.
+
+## Storage and filenames
+
+Personal packages live in:
+
+```text
+$XDG_DATA_HOME/neon-racer/playables
+```
+
+When `XDG_DATA_HOME` is unset:
+
+```text
+~/.local/share/neon-racer/playables
+```
+
+`NEON_RACER_DATA_DIR` overrides the base directory.
+
+Export names are converted to safe filename stems containing only letters,
+digits, `_`, and `-`; spaces become `_`. Files use the `.nrplay` suffix.
+
+The library may also discover a valid externally copied `.nrplay` file with a
+different filename. It preserves that exact path when launching the package.
+
+Writes use a unique temporary sibling file, flush the complete package, and
+rename it only after serialization succeeds.
+
+## Compatibility
+
+A package-version-1 reader accepts embedded layout versions 1 through 6 as long
+as the corresponding structural codec remains supported.
+
+When package structure or verification authority changes:
+
+1. increment the package version;
+2. keep embedded layout-version handling explicit;
+3. add fixtures for the prior package and layout versions;
+4. update this document and the draft-format compatibility table;
+5. verify atomic replacement and failed-load state preservation.
