@@ -1,6 +1,6 @@
 #include "application.hpp"
 #include "app_settings.hpp"
-#include "../persistence/playable_track_io.hpp"
+#include "neon_racer/persistence/playable_track_io.hpp"
 #include "raylib_race_input.hpp"
 
 #include "../render/race_scene.hpp"

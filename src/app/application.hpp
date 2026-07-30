@@ -2,7 +2,7 @@
 
 #include <raylib.h>
 
-#include "../editor/editor.hpp"
+#include "neon_racer/editor/editor.hpp"
 #include "main_menu.hpp"
 #include "playable_library.hpp"
 #include "../race/time_trial.hpp"

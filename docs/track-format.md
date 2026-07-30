@@ -95,6 +95,11 @@ When `XDG_DATA_HOME` is unset, the fallback is:
 
 `NEON_RACER_DATA_DIR` overrides the base application-data directory.
 
+Draft saves are written to a unique temporary sibling, flushed to disk, and
+renamed over the destination only after the complete file succeeds. Legacy
+imports use the same atomic replacement path, so an interrupted write does not
+leave a partial final draft.
+
 When the draft library opens, it imports legacy
 `tracks/custom/*.draft` files from the old repository-local location. It does
 not overwrite a user-data draft with the same name.

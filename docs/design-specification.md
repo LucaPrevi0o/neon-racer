@@ -14,9 +14,6 @@ Use these documents for implementation details:
 - [`track-format.md`](track-format.md): editable draft format;
 - [`playable-track-format.md`](playable-track-format.md): frozen package format.
 
-The original Milestone 2 implementation request is preserved separately in
-[`prompt-phase2.md`](prompt-phase2.md).
-
 ## Product vision
 
 Neon Racer is a 3D Raylib/C++ game in which players construct custom tracks

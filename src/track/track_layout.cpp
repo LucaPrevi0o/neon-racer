@@ -8,7 +8,8 @@
 
 Track::Track()
     : nextPieceId_(1), startFinishPieceId_(0), raceDirection_(RaceDirection::Forward),
-      layoutRevision_(0), validationDirty_(true), cachedValidation_{false, std::vector<TrackIssue>()} {
+      layoutRevision_(0), validationDirty_(true), cachedValidation_{false, std::vector<TrackIssue>()},
+      surfaceCacheValid_(false), surfaceCache_() {
 }
 
 std::uint32_t Track::AddStraight(GridPosition entry, Heading heading, int length, int width,
@@ -152,6 +153,8 @@ std::uint32_t Track::AddPiece(const TrackPiece& piece) {
 
 void Track::InvalidateValidation() {
     validationDirty_ = true;
+    surfaceCacheValid_ = false;
+    surfaceCache_.clear();
     ++layoutRevision_;
 }
 

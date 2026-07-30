@@ -40,13 +40,34 @@ bool PointLiesInsideAnyRoadArm(const std::vector<TrackSurfaceSample>& samples,
 
 } // namespace
 
-TrackContact Track::QuerySurface(float x, float y, float z, float maxDistance) const {
-    TrackContact result = {false, TrackSurfaceSample{}, maxDistance, false, false, 0.0f};
+void Track::EnsureSurfaceCache() const {
+    if (surfaceCacheValid_) return;
+
+    surfaceCache_.clear();
+    surfaceCache_.reserve(pieces_.size());
     for (std::vector<TrackPiece>::const_iterator piece = pieces_.begin(); piece != pieces_.end(); ++piece) {
-        const std::vector<TrackSurfaceSample> samples = TrackRoadGeometry::PhysicalRoadSurfaceSamples(*piece);
-        const bool insideAnyRoadArm = (piece->type == TrackPieceType::Branch || piece->type == TrackPieceType::Merge) &&
-            PointLiesInsideAnyRoadArm(samples, x, y, z, maxDistance);
-        for (std::vector<TrackSurfaceSample>::const_iterator sample = samples.begin(); sample != samples.end(); ++sample) {
+        const bool branchOrMerge = piece->type == TrackPieceType::Branch || piece->type == TrackPieceType::Merge;
+        const bool twistGuide = piece->type == TrackPieceType::Twist &&
+            !TrackLimits::IsLegacyFlatTwistRadius(piece->curveRadius);
+        surfaceCache_.push_back(CachedRoadPiece{
+            branchOrMerge,
+            twistGuide,
+            TrackRoadGeometry::PhysicalRoadSurfaceSamples(*piece),
+        });
+    }
+    surfaceCacheValid_ = true;
+}
+
+TrackContact Track::QuerySurface(float x, float y, float z, float maxDistance) const {
+    EnsureSurfaceCache();
+
+    TrackContact result = {false, TrackSurfaceSample{}, maxDistance, false, false, 0.0f};
+    for (std::vector<CachedRoadPiece>::const_iterator piece = surfaceCache_.begin();
+         piece != surfaceCache_.end(); ++piece) {
+        const bool insideAnyRoadArm = piece->branchOrMerge &&
+            PointLiesInsideAnyRoadArm(piece->samples, x, y, z, maxDistance);
+        for (std::vector<TrackSurfaceSample>::const_iterator sample = piece->samples.begin();
+             sample != piece->samples.end(); ++sample) {
             float sideX = 0.0f;
             float sideY = 0.0f;
             float sideZ = 0.0f;
@@ -70,8 +91,7 @@ TrackContact Track::QuerySurface(float x, float y, float z, float maxDistance) c
             result.found = true;
             result.distance = distance;
             result.guardrailHit = guardrailHit;
-            result.twistGuide = piece->type == TrackPieceType::Twist &&
-                !TrackLimits::IsLegacyFlatTwistRadius(piece->curveRadius);
+            result.twistGuide = piece->twistGuide;
             result.lateralOffset = lateral;
             result.surface = *sample;
             result.surface.x += sideX * clampedLateral;

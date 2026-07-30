@@ -1,5 +1,6 @@
 #include "draft_io.hpp"
 #include "format_reading.hpp"
+#include "internal/atomic_file_writer.hpp"
 #include "storage_paths.hpp"
 #include "track_layout_codec.hpp"
 
@@ -8,6 +9,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
+#include <ostream>
 
 namespace {
 
@@ -26,8 +28,11 @@ bool ImportLegacyDrafts(std::string& error) {
     while ((entry = readdir(legacy)) != 0) {
         const std::string filename(entry->d_name);
         const std::string suffix = ".draft";
-        if (filename.size() <= suffix.size() || filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) != 0)
+        if (filename.size() <= suffix.size() ||
+            filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) != 0) {
             continue;
+        }
+
         const std::string source = std::string(kLegacyCustomDraftDirectory) + "/" + filename;
         const std::string destination = CustomDraftDirectory() + "/" + filename;
         bool sourceExists = false;
@@ -36,18 +41,44 @@ bool ImportLegacyDrafts(std::string& error) {
             return false;
         }
         if (!sourceExists) continue;
+
         bool destinationExists = false;
         if (!StoragePaths::InspectRegularFile(destination, kMaximumDraftFileBytes, destinationExists, error)) {
             closedir(legacy);
             return false;
         }
         if (destinationExists) continue;
-        if (!StoragePaths::EnsureDirectory(CustomDraftDirectory(), error)) { closedir(legacy); return false; }
+        if (!StoragePaths::EnsureDirectory(CustomDraftDirectory(), error)) {
+            closedir(legacy);
+            return false;
+        }
+
         std::ifstream input(source.c_str(), std::ios::binary);
-        std::ofstream output(destination.c_str(), std::ios::binary);
-        if (!input || !output) { closedir(legacy); error = "Could not import legacy draft: " + filename; return false; }
-        output << input.rdbuf();
-        if (!output) { closedir(legacy); error = "Could not finish importing legacy draft: " + filename; return false; }
+        if (!input) {
+            closedir(legacy);
+            error = "Could not import legacy draft: " + filename;
+            return false;
+        }
+        if (!PersistenceInternal::WriteAtomically(
+                destination,
+                kMaximumDraftFileBytes,
+                "draft",
+                [&input, &filename](std::ostream& output, std::string& writeError) {
+                    output << input.rdbuf();
+                    if (input.bad()) {
+                        writeError = "Could not read legacy draft during import: " + filename;
+                        return false;
+                    }
+                    if (!output) {
+                        writeError = "Could not finish importing legacy draft: " + filename;
+                        return false;
+                    }
+                    return true;
+                },
+                error)) {
+            closedir(legacy);
+            return false;
+        }
     }
     closedir(legacy);
     return true;
@@ -98,20 +129,22 @@ bool Save(const Track& track, const std::string& path, std::string& error) {
     if (!StoragePaths::EnsureParentDirectory(path, error)) return false;
     bool destinationExists = false;
     if (!StoragePaths::InspectRegularFile(path, kMaximumDraftFileBytes, destinationExists, error)) return false;
-    std::ofstream file(path.c_str());
-    if (!file) {
-        error = "Could not open draft for writing: " + path;
-        return false;
-    }
 
-    // Version 6 records an explicit corkscrew radius while preserving the
-    // original flat-Twist semantics when importing version 5 and older drafts.
-    // Drafts remain editable regardless of validity and never contain replay data.
-    file << "NEON_RACER_DRAFT " << TrackLayoutCodec::kCurrentVersion << "\n";
-    file << "STATUS DRAFT\n";
-    if (TrackLayoutCodec::Write(file, track, error)) return true;
-    if (error.empty()) error = "Could not finish writing draft: " + path;
-    return false;
+    return PersistenceInternal::WriteAtomically(
+        path,
+        kMaximumDraftFileBytes,
+        "draft",
+        [&track](std::ostream& output, std::string& writeError) {
+            // Version 6 records an explicit corkscrew radius while preserving the
+            // original flat-Twist semantics when importing version 5 and older drafts.
+            // Drafts remain editable regardless of validity and never contain replay data.
+            output << "NEON_RACER_DRAFT " << TrackLayoutCodec::kCurrentVersion << "\n";
+            output << "STATUS DRAFT\n";
+            if (TrackLayoutCodec::Write(output, track, writeError)) return true;
+            if (writeError.empty()) writeError = "Could not finish writing draft.";
+            return false;
+        },
+        error);
 }
 
 bool Load(const std::string& path, Track& track, std::string& error) {

@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "piece_palette.hpp"
-#include "../track/track.hpp"
+#include "neon_racer/editor/piece_palette.hpp"
+#include "track/track.hpp"
 
 class TrackEditor {
 public:

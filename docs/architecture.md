@@ -77,21 +77,29 @@ Track code must remain free of Raylib types.
 
 The editor owns the active preview, selection, commands, property adjustment,
 validation feedback, undo/redo, and editor drawing. It changes layouts through
-the public track API.
+the public track API. Its cross-module declarations live under
+`include/neon_racer/editor`; implementations are grouped by responsibility.
 
-| File | Responsibility |
+| Path | Responsibility |
 | --- | --- |
-| `editor.cpp` | Input dispatch, editor state, commands, and coordination |
+| `core/editor.cpp` | Editor state construction, preview snapshots, cache coordination, and public access |
+| `interaction/editor_input.cpp` | Raylib input polling, modal routing, selection, and camera bindings |
+| `model/editor_preview.cpp` | Preview type conversion, dimensions, and property editing |
+| `presentation/editor_scene.cpp` | In-world road, connector, validation, and preview drawing |
+| `presentation/editor_panel.cpp` | Main editor panel and property inspector drawing |
+| `persistence/editor_library_ui.cpp` | Draft-library input and modal presentation |
+| `editor_commands.cpp` | Placement, transform, duplicate, delete, clear, and start/finish commands |
 | `editor_history.cpp` | Undo/redo snapshots |
-| `editor_library.cpp` | Editable-draft library interaction |
+| `editor_library.cpp` | Draft listing, save, and load operations |
 | `piece_catalog.cpp` | Raylib-free names, shortcuts, and thumbnail prototypes |
 | `piece_palette.cpp` | Palette animation, hit testing, and presentation |
 | `editor_camera.cpp` | Pan, zoom, orbit, elevation, and reset transforms |
 | `editor_picking.cpp` | Grid placement and nearest-piece selection |
 
-Device polling and interaction ordering stay in `TrackEditor::Update`.
-Extracted helpers receive values such as `Camera3D` and `Ray` so their geometry
-remains independently understandable.
+Device polling and interaction ordering stay in `TrackEditor::Update` within the
+interaction unit. Extracted helpers receive values such as `Camera3D` and `Ray`
+so their geometry remains independently understandable. See
+[`source-layout.md`](source-layout.md) for the physical header/source convention.
 
 ### `src/persistence`: durable storage boundary
 
@@ -104,6 +112,22 @@ Persistence owns:
 - bounded format-label parsing;
 - the shared structural layout codec;
 - temporary-file and atomic-replacement behavior.
+
+The public playable storage declaration lives at
+`include/neon_racer/persistence/playable_track_io.hpp`. New callers use the
+`neon_racer/persistence/playable_track_io.hpp` include prefix, while
+implementation-only interfaces stay under `src/persistence/internal`.
+
+| Path | Responsibility |
+| --- | --- |
+| `common/atomic_file_writer.cpp` | Bounded temporary sibling writes, flush, close, cleanup, and atomic rename |
+| `draft_io.cpp` | Editable draft listing, migration, save, and load orchestration |
+| `playable/playable_library_storage.cpp` | Custom package paths, discovery, sorting, and export version selection |
+| `playable/playable_package_codec.cpp` | Normative `.nrplay` grammar, embedded layout, ghost samples, and legacy migration |
+| `playable/playable_package_validation.cpp` | Race readiness, metadata, fingerprint, and verified-ghost checks |
+| `playable/playable_package_store.cpp` | File preflight plus package save/load orchestration |
+| `storage_paths.cpp` | Runtime data directories, safe file stems, and filesystem preflight |
+| `track_layout_codec.cpp` | Shared versioned track-layout serialization |
 
 It does not decide how a loaded object is rendered or whether the application
 changes screens after an operation.
@@ -207,7 +231,8 @@ A failed load leaves the caller's current editor or race state unchanged.
 
 The build mirrors the module boundaries:
 
-- `neon_racer_domain` owns Raylib-free track code and the draft layout codec.
+- `neon_racer_domain` owns Raylib-free track code, the draft layout codec, and
+  the shared atomic-file primitive.
 - `neon_racer_vehicle_dynamics` builds simulation on the domain.
 - `neon_racer_time_trial` adds time-trial orchestration.
 - `neon_racer_playable` combines package policy, persistence, and replay

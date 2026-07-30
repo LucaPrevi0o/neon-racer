@@ -1,5 +1,6 @@
 CXX ?= g++
 CXXFLAGS ?= -Wall -Wextra -std=c++11
+PROJECT_CXXFLAGS := -Iinclude -Iinclude/neon_racer/editor -Isrc
 
 # Use the platform's raylib package when available. For a non-standard
 # installation, override these from the command line, for example:
@@ -19,12 +20,17 @@ TIME_TRIAL_TEST := $(BUILD_DIR)/tests/time_trial_tests
 PLAYABLE_IO_TEST := $(BUILD_DIR)/tests/playable_io_tests
 MAIN_MENU_FLOW_TEST := $(BUILD_DIR)/tests/main_menu_flow_tests
 PIECE_CATALOG_TEST := $(BUILD_DIR)/tests/piece_catalog_tests
+REPOSITORY_HARDENING_TEST := $(BUILD_DIR)/tests/repository_hardening_tests
 
-DRAFT_PERSISTENCE_SOURCES := src/persistence/draft_io.cpp \
+DRAFT_PERSISTENCE_SOURCES := src/persistence/common/atomic_file_writer.cpp \
+	src/persistence/draft_io.cpp \
 	src/persistence/storage_paths.cpp \
 	src/persistence/track_layout_codec.cpp
 
-PLAYABLE_PERSISTENCE_SOURCES := src/persistence/playable_track_io.cpp
+PLAYABLE_PERSISTENCE_SOURCES := src/persistence/playable/playable_library_storage.cpp \
+	src/persistence/playable/playable_package_codec.cpp \
+	src/persistence/playable/playable_package_store.cpp \
+	src/persistence/playable/playable_package_validation.cpp
 
 PLAYABLE_SOURCES := src/playable/playable_export.cpp
 
@@ -37,20 +43,27 @@ TIME_TRIAL_SOURCES := src/race/time_trial.cpp \
 	$(RACE_GHOST_SOURCES) \
 	$(RACE_VEHICLE_SOURCES)
 
-APP_SOURCES := src/app/main.cpp \
-	src/app/application.cpp \
-	src/app/main_menu.cpp \
-	src/app/main_menu_flow.cpp \
-	src/app/playable_library.cpp \
-	src/app/raylib_race_input.cpp \
-	src/editor/editor.cpp \
+EDITOR_SOURCES := src/editor/core/editor.cpp \
+	src/editor/interaction/editor_input.cpp \
+	src/editor/model/editor_preview.cpp \
+	src/editor/presentation/editor_scene.cpp \
+	src/editor/presentation/editor_panel.cpp \
+	src/editor/persistence/editor_library_ui.cpp \
 	src/editor/editor_camera.cpp \
 	src/editor/editor_commands.cpp \
 	src/editor/editor_history.cpp \
 	src/editor/editor_library.cpp \
 	src/editor/piece_catalog.cpp \
 	src/editor/piece_palette.cpp \
-	src/editor/editor_picking.cpp \
+	src/editor/editor_picking.cpp
+
+APP_SOURCES := src/app/main.cpp \
+	src/app/application.cpp \
+	src/app/main_menu.cpp \
+	src/app/main_menu_flow.cpp \
+	src/app/playable_library.cpp \
+	src/app/raylib_race_input.cpp \
+	$(EDITOR_SOURCES) \
 	$(DRAFT_PERSISTENCE_SOURCES) \
 	$(PLAYABLE_PERSISTENCE_SOURCES) \
 	$(TIME_TRIAL_SOURCES) \
@@ -123,6 +136,10 @@ PIECE_CATALOG_TEST_SOURCES := tests/unit/test_piece_catalog.cpp \
 	src/editor/piece_catalog.cpp \
 	$(RACE_TRACK_SOURCES)
 
+REPOSITORY_HARDENING_TEST_SOURCES := tests/unit/test_repository_hardening.cpp \
+	$(DRAFT_PERSISTENCE_SOURCES) \
+	$(RACE_TRACK_SOURCES)
+
 .PHONY: all build run test clean help publish-tag neon-racer racer racer-test
 
 help:
@@ -139,44 +156,48 @@ build: $(APP)
 
 $(APP): $(APP_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(RAYLIB_CFLAGS) -o $@ $(APP_SOURCES) $(RAYLIB_LIBS)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) $(RAYLIB_CFLAGS) -o $@ $(APP_SOURCES) $(RAYLIB_LIBS)
 
 run: $(APP)
 	./$(APP)
 
 $(TRACK_TEST): $(TRACK_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(TRACK_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(TRACK_TEST_SOURCES)
 
 $(RACE_PHYSICS_TEST): $(RACE_PHYSICS_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(RACE_PHYSICS_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(RACE_PHYSICS_TEST_SOURCES)
 
 $(VEHICLE_DYNAMICS_TEST): $(VEHICLE_DYNAMICS_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(VEHICLE_DYNAMICS_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(VEHICLE_DYNAMICS_TEST_SOURCES)
 
 $(GHOST_REPLAY_TEST): $(GHOST_REPLAY_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(GHOST_REPLAY_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(GHOST_REPLAY_TEST_SOURCES)
 
 $(TIME_TRIAL_TEST): $(TIME_TRIAL_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
 
 $(PLAYABLE_IO_TEST): $(PLAYABLE_IO_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(PLAYABLE_IO_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(PLAYABLE_IO_TEST_SOURCES)
 
 $(MAIN_MENU_FLOW_TEST): $(MAIN_MENU_FLOW_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(MAIN_MENU_FLOW_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(MAIN_MENU_FLOW_TEST_SOURCES)
 
 $(PIECE_CATALOG_TEST): $(PIECE_CATALOG_TEST_SOURCES)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $(PIECE_CATALOG_TEST_SOURCES)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(PIECE_CATALOG_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST) $(PIECE_CATALOG_TEST)
+$(REPOSITORY_HARDENING_TEST): $(REPOSITORY_HARDENING_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(REPOSITORY_HARDENING_TEST_SOURCES)
+
+test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST) $(PIECE_CATALOG_TEST) $(REPOSITORY_HARDENING_TEST)
 	./$(TRACK_TEST)
 	./$(RACE_PHYSICS_TEST)
 	./$(VEHICLE_DYNAMICS_TEST)
@@ -185,6 +206,7 @@ test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(G
 	./$(PLAYABLE_IO_TEST)
 	./$(MAIN_MENU_FLOW_TEST)
 	./$(PIECE_CATALOG_TEST)
+	./$(REPOSITORY_HARDENING_TEST)
 
 # GitHub Actions receives a tag only after Git pushes it. Publish exactly one
 # validated main-history version tag so a release workflow gets one event.
