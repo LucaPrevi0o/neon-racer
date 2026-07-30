@@ -54,6 +54,14 @@ void RouteProgress::ObserveSurfacePiece(std::uint32_t pieceId) {
     if (pieceId != candidatePieceId_) {
         candidatePieceId_ = pieceId;
         candidateObservationCount_ = 1;
+        // Returning to the start is also synchronized with a narrow geometric
+        // finish zone. Confirm that directed edge immediately so a shared
+        // connector tie cannot make the car pass the line before the route
+        // state catches up on the next fixed step.
+        if (pieceId == startPieceId_ && hasDepartedStart_ &&
+            IsAllowedTransition(currentPieceId_, pieceId)) {
+            AcceptCandidate();
+        }
         return;
     }
 
