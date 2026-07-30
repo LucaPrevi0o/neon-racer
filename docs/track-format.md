@@ -7,7 +7,7 @@ the `.draft` file itself always remains editable-only; see
 `playable-track-format.md` for that separate artifact.
 
 ```text
-NEON_RACER_DRAFT 5
+NEON_RACER_DRAFT 6
 STATUS DRAFT
 START <piece-id> <race-direction>
 PIECES <count>
@@ -36,13 +36,15 @@ from turning a filename or a single unbounded token into excessive parser work.
 
 ## Compatibility
 
-The writer emits version 5. The loader accepts versions 1 through 5:
+The writer emits version 6. The loader accepts versions 1 through 6:
 
 - v1: basic pieces and start/finish;
 - v2: explicit `STATUS DRAFT` record;
 - v3: endpoint width, elevation, lateral offset, and surface material;
 - v4: curve extent (90°, 180°, or 270°);
 - v5: curve bank angle (−45° through 45°).
+- v6: an explicit Twist corkscrew radius. Versions 1–5 retain their flat
+  rolling-Twist geometry when loaded.
 
 When extending the format, increment the version, retain old-reader behavior
 where practical, add a fixture or unit test for the prior version, and update

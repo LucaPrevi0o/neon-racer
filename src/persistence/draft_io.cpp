@@ -104,8 +104,9 @@ bool Save(const Track& track, const std::string& path, std::string& error) {
         return false;
     }
 
-    // Version 5 adds curve banking alongside the physics-relevant road parameters. Drafts remain
-    // editable regardless of validity and deliberately never contain replay data.
+    // Version 6 records an explicit corkscrew radius while preserving the
+    // original flat-Twist semantics when importing version 5 and older drafts.
+    // Drafts remain editable regardless of validity and never contain replay data.
     file << "NEON_RACER_DRAFT " << TrackLayoutCodec::kCurrentVersion << "\n";
     file << "STATUS DRAFT\n";
     if (TrackLayoutCodec::Write(file, track, error)) return true;

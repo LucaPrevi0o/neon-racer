@@ -30,7 +30,12 @@ Extend the existing `TrackPiece` system instead of replacing it. Add the compone
 
 - Straights with editable length, endpoint elevation, lateral offset, endpoint widths, and material.
 - Curves supporting 90°, 180°, and 270° turns; radii; elevation change; and smoothly varying midpoint bank angle.
-- Loops and twists, limited to a 20×20×20-cell bounding volume.
+- Loops and tuneable 360-degree corkscrew twists. A Twist has independent
+  forward-run and loop-radius controls: runs are 25–80 cells for the standard
+  5-cell road with a larger width-based minimum, and radii are 3–10 cells with
+  a width-safe lower bound.
+  The standard default is a 25-cell run, 3-cell radius, and 6-cell vertical
+  span.
 - Branch/merge components with individually configurable arms.
 - Surface materials: regular, slippery, and high-resistance.
 

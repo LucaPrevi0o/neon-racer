@@ -16,6 +16,13 @@ const float kSuspensionSpring = 115.0f;
 const float kSuspensionDamping = 20.0f;
 const float kAirDrag = 0.018f;
 const float kGuardrailSkin = 0.015f;
+const float kTwistGuideCaptureDistance = 0.90f;
+const float kTwistGuideSpring = 145.0f;
+const float kTwistGuideDamping = 24.0f;
+const float kMaximumTwistGuideForce = 155.0f;
+const float kTwistLateralGuideSpring = 36.0f;
+const float kTwistLateralGuideDamping = 14.0f;
+const float kMaximumTwistLateralGuideForce = 105.0f;
 
 RaceVector3 Forward(float heading) {
     return RaceVector3{std::cos(heading), 0.0f, std::sin(heading)};
@@ -149,14 +156,31 @@ VehicleStepResult VehicleDynamics::Step(const VehicleSurfaceQuery& surfaceQuery,
         const RaceVector3 surfacePoint = RaceVector3{contact.surface.x, contact.surface.y, contact.surface.z};
         const float height = Dot(Add(car_.position, Scale(surfacePoint, -1.0f)), normal);
         const float normalVelocity = Dot(car_.velocity, normal);
-        const float support = std::max(0.0f, (kCarRideHeight - height) * kSuspensionSpring -
-                                             normalVelocity * kSuspensionDamping);
+        float support = std::max(0.0f, (kCarRideHeight - height) * kSuspensionSpring -
+                                       normalVelocity * kSuspensionDamping);
+        if (contact.twistGuide && contact.distance <= kTwistGuideCaptureDistance) {
+            // A Twist is an enclosed corkscrew frame, unlike an ordinary
+            // road or open vertical loop. Keep a nearby car centered at its
+            // ride height through the inverted section, but cap the pull so
+            // a car that has genuinely left the road is still released.
+            const float guideForce = (kCarRideHeight - height) * kTwistGuideSpring -
+                normalVelocity * kTwistGuideDamping;
+            support = std::max(-kMaximumTwistGuideForce,
+                               std::min(kMaximumTwistGuideForce, guideForce));
+        }
         acceleration = Add(acceleration, Scale(normal, support));
 
         const RaceVector3 roadForward = Normalize(RaceVector3{contact.surface.tangentX, contact.surface.tangentY,
                                                                contact.surface.tangentZ},
                                                   car_.forward);
-        car_.forward = Normalize(ProjectOnPlane(car_.forward, normal), roadForward);
+        if (contact.twistGuide && contact.distance <= kTwistGuideCaptureDistance) {
+            // The corkscrew guide supplies a stable longitudinal frame as
+            // well as normal/lateral restraint. This prevents a guided car
+            // from parallel-transporting its old heading into the side wall.
+            car_.forward = roadForward;
+        } else {
+            car_.forward = Normalize(ProjectOnPlane(car_.forward, normal), roadForward);
+        }
         const float forwardSpeed = Dot(car_.velocity, car_.forward);
         const float steeringRate = -steering * 2.35f * grip * std::min(1.0f, std::fabs(forwardSpeed) / 8.0f) *
                                    (forwardSpeed < 0.0f ? -1.0f : 1.0f);
@@ -167,6 +191,18 @@ VehicleStepResult VehicleDynamics::Step(const VehicleSurfaceQuery& surfaceQuery,
         const float lateralSpeed = Dot(car_.velocity, right);
         const float lateralForce = std::max(-kGravity * grip, std::min(kGravity * grip, -lateralSpeed / deltaTime));
         acceleration = Add(acceleration, Scale(right, lateralForce));
+        if (contact.twistGuide && contact.distance <= kTwistGuideCaptureDistance) {
+            // Keep the car near the corkscrew centerline as well as its
+            // normal ride height. This is deliberately Twist-only: ordinary
+            // roads retain their existing drift and open-loop behavior.
+            const RaceVector3 roadRight = RoadSide(contact.surface, right);
+            const float roadLateralSpeed = Dot(car_.velocity, roadRight);
+            const float guideForce = -contact.lateralOffset * kTwistLateralGuideSpring -
+                roadLateralSpeed * kTwistLateralGuideDamping;
+            const float clampedGuideForce = std::max(-kMaximumTwistLateralGuideForce,
+                                                     std::min(kMaximumTwistLateralGuideForce, guideForce));
+            acceleration = Add(acceleration, Scale(roadRight, clampedGuideForce));
+        }
 
         const float driveInput = accelerate - reverse;
         const float driveForce = driveInput >= 0.0f ? 22.0f : 14.0f;

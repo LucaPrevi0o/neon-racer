@@ -101,7 +101,7 @@ bool Read(std::istream& input, int version, Track& track, std::string& error) {
                 error = "Track layout contains an invalid curve extent.";
                 return false;
             }
-            if (version == 5 && (!(input >> bankAngleDegrees) || bankAngleDegrees < -45 || bankAngleDegrees > 45)) {
+            if (version >= 5 && (!(input >> bankAngleDegrees) || bankAngleDegrees < -45 || bankAngleDegrees > 45)) {
                 error = "Track layout contains an invalid curve bank angle.";
                 return false;
             }
@@ -114,6 +114,11 @@ bool Read(std::istream& input, int version, Track& track, std::string& error) {
         }
         if (turn != static_cast<int>(CurveTurn::Left) && turn != static_cast<int>(CurveTurn::Right)) {
             error = "Track layout contains an invalid curve turn.";
+            return false;
+        }
+        if (type == static_cast<int>(TrackPieceType::Twist) && version >= 6 &&
+            radius == TrackLimits::kAutomaticTwistRadius) {
+            error = "Track layout contains an unresolved Twist radius.";
             return false;
         }
 
@@ -129,9 +134,10 @@ bool Read(std::istream& input, int version, Track& track, std::string& error) {
             loadedId = loaded.AddLoop(entry, static_cast<Heading>(heading), radius, width, exitWidth,
                                       elevationDelta, static_cast<SurfaceMaterial>(material), lateralOffset);
         } else {
+            const int twistRadius = version <= 5 ? TrackLimits::kLegacyFlatTwistRadius : radius;
             loadedId = type == static_cast<int>(TrackPieceType::Twist)
                 ? loaded.AddTwist(entry, static_cast<Heading>(heading), length, width, exitWidth,
-                                  elevationDelta, lateralOffset, static_cast<SurfaceMaterial>(material))
+                                  elevationDelta, lateralOffset, static_cast<SurfaceMaterial>(material), twistRadius)
                 : type == static_cast<int>(TrackPieceType::Branch)
                     ? loaded.AddBranch(entry, static_cast<Heading>(heading), length, lateralOffset, width,
                                        static_cast<SurfaceMaterial>(material))

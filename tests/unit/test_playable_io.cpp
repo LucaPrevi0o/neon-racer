@@ -1,4 +1,5 @@
 #include "../../src/persistence/playable_track_io.hpp"
+#include "../../src/persistence/track_layout_codec.hpp"
 #include "../../src/playable/playable_export.hpp"
 #include "../../src/race/time_trial.hpp"
 #include "../../src/track/track_fingerprint.hpp"
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -57,6 +59,21 @@ VerificationState VerifiedFor(const Track& track) {
     verification.verifiedLayoutRevision = track.LayoutRevision();
     verification.verifiedLayoutFingerprint = TrackFingerprint::Calculate(track);
     return verification;
+}
+
+Track LegacyFlatTwistCircuit() {
+    Track track;
+    track.AddTwist(GridPosition{0, 0, 0}, Heading::East, 4, 5, 5, 0, 0,
+                   SurfaceMaterial::Regular, TrackLimits::kLegacyFlatTwistRadius);
+    track.AddCurve(GridPosition{4, 0, 0}, Heading::East, CurveTurn::Right, 4);
+    const std::uint32_t start = track.AddStraight(GridPosition{8, 0, 4}, Heading::South, 4);
+    track.AddCurve(GridPosition{8, 0, 8}, Heading::South, CurveTurn::Right, 4);
+    track.AddStraight(GridPosition{4, 0, 12}, Heading::West, 4);
+    track.AddCurve(GridPosition{0, 0, 12}, Heading::West, CurveTurn::Right, 4);
+    track.AddStraight(GridPosition{-4, 0, 8}, Heading::North, 4);
+    track.AddCurve(GridPosition{-4, 0, 4}, Heading::North, CurveTurn::Right, 4);
+    track.SetStartFinish(start, RaceDirection::Forward);
+    return track;
 }
 
 void TestPreviewAndVerifiedExportPolicy() {
@@ -129,6 +146,51 @@ void TestPackageRoundTripAndRaceImport() {
                NearlyEqual(trial.GhostCar().position.x, 4.0f),
            "a loaded package seeds a race-ready time trial with its verified ghost");
 
+    std::remove(path.c_str());
+}
+
+void TestLegacyFlatTwistPackageMigration() {
+    const Track legacy = LegacyFlatTwistCircuit();
+    std::string error;
+    Expect(legacy.Validate().raceReady,
+           "legacy playable migration setup forms a race-ready circuit");
+
+    std::ostringstream layoutStream;
+    Expect(TrackLayoutCodec::Write(layoutStream, legacy, error),
+           "legacy playable migration setup writes its structural layout");
+    std::string layout = layoutStream.str();
+    const std::string runtimeSentinel = " -2 ";
+    const std::string::size_type sentinel = layout.find(runtimeSentinel);
+    Expect(sentinel != std::string::npos,
+           "legacy playable migration setup finds the flat-Twist sentinel");
+    if (sentinel != std::string::npos) layout.replace(sentinel, runtimeSentinel.size(), " 0 ");
+
+    const std::string path = "/tmp/neon_racer_legacy_flat_twist.nrplay";
+    const std::string name = "Legacy Twist";
+    const std::string creator = "Neon Racer";
+    const std::string description = "Flat rolling Twist migration fixture.";
+    {
+        std::ofstream file(path.c_str());
+        file << "NEON_RACER_PLAYABLE 1\nSTATUS PLAYABLE\n";
+        file << "NAME_BYTES " << name.size() << "\n" << name << "\n";
+        file << "CREATOR_BYTES " << creator.size() << "\n" << creator << "\n";
+        file << "DESCRIPTION_BYTES " << description.size() << "\n" << description << "\n";
+        file << "EXPORT_VERSION 1\n";
+        file << "LAYOUT_FINGERPRINT " << TrackFingerprint::CalculateLegacyFlatTwist(legacy) << "\n";
+        file << "LAYOUT 5\n" << layout;
+        file << "VERIFICATION_GHOST 1 2 0.1\n";
+        file << "GHOST_SAMPLE 0 4 1 -2 12 0 0 1 0 0 0 1 0 0 12\n";
+        file << "GHOST_SAMPLE 0.1 8 1 -2 18 0 0 1 0 0 0 1 0 0 18\n";
+        file << "END_PLAYABLE\n";
+    }
+
+    PlayableTrack loaded;
+    Expect(PlayableTrackIO::Load(path, loaded, error) && loaded.layout.Validate().raceReady &&
+               !loaded.layout.Pieces().empty() &&
+               TrackLimits::IsLegacyFlatTwistRadius(loaded.layout.Pieces().front().curveRadius) &&
+               loaded.layoutFingerprint == TrackFingerprint::Calculate(loaded.layout) &&
+               loaded.verificationGhost.layoutFingerprint == loaded.layoutFingerprint,
+           "a v5 playable package migrates its flat Twist and rebinds its verified ghost");
     std::remove(path.c_str());
 }
 
@@ -350,6 +412,7 @@ void TestPackageInputBounds() {
 int main() {
     TestPreviewAndVerifiedExportPolicy();
     TestPackageRoundTripAndRaceImport();
+    TestLegacyFlatTwistPackageMigration();
     TestMalformedPackageLeavesDestinationUnchanged();
     TestPackageIntegrityAndNoClobber();
     TestCustomLibraryVersioning();

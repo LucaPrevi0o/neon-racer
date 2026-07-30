@@ -21,7 +21,7 @@ LAYOUT_FINGERPRINT <uint64>
 LAYOUT <layout-version>
 START <piece-id> <race-direction>
 PIECES <count>
-PIECE <same structural fields as a v5 draft>
+PIECE <same structural fields as a v6 draft>
 ...
 VERIFICATION_GHOST 1 <sample-count> <duration-seconds>
 GHOST_SAMPLE <time> <position xyz> <velocity xyz> <forward xyz> <up xyz>
@@ -37,8 +37,8 @@ samples.
 
 ## Validation and compatibility
 
-The current writer emits package version 1 and layout version 5. A v1 package
-reader accepts supported embedded layout versions 1 through 5, so an older
+The current writer emits package version 1 and layout version 6. A v1 package
+reader accepts supported embedded layout versions 1 through 6, so an older
 layout schema remains readable as long as its structural codec is supported.
 
 The loader rejects unsupported versions, non-race-ready layouts, incomplete

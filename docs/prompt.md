@@ -280,10 +280,16 @@ Intended track components are listed here:
   interpolated from each endpoint to that midpoint. Positive and negative values
   create inward and outward banking respectively. The maximum absolute bank angle
   is 45°.
-- **Twist**: a 360-degree rotation around the direction of travel. Twists are
-  parameterised 3D components whose exit connector's height and direction can be
-  edited, allowing non-planar variants. The exit heading is one of the four
-  cardinal grid headings and its bank angle is 0°. The resulting entry and exit
+- **Twist**: a one-turn corkscrew around the direction of travel. Its forward
+  run and loop radius are independently editable: the run is 25–80 grid cells
+  for the standard 5-cell road, with a larger width-based minimum for wider
+  roads. Its radius is 3–10 cells and must grow with road width (6 cells for an
+  11-cell road). The default is a 25-cell run with a 3-cell radius and a
+  6-cell low-to-high span. This lets players tune compact corkscrews without
+  permitting the road surface to fold into itself. Twists are parameterised 3D
+  components whose exit connector's height and direction can be edited,
+  allowing non-planar variants. The exit heading is one of the four cardinal
+  grid headings and its bank angle is 0°. The resulting entry and exit
   connectors must still satisfy the normal grid, collision, and connection
   validation rules.
 - **Loop**: a 360-degree loop around the local left/right axis.
@@ -293,8 +299,6 @@ Intended track components are listed here:
   0°. The resulting entry and exit connectors must still satisfy the normal grid,
   collision, and connection validation rules.
 
-  A loop or twist may occupy at most a 20 × 20 × 20 grid-cell bounding volume.
-  This provisional limit is expected to be tuned through play testing.
 - **Surface materials**: every track component has a surface material, defaulting
   to regular track. Slippery materials reduce lateral grip and make it more likely
   for the car to drift or lose control; other materials may vary rolling resistance.

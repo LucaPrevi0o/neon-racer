@@ -9,13 +9,16 @@ RaceVector3 Cross(RaceVector3 a, RaceVector3 b) {
 }
 
 void SetTransform(const RaceCar& car) {
-    rlTranslatef(car.position.x, car.position.y, car.position.z);
+    const RaceVector3 bodyCenter = RaceCarVisualCenter(car);
+    rlTranslatef(bodyCenter.x, bodyCenter.y, bodyCenter.z);
     const RaceVector3 right = Cross(car.forward, car.up);
-    const Matrix basis = Matrix{car.forward.x, car.forward.y, car.forward.z, 0.0f,
-                                car.up.x, car.up.y, car.up.z, 0.0f,
-                                right.x, right.y, right.z, 0.0f,
-                                0.0f, 0.0f, 0.0f, 1.0f};
-    rlMultMatrixf(reinterpret_cast<const float*>(&basis));
+    // rlMultMatrixf takes a column-major float array. The mesh's local X/Y/Z
+    // axes map to the car's forward/up/right road frame respectively.
+    const float basis[16] = {car.forward.x, car.forward.y, car.forward.z, 0.0f,
+                             car.up.x, car.up.y, car.up.z, 0.0f,
+                             right.x, right.y, right.z, 0.0f,
+                             0.0f, 0.0f, 0.0f, 1.0f};
+    rlMultMatrixf(basis);
 }
 
 } // namespace

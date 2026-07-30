@@ -135,8 +135,8 @@ Custom editable layouts are stored outside the repository: under
 `$XDG_DATA_HOME/neon-racer/tracks` (or `~/.local/share/neon-racer/tracks`). Set
 `NEON_RACER_DATA_DIR` to override that location. Shipped examples remain in
 `assets/tracks/examples`.
-New saves use `NEON_RACER_DRAFT 5`; the loader continues to accept milestone-one
-`NEON_RACER_DRAFT 1` through `NEON_RACER_DRAFT 4` files. Draft files remain
+New saves use `NEON_RACER_DRAFT 6`; the loader continues to accept
+`NEON_RACER_DRAFT 1` through `NEON_RACER_DRAFT 5` files. Draft files remain
 editable-only and contain no verification replay or playable-export status.
 
 Saved playable packages live separately under

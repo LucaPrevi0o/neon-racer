@@ -12,6 +12,9 @@ struct RaceVector3 {
 };
 
 struct RaceCar {
+    // This is the suspension/contact reference used by vehicle dynamics, not
+    // the center of the rendered chassis.  It can settle very close to the
+    // road surface while the visual body remains above it.
     RaceVector3 position;
     RaceVector3 velocity;
     RaceVector3 forward;
@@ -19,6 +22,17 @@ struct RaceCar {
     float headingRadians;
     float speed;
 };
+
+// The chassis mesh is 0.28 units tall, so keep its center above the contact
+// reference even when suspension compression brings that reference to the
+// road. Applying the lift along `up` keeps it correct on banks and twists.
+const float kRaceCarVisualBodyLift = 0.22f;
+
+inline RaceVector3 RaceCarVisualCenter(const RaceCar& car) {
+    return RaceVector3{car.position.x + car.up.x * kRaceCarVisualBodyLift,
+                       car.position.y + car.up.y * kRaceCarVisualBodyLift,
+                       car.position.z + car.up.z * kRaceCarVisualBodyLift};
+}
 
 struct GhostSample {
     RaceCar car;

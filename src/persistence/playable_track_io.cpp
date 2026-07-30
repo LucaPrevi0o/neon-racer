@@ -308,7 +308,21 @@ bool ReadPackage(std::istream& input, PlayableTrack& playable, std::string& erro
         return false;
     }
 
-    loaded.verificationGhost.layoutFingerprint = loaded.layoutFingerprint;
+    const std::uint64_t serializedFingerprint = loaded.layoutFingerprint;
+    const std::uint64_t expectedSerializedFingerprint = layoutVersion <= 5
+        ? TrackFingerprint::CalculateLegacyFlatTwist(loaded.layout)
+        : TrackFingerprint::Calculate(loaded.layout);
+    if (serializedFingerprint != expectedSerializedFingerprint) {
+        error = "Playable package verification does not match its layout.";
+        return false;
+    }
+
+    // A v5 flat Twist is represented by a dedicated runtime sentinel after
+    // import. Rebind the in-memory package and its ghost to the migrated
+    // layout identity before normal validation and race use.
+    const std::uint64_t migratedFingerprint = TrackFingerprint::Calculate(loaded.layout);
+    loaded.layoutFingerprint = migratedFingerprint;
+    loaded.verificationGhost.layoutFingerprint = migratedFingerprint;
     if (!ValidatePackage(loaded, error)) return false;
     playable = loaded;
     return true;

@@ -39,10 +39,21 @@ bool Track::IsValidPiece(const TrackPiece& piece) {
         return false;
     }
     if (piece.width < 5 || piece.width > 11 || piece.exitWidth < 5 || piece.exitWidth > 11) return false;
-    if (piece.type == TrackPieceType::Straight || piece.type == TrackPieceType::Twist) {
+    if (piece.type == TrackPieceType::Straight) {
         const int maximumOffset = piece.length < 4 ? 2 : 3;
         return piece.length >= 3 && piece.length <= 20 &&
                IsWithinSymmetricRange(piece.lateralOffset, maximumOffset);
+    }
+    if (piece.type == TrackPieceType::Twist) {
+        if (TrackLimits::IsLegacyFlatTwistRadius(piece.curveRadius)) {
+            const int maximumOffset = piece.length < 4 ? 2 : 3;
+            return piece.length >= 3 && piece.length <= 20 &&
+                   IsWithinSymmetricRange(piece.lateralOffset, maximumOffset);
+        }
+        const int minimumLength = TrackLimits::MinimumTwistLengthForRoadWidth(piece.width, piece.exitWidth);
+        return piece.length >= minimumLength && piece.length <= TrackLimits::kMaximumTwistLength &&
+               TrackLimits::IsValidTwistRadius(piece.curveRadius, piece.width, piece.exitWidth) &&
+               IsWithinSymmetricRange(piece.lateralOffset, 3);
     }
     if (piece.type == TrackPieceType::Loop)
         return piece.curveRadius >= 3 && piece.curveRadius <= 10 &&

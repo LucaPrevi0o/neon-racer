@@ -29,11 +29,12 @@ void TimeTrialRenderer::Update(const TimeTrial& timeTrial) {
     if (!timeTrial.IsReady()) return;
 
     const RaceCar& car = timeTrial.Car();
+    const RaceVector3 visualCenter = RaceCarVisualCenter(car);
     const Vector3 behind = Vector3{-std::cos(car.headingRadians) * 8.0f, 4.5f,
                                    -std::sin(car.headingRadians) * 8.0f};
-    const Vector3 desiredPosition = Vector3{car.position.x + behind.x, car.position.y + behind.y,
-                                            car.position.z + behind.z};
-    const Vector3 desiredTarget = Vector3{car.position.x, car.position.y + 0.2f, car.position.z};
+    const Vector3 desiredPosition = Vector3{visualCenter.x + behind.x, visualCenter.y + behind.y,
+                                            visualCenter.z + behind.z};
+    const Vector3 desiredTarget = Vector3{visualCenter.x, visualCenter.y, visualCenter.z};
     camera_.position = LerpVector3(camera_.position, desiredPosition, 0.10f);
     camera_.target = LerpVector3(camera_.target, desiredTarget, 0.14f);
 }

@@ -36,10 +36,13 @@ std::uint32_t Track::AddLoop(GridPosition entry, Heading heading, int radius, in
 
 std::uint32_t Track::AddTwist(GridPosition entry, Heading heading, int length, int width,
                               int requestedExitWidth, int elevationDelta, int lateralOffset,
-                              SurfaceMaterial material) {
+                              SurfaceMaterial material, int curveRadius) {
     const int resolvedExitWidth = requestedExitWidth < 0 ? width : requestedExitWidth;
+    const int resolvedRadius = curveRadius == TrackLimits::kAutomaticTwistRadius
+        ? TrackLimits::DefaultTwistRadiusForRoadWidth(width, resolvedExitWidth) : curveRadius;
     return AddPiece(TrackPiece{0, TrackPieceType::Twist, entry, heading, width, resolvedExitWidth,
-                               length, CurveTurn::Right, 0, 90, 0, elevationDelta, lateralOffset, material});
+                               length, CurveTurn::Right, resolvedRadius, 90, 0, elevationDelta, lateralOffset,
+                               material});
 }
 
 std::uint32_t Track::AddBranch(GridPosition entry, Heading heading, int length, int armOffset,

@@ -41,7 +41,7 @@ bool PointLiesInsideAnyRoadArm(const std::vector<TrackSurfaceSample>& samples,
 } // namespace
 
 TrackContact Track::QuerySurface(float x, float y, float z, float maxDistance) const {
-    TrackContact result = {false, TrackSurfaceSample{}, maxDistance, false};
+    TrackContact result = {false, TrackSurfaceSample{}, maxDistance, false, false, 0.0f};
     for (std::vector<TrackPiece>::const_iterator piece = pieces_.begin(); piece != pieces_.end(); ++piece) {
         const std::vector<TrackSurfaceSample> samples = TrackRoadGeometry::PhysicalRoadSurfaceSamples(*piece);
         const bool insideAnyRoadArm = (piece->type == TrackPieceType::Branch || piece->type == TrackPieceType::Merge) &&
@@ -70,6 +70,9 @@ TrackContact Track::QuerySurface(float x, float y, float z, float maxDistance) c
             result.found = true;
             result.distance = distance;
             result.guardrailHit = guardrailHit;
+            result.twistGuide = piece->type == TrackPieceType::Twist &&
+                !TrackLimits::IsLegacyFlatTwistRadius(piece->curveRadius);
+            result.lateralOffset = lateral;
             result.surface = *sample;
             result.surface.x += sideX * clampedLateral;
             result.surface.y += sideY * clampedLateral;
