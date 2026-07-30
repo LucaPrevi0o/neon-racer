@@ -39,6 +39,7 @@ src/
   persistence/
     common/
     draft/
+    internal/
     playable/
   playable/
   race/
@@ -58,7 +59,7 @@ This is a migration direction, not a requirement to move every file in one chang
 
 ## Current migration status
 
-The editor is the first module using the convention:
+### Editor
 
 ```text
 include/neon_racer/editor/
@@ -79,13 +80,32 @@ src/editor/
 
 The smaller editor implementation files remain at `src/editor` temporarily. Moving them into the responsibility folders is a later mechanical step and should not be mixed with behavior changes.
 
+### Playable persistence
+
+```text
+include/neon_racer/persistence/
+  playable_track_io.hpp
+
+src/persistence/
+  common/atomic_file_writer.cpp
+  internal/atomic_file_writer.hpp
+  internal/playable_package_codec.hpp
+  internal/playable_package_validation.hpp
+  playable/playable_library_storage.cpp
+  playable/playable_package_codec.cpp
+  playable/playable_package_store.cpp
+  playable/playable_package_validation.cpp
+```
+
+The public storage API is separate from implementation-only codec and validation declarations. Draft and playable writes share the same bounded temporary-file and atomic-rename primitive. A forwarding header remains at the former `src/persistence/playable_track_io.hpp` path until all older includes are migrated.
+
 ## Suggested migration order
 
-1. **Persistence:** extract a shared atomic-file writer, then split playable package validation, codec, and filesystem listing.
-2. **Application UI:** separate playable-library state/input from its Raylib presentation.
-3. **Race:** group vehicle simulation, replay, and time-trial orchestration under distinct subdirectories.
-4. **Track:** move stable declarations into the public include tree, then group model, geometry, validation, and query implementations.
-5. **Rendering and UI:** migrate declarations last, after their domain-facing dependencies use stable include paths.
+1. **Application UI:** separate playable-library state/input from its Raylib presentation.
+2. **Race:** group vehicle simulation, replay, and time-trial orchestration under distinct subdirectories.
+3. **Track:** move stable declarations into the public include tree, then group model, geometry, validation, and query implementations.
+4. **Rendering and UI:** migrate declarations last, after their domain-facing dependencies use stable include paths.
+5. **Compatibility cleanup:** remove forwarding headers once no source or test includes the legacy paths.
 
 Each step should update both build manifests and add or retain a CI target that compiles the affected code. Moving files without changing behavior is preferable to combining a directory migration with new gameplay rules.
 
