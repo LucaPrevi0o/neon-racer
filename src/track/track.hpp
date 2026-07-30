@@ -169,7 +169,7 @@ struct TrackPiece {
     TrackConnector EntryConnector() const;
     TrackConnector ExitConnector() const;
     // Current components expose one connector at each end. Branch/merge
-    // components will return multiple entries or exits through this API.
+    // components return multiple entries or exits through this API.
     std::vector<TrackConnector> EntryConnectors() const;
     std::vector<TrackConnector> ExitConnectors() const;
     std::vector<GridPosition> CenterlineCells() const;
@@ -252,10 +252,17 @@ public:
     static Track CreateSampleCircuit();
 
 private:
+    struct CachedRoadPiece {
+        bool branchOrMerge;
+        bool twistGuide;
+        std::vector<TrackSurfaceSample> samples;
+    };
+
     std::uint32_t AddPiece(const TrackPiece& piece);
     const TrackPiece* FindPiece(std::uint32_t id) const;
     static bool IsValidPiece(const TrackPiece& piece);
     void InvalidateValidation();
+    void EnsureSurfaceCache() const;
 
     std::vector<TrackPiece> pieces_;
     std::uint32_t nextPieceId_;
@@ -264,6 +271,8 @@ private:
     std::uint32_t layoutRevision_;
     mutable bool validationDirty_;
     mutable TrackValidation cachedValidation_;
+    mutable bool surfaceCacheValid_;
+    mutable std::vector<CachedRoadPiece> surfaceCache_;
 };
 
 const char* HeadingName(Heading heading);
