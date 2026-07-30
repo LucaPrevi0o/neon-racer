@@ -12,6 +12,7 @@ set(NEON_RACER_EDITOR_INCLUDE_DIR ${NEON_RACER_INCLUDE_DIR}/neon_racer/editor)
 option(NEON_RACER_BUILD_APP "Build the Raylib-backed Neon Racer application" ON)
 
 add_library(neon_racer_domain
+    src/persistence/common/atomic_file_writer.cpp
     src/persistence/draft_io.cpp
     src/persistence/storage_paths.cpp
     src/persistence/track_layout_codec.cpp
@@ -39,9 +40,13 @@ add_library(neon_racer_ghost_replay src/race/ghost_replay.cpp)
 target_compile_options(neon_racer_ghost_replay PRIVATE -Wall -Wextra)
 
 add_library(neon_racer_playable
-    src/persistence/playable_track_io.cpp
+    src/persistence/playable/playable_library_storage.cpp
+    src/persistence/playable/playable_package_codec.cpp
+    src/persistence/playable/playable_package_store.cpp
+    src/persistence/playable/playable_package_validation.cpp
     src/playable/playable_export.cpp
 )
+target_include_directories(neon_racer_playable PUBLIC ${NEON_RACER_INCLUDE_DIR})
 target_compile_options(neon_racer_playable PRIVATE -Wall -Wextra)
 target_link_libraries(neon_racer_playable PUBLIC neon_racer_domain neon_racer_ghost_replay)
 
