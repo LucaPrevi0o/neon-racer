@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cmake-headless:
+    name: CMake headless tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build/headless -DNEON_RACER_BUILD_APP=OFF -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build/headless --parallel
+
+      - name: Test
+        run: ctest --test-dir build/headless --output-on-failure
+
+  makefile-tests:
+    name: Makefile tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build and test
+        run: make test
+
+  documentation:
+    name: Documentation links
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Check local Markdown links
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+          import urllib.parse
+
+          root = pathlib.Path.cwd()
+          failures = []
+          link_pattern = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+
+          for document in root.rglob("*.md"):
+              text = document.read_text(encoding="utf-8")
+              for match in link_pattern.finditer(text):
+                  target = match.group(1).strip()
+                  if target.startswith("<") and target.endswith(">"):
+                      target = target[1:-1]
+                  target = target.split("#", 1)[0]
+                  if not target or target.startswith(("http://", "https://", "mailto:")):
+                      continue
+                  target = urllib.parse.unquote(target)
+                  candidate = (document.parent / target).resolve()
+                  try:
+                      candidate.relative_to(root.resolve())
+                  except ValueError:
+                      failures.append(f"{document.relative_to(root)}: link escapes repository: {target}")
+                      continue
+                  if not candidate.exists():
+                      failures.append(f"{document.relative_to(root)}: missing target: {target}")
+
+          if failures:
+              print("Broken local Markdown links:")
+              print("\n".join(f"- {failure}" for failure in failures))
+              sys.exit(1)
+          PY
