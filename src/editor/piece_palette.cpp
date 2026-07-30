@@ -224,16 +224,12 @@ void PiecePalette::Draw(TrackPieceType selectedType) const {
         DrawRectangleRounded(card, 0.12f, 5, WithAlpha(Neon::Panel, contentAlpha * (hovered ? 0.98f : 0.80f)));
         DrawRectangleLinesEx(card, active ? 2.0f : 1.0f,
                              WithAlpha(outline, contentAlpha * (active || hovered ? 0.94f : 0.50f)));
-        DrawPieceIcon(item.type, Rectangle{card.x + 6.0f, card.y + 7.0f, card.width - 12.0f, 42.0f}, road, contentAlpha);
+        DrawPieceIcon(item.type, Rectangle{card.x + 6.0f, card.y + 7.0f, card.width - 12.0f, 46.0f}, road, contentAlpha);
 
-        const int labelSize = card.width < 92.0f ? 10 : 11;
+        const int labelSize = card.width < 92.0f ? 10 : 12;
         const int labelX = static_cast<int>(card.x + (card.width - MeasureText(item.name, labelSize)) * 0.5f);
-        DrawText(item.name, labelX, static_cast<int>(card.y) + 55, labelSize,
+        DrawText(item.name, labelX, static_cast<int>(card.y) + 67, labelSize,
                  WithAlpha(active ? Neon::Yellow : RAYWHITE, contentAlpha));
-        const int descriptionSize = 9;
-        const int descriptionX = static_cast<int>(card.x + (card.width - MeasureText(item.description, descriptionSize)) * 0.5f);
-        DrawText(item.description, descriptionX, static_cast<int>(card.y) + 71, descriptionSize,
-                 WithAlpha(RAYWHITE, contentAlpha * 0.64f));
 
         const Rectangle shortcut{card.x + card.width - 21.0f, card.y + 6.0f, 15.0f, 15.0f};
         DrawRectangleRec(shortcut, WithAlpha(outline, contentAlpha * 0.72f));

@@ -7,13 +7,17 @@
 
 namespace {
 
-const float kOptionWidth = 580.0f;
+const float kOptionX = 120.0f;
+const float kOptionWidth = 520.0f;
 const float kOptionHeight = 86.0f;
+const float kGuideX = 690.0f;
+const float kGuideY = 238.0f;
+const float kGuideWidth = 470.0f;
+const float kGuideHeight = 294.0f;
 
 Rectangle OptionBounds(MainMenuChoice choice) {
-    const float x = (static_cast<float>(AppSettings::kWindowWidth) - kOptionWidth) * 0.5f;
-    const float y = choice == MainMenuChoice::PlayCompleteTrack ? 280.0f : 386.0f;
-    return Rectangle{x, y, kOptionWidth, kOptionHeight};
+    const float y = choice == MainMenuChoice::PlayCompleteTrack ? 272.0f : 378.0f;
+    return Rectangle{kOptionX, y, kOptionWidth, kOptionHeight};
 }
 
 Color ChoiceColor(MainMenuChoice choice) {
@@ -42,16 +46,53 @@ bool ChoiceAt(Vector2 point, MainMenuChoice& choice) {
     return false;
 }
 
-void DrawChoice(MainMenuChoice choice, bool selected, bool hovered) {
+void DrawChoice(MainMenuChoice choice, bool selected) {
     const Rectangle bounds = OptionBounds(choice);
-    const bool highlighted = selected || hovered;
+    const Neon::ButtonState state = Neon::GetButtonState(bounds, true, selected);
+    const bool highlighted = Neon::IsButtonHighlighted(state);
     const Color color = highlighted ? Neon::Yellow : ChoiceColor(choice);
-    Neon::DrawNeonBlock(bounds, color, highlighted ? 1.0f : 0.68f);
+    Neon::DrawButton(bounds, color, state);
 
     DrawText(ChoiceTitle(choice), static_cast<int>(bounds.x) + 28, static_cast<int>(bounds.y) + 18,
              24, color);
     DrawText(ChoiceDetail(choice), static_cast<int>(bounds.x) + 29, static_cast<int>(bounds.y) + 51,
              16, highlighted ? RAYWHITE : Fade(RAYWHITE, 0.72f));
+}
+
+void DrawGuideStep(int number, int y, Color accent, const char* title, const char* detail) {
+    const int markerX = static_cast<int>(kGuideX) + 32;
+    const int markerY = y + 13;
+    DrawCircle(markerX, markerY, 14.0f, Fade(accent, 0.18f));
+    DrawCircleLines(markerX, markerY, 14.0f, accent);
+    const char* numberText = TextFormat("%i", number);
+    DrawText(numberText, markerX - MeasureText(numberText, 14) / 2, markerY - 7, 14, accent);
+    DrawText(title, static_cast<int>(kGuideX) + 58, y, 15, accent);
+    DrawText(detail, static_cast<int>(kGuideX) + 58, y + 18, 13, Fade(RAYWHITE, 0.78f));
+}
+
+void DrawHowToPlay() {
+    const Rectangle bounds{kGuideX, kGuideY, kGuideWidth, kGuideHeight};
+    Neon::DrawOverlayPanel(bounds, 0.88f);
+    DrawRectangleLinesEx(bounds, 1.5f, Fade(Neon::Cyan, 0.62f));
+    DrawText("HOW TO PLAY", static_cast<int>(kGuideX) + 20, static_cast<int>(kGuideY) + 18, 22, Neon::Cyan);
+    DrawText("From an empty grid to a finished lap.", static_cast<int>(kGuideX) + 20,
+             static_cast<int>(kGuideY) + 47, 14, Fade(RAYWHITE, 0.70f));
+    DrawLine(static_cast<int>(kGuideX) + 20, static_cast<int>(kGuideY) + 70,
+             static_cast<int>(kGuideX + kGuideWidth) - 20, static_cast<int>(kGuideY) + 70,
+             Fade(Neon::Cyan, 0.34f));
+
+    DrawGuideStep(1, static_cast<int>(kGuideY) + 86, Neon::Pink, "BUILD",
+                  "Choose a piece, click the grid; wheel/R rotates.");
+    DrawGuideStep(2, static_cast<int>(kGuideY) + 130, Neon::Yellow, "SHAPE",
+                  "Select with Shift+click; use arrows to adjust it.");
+    DrawGuideStep(3, static_cast<int>(kGuideY) + 174, Neon::Cyan, "CONNECT",
+                  "Match cyan IN to pink OUT, then close the loop.");
+    DrawGuideStep(4, static_cast<int>(kGuideY) + 218, Neon::Green, "RACE",
+                  "Set start/finish on a straight, then press Tab.");
+
+    DrawText("Camera: WASD/QE move  |  right-drag orbit  |  Shift+wheel zoom",
+             static_cast<int>(kGuideX) + 20, static_cast<int>(kGuideY) + 270, 12,
+             Fade(RAYWHITE, 0.62f));
 }
 
 } // namespace
@@ -63,6 +104,10 @@ MainMenu::MainMenu()
 void MainMenu::Update() {
     const Vector2 mouse = GetMousePosition();
     hasHoveredChoice_ = ChoiceAt(mouse, hoveredChoice_);
+
+    // Hovering a card should move the active choice as well as brighten the
+    // card, so Enter/Space follows the mouse without requiring a click.
+    if (hasHoveredChoice_) flow_.Select(hoveredChoice_);
 
     if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) flow_.SelectPrevious();
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) flow_.SelectNext();
@@ -76,22 +121,22 @@ void MainMenu::Update() {
 }
 
 void MainMenu::Draw() const {
-    Neon::DrawCenteredText("NEON RACER", AppSettings::kWindowWidth, 104, 46, Neon::Cyan);
-    Neon::DrawCenteredText("BUILD | RACE | REPLAY", AppSettings::kWindowWidth, 164, 18,
+    Neon::DrawCenteredText("NEON RACER", AppSettings::kWindowWidth, 76, 46, Neon::Cyan);
+    Neon::DrawCenteredText("BUILD | RACE | REPLAY", AppSettings::kWindowWidth, 136, 18,
                            Fade(RAYWHITE, 0.80f));
-    Neon::DrawCenteredText("CHOOSE YOUR STARTING POINT", AppSettings::kWindowWidth, 226, 16,
+    Neon::DrawCenteredText("CHOOSE YOUR STARTING POINT", AppSettings::kWindowWidth, 198, 16,
                            Neon::Pink);
 
-    const MainMenuChoice selectedChoice = flow_.SelectedChoice();
-    DrawChoice(MainMenuChoice::PlayCompleteTrack, selectedChoice == MainMenuChoice::PlayCompleteTrack,
-               hasHoveredChoice_ && hoveredChoice_ == MainMenuChoice::PlayCompleteTrack);
-    DrawChoice(MainMenuChoice::CreateNewTrack, selectedChoice == MainMenuChoice::CreateNewTrack,
-               hasHoveredChoice_ && hoveredChoice_ == MainMenuChoice::CreateNewTrack);
+    DrawText("START HERE", static_cast<int>(kOptionX), 242, 15, Neon::Pink);
 
-    Neon::DrawCenteredText("UP/DOWN or W/S: select    ENTER/SPACE: choose", AppSettings::kWindowWidth,
-                           542, 16, Neon::Yellow);
-    Neon::DrawCenteredText("Mouse: hover and click    ESC: quit", AppSettings::kWindowWidth,
-                           578, 15, Fade(RAYWHITE, 0.72f));
+    const MainMenuChoice selectedChoice = flow_.SelectedChoice();
+    DrawChoice(MainMenuChoice::PlayCompleteTrack, selectedChoice == MainMenuChoice::PlayCompleteTrack);
+    DrawChoice(MainMenuChoice::CreateNewTrack, selectedChoice == MainMenuChoice::CreateNewTrack);
+    DrawHowToPlay();
+
+    Neon::DrawCenteredText("Click a card to begin  |  W/S or Up/Down: select  |  Enter/Space: choose",
+                           AppSettings::kWindowWidth, 584, 15, Neon::Yellow);
+    Neon::DrawCenteredText("ESC: quit", AppSettings::kWindowWidth, 616, 14, Fade(RAYWHITE, 0.66f));
 }
 
 MainMenuAction MainMenu::ConsumeAction() { return flow_.ConsumeAction(); }

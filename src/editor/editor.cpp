@@ -16,6 +16,10 @@ namespace {
 const int kPanelX = 28;
 const int kPanelY = 80;
 
+Rectangle EditorPanelBounds() {
+    return Rectangle{static_cast<float>(kPanelX), static_cast<float>(kPanelY), 470.0f, 350.0f};
+}
+
 int ClampGridValue(long long value) {
     const long long maximum = static_cast<long long>(TrackLimits::kMaximumGridCoordinate);
     if (value < -maximum) return -TrackLimits::kMaximumGridCoordinate;
@@ -36,11 +40,11 @@ int OffsetElevationDelta(int value, int offset) {
 }
 
 Rectangle StartFinishButtonBounds() {
-    return Rectangle{static_cast<float>(kPanelX + 18), 600.0f, 260.0f, 34.0f};
+    return Rectangle{static_cast<float>(kPanelX + 18), 350.0f, 260.0f, 34.0f};
 }
 
 Rectangle ClearTrackButtonBounds() {
-    return Rectangle{320.0f, 600.0f, 160.0f, 34.0f};
+    return Rectangle{320.0f, 350.0f, 160.0f, 34.0f};
 }
 
 Rectangle HelpToggleBounds(bool expanded) {
@@ -115,6 +119,34 @@ SurfaceMaterial NextMaterial(SurfaceMaterial material) {
     return static_cast<SurfaceMaterial>((static_cast<int>(material) + 1) % 3);
 }
 
+const char* ValidationHint(const TrackValidation& validation) {
+    if (validation.raceReady) return "Closed loop and start/finish are ready.";
+    if (validation.issues.empty()) return "Track needs one more step.";
+    switch (validation.issues.front().kind) {
+    case TrackIssueKind::NotOneClosedLoop:
+        return "Join every open end into one closed loop.";
+    case TrackIssueKind::DisconnectedEntry:
+    case TrackIssueKind::DisconnectedExit:
+        return "Connect the open cyan and pink ends.";
+    case TrackIssueKind::OverlappingGeometry:
+        return "Move pieces apart; roads cannot overlap.";
+    case TrackIssueKind::MissingStartFinish:
+        return "Choose a straight for start/finish.";
+    case TrackIssueKind::InvalidStartFinish:
+        return "Start/finish must be on a straight.";
+    }
+    return "Track needs attention.";
+}
+
+std::string TruncatePanelText(const std::string& text, int fontSize, int maximumWidth) {
+    if (MeasureText(text.c_str(), fontSize) <= maximumWidth) return text;
+    std::string clipped = text;
+    while (!clipped.empty() && MeasureText((clipped + "...").c_str(), fontSize) > maximumWidth) {
+        clipped.erase(clipped.size() - 1);
+    }
+    return clipped + "...";
+}
+
 bool SamePieceShape(const TrackPiece& first, const TrackPiece& second) {
     return first.id == second.id && first.type == second.type && first.entryPosition == second.entryPosition &&
         first.entryHeading == second.entryHeading && first.width == second.width && first.exitWidth == second.exitWidth &&
@@ -155,6 +187,23 @@ void TrackEditor::BeginNewTrack() {
 
 void TrackEditor::Update(Camera3D& camera) {
     const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+
+    // While the draft library is open, it owns the frame's input. F5 and
+    // Ctrl+O are the explicit close shortcuts; every other key stays inside
+    // the library instead of changing the layout behind it.
+    if (libraryOpen_) {
+        const Vector2 libraryMouse = GetMousePosition();
+        if ((control && IsKeyPressed(KEY_O)) || IsKeyPressed(KEY_F5)) {
+            libraryOpen_ = false;
+            namingDraft_ = false;
+            piecePalette_.Update(libraryMouse, GetScreenWidth(), GetScreenHeight(), GetFrameTime(), false);
+            return;
+        }
+        UpdateTrackLibraryInput();
+        piecePalette_.Update(libraryMouse, GetScreenWidth(), GetScreenHeight(), GetFrameTime(), false);
+        return;
+    }
+
     if (control && IsKeyPressed(KEY_Z)) Undo();
     if (control && IsKeyPressed(KEY_Y)) Redo();
     if (control && IsKeyPressed(KEY_S)) BeginSaveDraft();
@@ -171,7 +220,12 @@ void TrackEditor::Update(Camera3D& camera) {
     const bool libraryConsumed = UpdateTrackLibraryInput();
     const Vector2 mouse = GetMousePosition();
     piecePalette_.Update(mouse, GetScreenWidth(), GetScreenHeight(), GetFrameTime(), !libraryConsumed);
+    // The draft library is a modal surface. Do not let its text entry, rows,
+    // or empty areas change the placement preview behind it in the same frame.
+    if (libraryConsumed) return;
+
     const bool paletteConsumesPointer = !libraryConsumed && piecePalette_.ConsumesPointer(mouse);
+    const bool editorPanelConsumesPointer = helpPanelExpanded_ && CheckCollisionPointRec(mouse, EditorPanelBounds());
     const bool leftClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     TrackPieceType paletteSelection = TrackPieceType::Straight;
     const bool piecePaletteClicked = !libraryConsumed && leftClick &&
@@ -192,7 +246,7 @@ void TrackEditor::Update(Camera3D& camera) {
     const float wheel = GetMouseWheelMove();
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool zooming = shift;
-    if (!paletteConsumesPointer) {
+    if (!paletteConsumesPointer && !editorPanelConsumesPointer) {
         if (control && wheel > 0.0f) ChangeDimension(1);
         if (control && wheel < 0.0f) ChangeDimension(-1);
         if (!control && zooming && wheel != 0.0f) EditorCamera::Zoom(camera, wheel);
@@ -202,7 +256,9 @@ void TrackEditor::Update(Camera3D& camera) {
             SetMessage("Preview rotated 90 degrees.");
         }
     }
-    if (!paletteConsumesPointer && IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) EditorCamera::Orbit(camera, GetMouseDelta());
+    if (!paletteConsumesPointer && !editorPanelConsumesPointer && IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+        EditorCamera::Orbit(camera, GetMouseDelta());
+    }
     if (IsKeyPressed(KEY_HOME)) EditorCamera::Reset(camera);
     if (IsKeyPressed(KEY_R)) RotatePreview();
     if (!libraryConsumed && IsKeyPressed(KEY_UP)) CycleProperty(-1);
@@ -222,7 +278,7 @@ void TrackEditor::Update(Camera3D& camera) {
     // A selected component stays anchored while its properties are edited.
     // Without this guard, merely moving the mouse before applying a turn flip
     // silently changed its entry position and made its connectors appear wrong.
-    if (!paletteConsumesPointer && selectedPieceId_ == 0) {
+    if (!paletteConsumesPointer && !editorPanelConsumesPointer && selectedPieceId_ == 0) {
         const Ray mouseRay = GetMouseRay(mouse, camera);
         if (EditorPicking::GridPositionFromRay(mouseRay, mousePosition)) {
             preview_.entryPosition.x = mousePosition.x;
@@ -241,7 +297,7 @@ void TrackEditor::Update(Camera3D& camera) {
         ClearTrack();
     } else if (startFinishClicked) {
         SetStartFinish();
-    } else if (!libraryConsumed && !paletteConsumesPointer && selectionClick) {
+    } else if (!libraryConsumed && !paletteConsumesPointer && !editorPanelConsumesPointer && selectionClick) {
         const std::uint32_t pickedPieceId =
             EditorPicking::PickPieceFromRay(GetMouseRay(mouse, camera), track_.Pieces());
         if (pickedPieceId != 0 && pickedPieceId != selectedPieceId_) {
@@ -255,7 +311,8 @@ void TrackEditor::Update(Camera3D& camera) {
         } else if (pickedPieceId == 0) {
             SetMessage("No component under the pointer to select.");
         }
-    } else if (!libraryConsumed && (IsKeyPressed(KEY_ENTER) || (!paletteConsumesPointer && leftClick))) {
+    } else if (!libraryConsumed && (IsKeyPressed(KEY_ENTER) ||
+               (!paletteConsumesPointer && !editorPanelConsumesPointer && leftClick))) {
         // Plain clicks never ray-pick. They place a free preview or apply an
         // already selected edit, so nearby road surfaces cannot steal a click.
         if (selectedPieceId_ == 0) PlacePreview();
@@ -330,85 +387,80 @@ void TrackEditor::DrawTrack3D() const {
 void TrackEditor::DrawInterface() const {
     if (!helpPanelExpanded_) {
         const Rectangle button = HelpToggleBounds(false);
-        Neon::DrawOverlayPanel(button, 0.82f);
-        DrawText("SHOW EDITOR HELP", 42, 92, 15, Neon::Cyan);
+        const Neon::ButtonState buttonState = Neon::GetButtonState(button, !libraryOpen_);
+        Neon::DrawButton(button, Neon::Cyan, buttonState);
+        DrawText("SHOW EDITOR PANEL", 42, 92, 15,
+                 libraryOpen_ ? Fade(RAYWHITE, 0.36f) :
+                 (Neon::IsButtonHighlighted(buttonState) ? RAYWHITE : Neon::Cyan));
         DrawPropertyPanel();
         DrawTrackLibrary();
         piecePalette_.Draw(preview_.type);
         return;
     }
+
     const TrackValidation validation = track_.Validate();
-    const int detailOffset = 48 + (preview_.type == TrackPieceType::Curve ? 24 : 0);
-    Neon::DrawOverlayPanel(Rectangle{static_cast<float>(kPanelX), static_cast<float>(kPanelY), 470.0f,
-                                     static_cast<float>(550 + detailOffset)});
+    const bool isCurve = preview_.type == TrackPieceType::Curve;
+    const int detailOffset = isCurve ? 23 : 0;
+    Neon::DrawOverlayPanel(EditorPanelBounds());
     DrawText("TRACK EDITOR", kPanelX + 18, kPanelY + 18, 22, Neon::Cyan);
     const Rectangle helpButton = HelpToggleBounds(true);
-    DrawRectangleRec(helpButton, Fade(Neon::Panel, 0.85f));
-    DrawRectangleLinesEx(helpButton, 1.0f, Fade(Neon::Cyan, 0.72f));
-    DrawText("HIDE", 425, 94, 13, Neon::Cyan);
-    DrawText(TextFormat("Preview: %s  |  %s", PieceName(preview_.type), HeadingName(preview_.entryHeading)),
-             kPanelX + 18, kPanelY + 52, 17, RAYWHITE);
-    DrawText(TextFormat("Grid: (%i, %i, %i)  |  %s: %i", preview_.entryPosition.x, preview_.entryPosition.y,
-                        preview_.entryPosition.z, (preview_.type == TrackPieceType::Straight || preview_.type == TrackPieceType::Twist ||
-                        preview_.type == TrackPieceType::Branch || preview_.type == TrackPieceType::Merge) ? "length" : "radius",
-                        (preview_.type == TrackPieceType::Straight || preview_.type == TrackPieceType::Twist ||
-                        preview_.type == TrackPieceType::Branch || preview_.type == TrackPieceType::Merge) ? preview_.length : preview_.curveRadius),
-             kPanelX + 18, kPanelY + 78, 16, RAYWHITE);
-    DrawText(TextFormat("Road: width %i -> %i  |  ramp delta: %i", preview_.width, preview_.exitWidth,
-                        preview_.elevationDelta), kPanelX + 18, kPanelY + 104, 16, Neon::Pink);
-    DrawText(TextFormat("Offset: %i  |  Surface: %s", preview_.lateralOffset, MaterialName(preview_.material)),
-             kPanelX + 18, kPanelY + 128, 16, Neon::Yellow);
-    if (preview_.type == TrackPieceType::Curve) {
-        DrawText(TextFormat("Turn: %s | %i deg | bank %i deg  (T/V, B/N)",
-                            preview_.curveTurn == CurveTurn::Right ? "RIGHT" : "LEFT", preview_.curveDegrees,
-                            preview_.bankAngleDegrees),
-                 kPanelX + 18, kPanelY + 152, 16, Neon::Pink);
+    const Neon::ButtonState helpButtonState = Neon::GetButtonState(helpButton, !libraryOpen_);
+    Neon::DrawButton(helpButton, Neon::Cyan, helpButtonState);
+    DrawText("HIDE", 425, 94, 13, libraryOpen_ ? Fade(RAYWHITE, 0.36f) :
+             (Neon::IsButtonHighlighted(helpButtonState) ? RAYWHITE : Neon::Cyan));
+    DrawText("PREVIEW", kPanelX + 18, kPanelY + 48, 12, Neon::Cyan);
+    DrawText(TextFormat("%s  |  %s", PieceName(preview_.type), HeadingName(preview_.entryHeading)),
+             kPanelX + 18, kPanelY + 63, 17, RAYWHITE);
+    const bool lengthBasedPiece = preview_.type == TrackPieceType::Straight || preview_.type == TrackPieceType::Twist ||
+        preview_.type == TrackPieceType::Branch || preview_.type == TrackPieceType::Merge;
+    DrawText(TextFormat("GRID (%i, %i, %i)  |  %s %i", preview_.entryPosition.x, preview_.entryPosition.y,
+                        preview_.entryPosition.z, lengthBasedPiece ? "LENGTH" : "RADIUS",
+                        lengthBasedPiece ? preview_.length : preview_.curveRadius),
+             kPanelX + 18, kPanelY + 89, 14, Fade(RAYWHITE, 0.86f));
+    DrawText(TextFormat("ROAD %i > %i  |  RAMP %+i  |  %s", preview_.width, preview_.exitWidth,
+                        preview_.elevationDelta, MaterialName(preview_.material)),
+             kPanelX + 18, kPanelY + 111, 14, Neon::Pink);
+    if (isCurve) {
+        DrawText(TextFormat("CURVE %s  |  %i DEG  |  BANK %+i", preview_.curveTurn == CurveTurn::Right ? "RIGHT" : "LEFT",
+                            preview_.curveDegrees, preview_.bankAngleDegrees),
+                 kPanelX + 18, kPanelY + 133, 14, Neon::Yellow);
     }
-    const int selectedY = kPanelY + 104 + detailOffset;
-    const int validationY = selectedY + 28;
-    const int issueY = validationY + 24;
-    DrawText(TextFormat("Selected: %s", selectedPieceId_ == 0 ? "none" : TextFormat("piece %i", selectedPieceId_)),
-             kPanelX + 18, selectedY, 16, selectedPieceId_ == 0 ? Fade(RAYWHITE, 0.65f) : Neon::Yellow);
-    DrawText(validation.raceReady ? "RACE-READY: closed circuit" : "DRAFT: validation issues", kPanelX + 18,
-             validationY, 17, validation.raceReady ? Neon::Green : Neon::Orange);
-    DrawText(validation.raceReady ? "Start/finish line configured" : validation.issues.front().message.c_str(),
-             kPanelX + 18, issueY, 14, validation.raceReady ? Fade(RAYWHITE, 0.75f) : Neon::Orange);
-    DrawText(message_.c_str(), kPanelX + 18, kPanelY + 187 + detailOffset, 14, Neon::Yellow);
-    DrawText("CONNECTORS  cyan = entry  |  pink = exit", kPanelX + 18, kPanelY + 215 + detailOffset, 14, Neon::Cyan);
-    DrawText("A valid join puts an exit and entry on the same grid cell.", kPanelX + 18, kPanelY + 237 + detailOffset,
-             13, Fade(RAYWHITE, 0.82f));
-    DrawText("Their arrows must point in the same travel direction and have equal width.", kPanelX + 18,
-             kPanelY + 256 + detailOffset, 13, Fade(RAYWHITE, 0.82f));
-    DrawText("Mouse: left place/apply, Shift+left select, wheel rotate", kPanelX + 18, kPanelY + 280 + detailOffset,
-             13, Fade(RAYWHITE, 0.72f));
-    DrawText("Camera: WASD move, Q/E vertical, right-drag look, Shift+wheel zoom", kPanelX + 18,
-             kPanelY + 297 + detailOffset,
-             13, Fade(RAYWHITE, 0.72f));
-    DrawText("Properties: Up/Down select a panel row; Left/Right adjust it", kPanelX + 18, kPanelY + 314 + detailOffset,
-             13, Fade(RAYWHITE, 0.72f));
-    DrawText("Piece library: hover bottom bar or press 1-6; R rotate, Home reset camera", kPanelX + 18,
-             kPanelY + 331 + detailOffset, 13, Fade(RAYWHITE, 0.72f));
-    DrawText("CUSTOM DRAFT: Ctrl+S save  Ctrl+O load", kPanelX + 18, kPanelY + 348 + detailOffset,
-             13, Neon::Yellow);
-    if (track_.IsLayoutValid()) {
-        const TrackPiece* selected = track_.GetPiece(selectedPieceId_);
-        const bool eligible = selected != 0 && selected->type == TrackPieceType::Straight;
-        const Rectangle button = StartFinishButtonBounds();
-        DrawRectangleRec(button, eligible ? Fade(Neon::Green, 0.86f) : Fade(Neon::Panel, 0.90f));
-        DrawRectangleLinesEx(button, 2.0f, eligible ? Neon::Green : Fade(RAYWHITE, 0.36f));
-        DrawText(eligible ? "SET START / FINISH" : "SELECT A STRAIGHT FOR START / FINISH",
-                 static_cast<int>(button.x) + 12, static_cast<int>(button.y) + 9, 14,
-                 eligible ? BLACK : Fade(RAYWHITE, 0.62f));
-    } else {
-        DrawText("Close the loop to unlock start/finish.", kPanelX + 18, 610,
-                 14, Fade(RAYWHITE, 0.56f));
-    }
-    const bool canClear = !track_.Pieces().empty();
+    const int statusY = kPanelY + 139 + detailOffset;
+    const Color selectionColor = selectedPieceId_ == 0 ? Fade(RAYWHITE, 0.62f) : Neon::Yellow;
+    const std::string selectedLabel = selectedPieceId_ == 0 ? "none" :
+        "piece " + std::to_string(selectedPieceId_);
+    DrawText(TextFormat("SELECTED: %s", selectedLabel.c_str()),
+             kPanelX + 18, statusY, 14, selectionColor);
+    const Color validationColor = validation.raceReady ? Neon::Green : Neon::Orange;
+    DrawText(validation.raceReady ? "RACE READY" : "DRAFT", kPanelX + 18, statusY + 22, 16, validationColor);
+    DrawText(ValidationHint(validation), kPanelX + 130, statusY + 24, 13, Fade(validationColor, 0.86f));
+    const std::string panelMessage = TruncatePanelText(message_, 13, 434);
+    DrawText(panelMessage.c_str(), kPanelX + 18, statusY + 47, 13, Neon::Yellow);
+    DrawText("CONNECTORS: CYAN IN  |  PINK OUT", kPanelX + 18, statusY + 68, 13, Neon::Cyan);
+
+    const bool layoutComplete = track_.IsLayoutValid();
+    const TrackPiece* selected = track_.GetPiece(selectedPieceId_);
+    const bool canSetStartFinish = !libraryOpen_ && layoutComplete && selected != 0 &&
+        selected->type == TrackPieceType::Straight;
+    const Rectangle startFinishButton = StartFinishButtonBounds();
+    const Neon::ButtonState startFinishState = Neon::GetButtonState(startFinishButton, canSetStartFinish);
+    Neon::DrawButton(startFinishButton, Neon::Green, startFinishState, canSetStartFinish);
+    const char* startFinishLabel = libraryOpen_ ? "CLOSE LIBRARY TO EDIT" : !layoutComplete ? "CLOSE LOOP FIRST" :
+        canSetStartFinish ? "SET START / FINISH" : "SELECT A STRAIGHT";
+    const int startFinishSize = canSetStartFinish ? 14 : 13;
+    DrawText(startFinishLabel,
+             static_cast<int>(startFinishButton.x + (startFinishButton.width - MeasureText(startFinishLabel, startFinishSize)) * 0.5f),
+             static_cast<int>(startFinishButton.y) + 9, startFinishSize,
+             canSetStartFinish ? BLACK : Fade(RAYWHITE, 0.60f));
+
+    const bool canClear = !libraryOpen_ && !track_.Pieces().empty();
     const Rectangle clearButton = ClearTrackButtonBounds();
-    DrawRectangleRec(clearButton, canClear ? Fade(Neon::Orange, 0.86f) : Fade(Neon::Panel, 0.90f));
-    DrawRectangleLinesEx(clearButton, 2.0f, canClear ? Neon::Orange : Fade(RAYWHITE, 0.36f));
+    const Neon::ButtonState clearButtonState = Neon::GetButtonState(clearButton, canClear);
+    Neon::DrawButton(clearButton, Neon::Orange, clearButtonState, canClear);
     DrawText("CLEAR TRACK", static_cast<int>(clearButton.x) + 28, static_cast<int>(clearButton.y) + 9, 14,
              canClear ? BLACK : Fade(RAYWHITE, 0.62f));
+    DrawText(libraryOpen_ ? "Close library to edit this layout." : "Clear is undoable with Ctrl+Z.",
+             320, 397, 12, Fade(RAYWHITE, 0.62f));
     DrawPropertyPanel();
     DrawTrackLibrary();
     piecePalette_.Draw(preview_.type);
@@ -642,33 +694,37 @@ void TrackEditor::DrawTrackLibrary() const {
 
     const Rectangle save = SaveDraftButtonBounds();
     const Rectangle refresh = RefreshDraftButtonBounds();
-    DrawRectangleRec(save, Fade(Neon::Pink, 0.82f));
-    DrawRectangleLinesEx(save, 2.0f, Neon::Pink);
-    DrawText("SAVE AS", static_cast<int>(save.x) + 54, static_cast<int>(save.y) + 9, 15, BLACK);
-    DrawRectangleRec(refresh, Fade(Neon::Panel, 0.95f));
-    DrawRectangleLinesEx(refresh, 2.0f, Neon::Cyan);
-    DrawText("REFRESH", static_cast<int>(refresh.x) + 54, static_cast<int>(refresh.y) + 9, 15, Neon::Cyan);
+    const bool actionsEnabled = !namingDraft_;
+    const Neon::ButtonState saveState = Neon::GetButtonState(save, actionsEnabled);
+    const Neon::ButtonState refreshState = Neon::GetButtonState(refresh, actionsEnabled);
+    Neon::DrawButton(save, Neon::Pink, saveState, actionsEnabled);
+    DrawText("SAVE AS", static_cast<int>(save.x) + 54, static_cast<int>(save.y) + 9, 15,
+             actionsEnabled ? BLACK : Fade(RAYWHITE, 0.36f));
+    Neon::DrawButton(refresh, Neon::Cyan, refreshState);
+    DrawText("REFRESH", static_cast<int>(refresh.x) + 54, static_cast<int>(refresh.y) + 9, 15,
+             actionsEnabled ? (Neon::IsButtonHighlighted(refreshState) ? RAYWHITE : Neon::Cyan) : Fade(RAYWHITE, 0.36f));
 
     if (namingDraft_) {
-        DrawText("Type a track name, then press Enter:", 840, 188, 16, RAYWHITE);
+        DrawText("Name your draft, then press Enter:", 840, 188, 16, RAYWHITE);
         DrawRectangleRec(Rectangle{840.0f, 214.0f, 375.0f, 34.0f}, Fade(BLACK, 0.65f));
         DrawRectangleLinesEx(Rectangle{840.0f, 214.0f, 375.0f, 34.0f}, 2.0f, Neon::Yellow);
         DrawText(draftName_.c_str(), 850, 223, 18, Neon::Yellow);
-        DrawText("Names save in your Neon Racer data folder.", 840, 265, 14, Fade(RAYWHITE, 0.68f));
+        DrawText("Saved in your Neon Racer data folder.", 840, 265, 14, Fade(RAYWHITE, 0.68f));
         return;
     }
 
-    DrawText("Saved editable drafts (click one to load):", 840, 175, 16, RAYWHITE);
+    DrawText("CUSTOM DRAFTS  |  click one to load", 840, 175, 16, RAYWHITE);
     if (savedDrafts_.empty()) {
         DrawText("No saved custom tracks yet.", 840, 205, 16, Fade(RAYWHITE, 0.65f));
     }
     for (std::size_t index = 0; index < savedDrafts_.size() && index < 12; ++index) {
         const Rectangle row = Rectangle{840.0f, 192.0f + static_cast<float>(index) * 27.0f, 375.0f, 23.0f};
-        DrawRectangleRec(row, Fade(Neon::Panel, 0.65f));
-        DrawRectangleLinesEx(row, 1.0f, Fade(Neon::Cyan, 0.35f));
-        DrawText(savedDrafts_[index].c_str(), static_cast<int>(row.x) + 10, static_cast<int>(row.y) + 4, 15, Neon::Cyan);
+        const Neon::ButtonState rowState = Neon::GetButtonState(row);
+        Neon::DrawButton(row, Neon::Cyan, rowState);
+        DrawText(savedDrafts_[index].c_str(), static_cast<int>(row.x) + 10, static_cast<int>(row.y) + 4, 15,
+                 Neon::IsButtonHighlighted(rowState) ? RAYWHITE : Neon::Cyan);
     }
-    DrawText("Ctrl+S: save as   Ctrl+O/F5: open or close", 840, 540, 14, Neon::Yellow);
+    DrawText("Ctrl+S save  |  Ctrl+O/F5 library", 840, 540, 14, Neon::Yellow);
 }
 
 void TrackEditor::SetMessage(const std::string& message) { message_ = message; }

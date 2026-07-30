@@ -139,17 +139,19 @@ void PlayableLibrary::Draw() const {
     Neon::DrawOverlayPanel(panel, 0.95f);
     DrawRectangleLinesEx(panel, 2.0f, Neon::Cyan);
     const Rectangle close = CloseButtonBounds();
-    DrawRectangleRec(close, Fade(Neon::Panel, 0.95f));
-    DrawRectangleLinesEx(close, 1.5f, Neon::Pink);
-    DrawText("X", static_cast<int>(close.x) + 13, static_cast<int>(close.y) + 5, 18, Neon::Pink);
+    const Neon::ButtonState closeState = Neon::GetButtonState(close);
+    Neon::DrawButton(close, Neon::Pink, closeState);
+    DrawText("X", static_cast<int>(close.x) + 13, static_cast<int>(close.y) + 5, 18,
+             Neon::IsButtonHighlighted(closeState) ? RAYWHITE : Neon::Pink);
 
     if (mode_ == Mode::Library) {
         DrawText("PLAYABLE TIME TRIALS", 332, 98, 24, Neon::Cyan);
         const Rectangle refresh = RefreshButtonBounds();
-        DrawRectangleRec(refresh, Fade(Neon::Panel, 0.95f));
-        DrawRectangleLinesEx(refresh, 1.5f, Neon::Cyan);
-        DrawText("REFRESH LIBRARY", static_cast<int>(refresh.x) + 40, static_cast<int>(refresh.y) + 8, 15, Neon::Cyan);
-        DrawText("Frozen packages keep a verified layout and ghost. Click one to race it.", 342, 172, 15, RAYWHITE);
+        const Neon::ButtonState refreshState = Neon::GetButtonState(refresh);
+        Neon::DrawButton(refresh, Neon::Cyan, refreshState);
+        DrawText("REFRESH LIBRARY", static_cast<int>(refresh.x) + 40, static_cast<int>(refresh.y) + 8, 15,
+                 Neon::IsButtonHighlighted(refreshState) ? RAYWHITE : Neon::Cyan);
+        DrawText("Choose a verified time trial. Ghost included.", 342, 172, 15, RAYWHITE);
         if (playableFiles_.empty()) {
             DrawText("No saved playable time trials yet.", 342, 210, 17, Fade(RAYWHITE, 0.65f));
         }
@@ -157,25 +159,28 @@ void PlayableLibrary::Draw() const {
             ? std::min(kPlayablePageSize, playableFiles_.size() - firstVisibleIndex_) : 0u;
         for (std::size_t index = 0; index < visibleCount; ++index) {
             const Rectangle row = PlayableRowBounds(index);
-            DrawRectangleRec(row, Fade(Neon::Panel, 0.72f));
-            DrawRectangleLinesEx(row, 1.0f, Fade(Neon::Green, 0.55f));
+            const Neon::ButtonState rowState = Neon::GetButtonState(row);
+            const bool rowHighlighted = Neon::IsButtonHighlighted(rowState);
+            Neon::DrawButton(row, Neon::Green, rowState);
             DrawText(playableFiles_[firstVisibleIndex_ + index].displayName.c_str(), static_cast<int>(row.x) + 12,
-                     static_cast<int>(row.y) + 5, 16, Neon::Green);
-            DrawText("RACE", static_cast<int>(row.x + row.width) - 56, static_cast<int>(row.y) + 5, 15, Neon::Yellow);
+                     static_cast<int>(row.y) + 5, 16, rowHighlighted ? RAYWHITE : Neon::Green);
+            DrawText("RACE", static_cast<int>(row.x + row.width) - 56, static_cast<int>(row.y) + 5, 15,
+                     rowHighlighted ? Neon::Yellow : Fade(Neon::Yellow, 0.82f));
         }
         const std::size_t pageNumber = playableFiles_.empty() ? 0u : firstVisibleIndex_ / kPlayablePageSize + 1u;
         const std::size_t pageCount = (playableFiles_.size() + kPlayablePageSize - 1u) / kPlayablePageSize;
         const Rectangle previous = PreviousPageButtonBounds();
         const Rectangle next = NextPageButtonBounds();
-        DrawRectangleRec(previous, Fade(Neon::Panel, 0.95f));
-        DrawRectangleLinesEx(previous, 1.0f, firstVisibleIndex_ >= kPlayablePageSize ? Neon::Cyan : Fade(RAYWHITE, 0.25f));
-        DrawText("< PREVIOUS", static_cast<int>(previous.x) + 34, static_cast<int>(previous.y) + 8, 14,
-                 firstVisibleIndex_ >= kPlayablePageSize ? Neon::Cyan : Fade(RAYWHITE, 0.32f));
-        DrawRectangleRec(next, Fade(Neon::Panel, 0.95f));
+        const bool hasPreviousPage = firstVisibleIndex_ >= kPlayablePageSize;
         const bool hasNextPage = firstVisibleIndex_ + kPlayablePageSize < playableFiles_.size();
-        DrawRectangleLinesEx(next, 1.0f, hasNextPage ? Neon::Cyan : Fade(RAYWHITE, 0.25f));
+        const Neon::ButtonState previousState = Neon::GetButtonState(previous, hasPreviousPage);
+        const Neon::ButtonState nextState = Neon::GetButtonState(next, hasNextPage);
+        Neon::DrawButton(previous, Neon::Cyan, previousState);
+        DrawText("< PREVIOUS", static_cast<int>(previous.x) + 34, static_cast<int>(previous.y) + 8, 14,
+                 hasPreviousPage ? (Neon::IsButtonHighlighted(previousState) ? RAYWHITE : Neon::Cyan) : Fade(RAYWHITE, 0.32f));
+        Neon::DrawButton(next, Neon::Cyan, nextState);
         DrawText("NEXT >", static_cast<int>(next.x) + 51, static_cast<int>(next.y) + 8, 14,
-                 hasNextPage ? Neon::Cyan : Fade(RAYWHITE, 0.32f));
+                 hasNextPage ? (Neon::IsButtonHighlighted(nextState) ? RAYWHITE : Neon::Cyan) : Fade(RAYWHITE, 0.32f));
         DrawText(TextFormat("PAGE %i / %i", static_cast<int>(pageNumber), static_cast<int>(pageCount)), 602, 531, 14,
                  Neon::Yellow);
         DrawText(message_.c_str(), 342, 590, 14, Neon::Yellow);
@@ -183,7 +188,7 @@ void PlayableLibrary::Draw() const {
     }
 
     DrawText("SAVE PLAYABLE TIME TRIAL", 332, 98, 24, Neon::Cyan);
-    DrawText("This saves the frozen layout and its verified three-lap ghost.", 342, 142, 15, RAYWHITE);
+    DrawText("Verified layout + best three-lap ghost.", 342, 142, 15, RAYWHITE);
     for (int field = 0; field < 3; ++field) {
         const Rectangle bounds = FieldBounds(field);
         const bool active = field == activeField_;
@@ -197,13 +202,14 @@ void PlayableLibrary::Draw() const {
     }
     const Rectangle save = SaveButtonBounds();
     const Rectangle cancel = CancelButtonBounds();
-    DrawRectangleRec(save, Fade(Neon::Green, 0.84f));
-    DrawRectangleLinesEx(save, 2.0f, Neon::Green);
+    const Neon::ButtonState saveState = Neon::GetButtonState(save);
+    const Neon::ButtonState cancelState = Neon::GetButtonState(cancel);
+    Neon::DrawButton(save, Neon::Green, saveState, true);
     DrawText("SAVE PLAYABLE", static_cast<int>(save.x) + 38, static_cast<int>(save.y) + 9, 15, BLACK);
-    DrawRectangleRec(cancel, Fade(Neon::Panel, 0.95f));
-    DrawRectangleLinesEx(cancel, 2.0f, Neon::Pink);
-    DrawText("CANCEL", static_cast<int>(cancel.x) + 65, static_cast<int>(cancel.y) + 9, 15, Neon::Pink);
-    DrawText("Click a field or press Tab. Enter saves; Backspace edits.", 390, 496, 14, Neon::Yellow);
+    Neon::DrawButton(cancel, Neon::Pink, cancelState);
+    DrawText("CANCEL", static_cast<int>(cancel.x) + 65, static_cast<int>(cancel.y) + 9, 15,
+             Neon::IsButtonHighlighted(cancelState) ? RAYWHITE : Neon::Pink);
+    DrawText("Tab: next field  |  Enter: save  |  Backspace: edit", 390, 496, 14, Neon::Yellow);
     DrawText(message_.c_str(), 390, 600, 14, Neon::Yellow);
 }
 

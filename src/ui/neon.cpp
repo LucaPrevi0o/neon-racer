@@ -40,4 +40,46 @@ void DrawCenteredText(const char* text, int width, int y, int fontSize, Color co
     DrawText(text, (width - MeasureText(text, fontSize)) / 2, y, fontSize, color);
 }
 
+ButtonState GetButtonState(Rectangle bounds, bool enabled, bool focused) {
+    if (!enabled) return ButtonState::Disabled;
+    if (CheckCollisionPointRec(GetMousePosition(), bounds)) {
+        return IsMouseButtonDown(MOUSE_BUTTON_LEFT) ? ButtonState::Pressed : ButtonState::Hovered;
+    }
+    return focused ? ButtonState::Focused : ButtonState::Default;
+}
+
+bool IsButtonHighlighted(ButtonState state) {
+    return state == ButtonState::Hovered || state == ButtonState::Pressed || state == ButtonState::Focused;
+}
+
+void DrawButton(Rectangle bounds, Color accent, ButtonState state, bool primary) {
+    const bool disabled = state == ButtonState::Disabled;
+    const bool highlighted = IsButtonHighlighted(state);
+    const bool pressed = state == ButtonState::Pressed;
+
+    const float glowAlpha = disabled ? 0.0f : pressed ? 0.12f : highlighted ? 0.22f : 0.06f;
+    if (glowAlpha > 0.0f) {
+        DrawRectangleRounded(Rectangle{bounds.x - 4.0f, bounds.y - 4.0f, bounds.width + 8.0f, bounds.height + 8.0f},
+                             0.16f, 5, Fade(accent, glowAlpha));
+    }
+
+    const float baseAlpha = primary ? (disabled ? 0.14f : pressed ? 0.68f : highlighted ? 0.96f : 0.82f) : 0.94f;
+    DrawRectangleRounded(bounds, 0.15f, 5, Fade(primary ? accent : Panel, baseAlpha));
+    if (!primary && highlighted) {
+        DrawRectangleRounded(bounds, 0.15f, 5, Fade(accent, pressed ? 0.12f : 0.20f));
+    }
+
+    const float borderAlpha = disabled ? 0.28f : pressed ? 1.0f : highlighted ? 1.0f : 0.64f;
+    DrawRectangleLinesEx(bounds, highlighted ? 2.0f : 1.0f, Fade(accent, borderAlpha));
+
+    if (highlighted && !pressed) {
+        DrawRectangle(static_cast<int>(bounds.x) + 5, static_cast<int>(bounds.y) + 4,
+                      static_cast<int>(bounds.width) - 10, 2, Fade(RAYWHITE, 0.36f));
+    }
+    if (pressed) {
+        DrawRectangle(static_cast<int>(bounds.x) + 5, static_cast<int>(bounds.y + bounds.height) - 5,
+                      static_cast<int>(bounds.width) - 10, 2, Fade(BLACK, 0.42f));
+    }
+}
+
 } // namespace Neon
