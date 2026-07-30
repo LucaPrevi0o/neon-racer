@@ -12,4 +12,8 @@ namespace TrackFingerprint {
 
 std::uint64_t Calculate(const Track& track);
 
+// Reproduces the v5 fingerprint representation while importing a flat Twist
+// layout. Version-5 writers persisted that component's unused radius as zero.
+std::uint64_t CalculateLegacyFlatTwist(const Track& track);
+
 } // namespace TrackFingerprint

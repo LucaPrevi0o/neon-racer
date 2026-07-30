@@ -4,6 +4,7 @@
 #include "../../src/track/track.hpp"
 #include "../../src/track/track_road_geometry.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -28,7 +29,7 @@ bool NearlyEqual(float first, float second) {
 void TestSurfaceContracts() {
     TrackSurfaceSample sample = {1.0f, 2.0f, 3.0f, 1.0f, 0.0f, 0.0f,
                                  0.0f, 1.0f, 0.0f, 2.5f, SurfaceMaterial::Regular, 7};
-    TrackContact contact = {true, sample, 0.25f, false};
+    TrackContact contact = {true, sample, 0.25f, false, false, 0.0f};
     TrackMetadata metadata;
     VerificationState verification;
     Expect(contact.found && contact.surface.pieceId == 7, "surface/contact contract stores a sampled piece");
@@ -253,7 +254,192 @@ void TestExtendedCurves() {
     const std::vector<TrackSurfaceSample> samples = bankedPiece->SurfaceSamples();
     Expect(samples[samples.size() / 2].normalY < 0.8f && samples.front().normalY > 0.99f &&
                samples.back().normalY > 0.99f,
-           "curve banking peaks at the midpoint and returns to level connectors");
+               "curve banking peaks at the midpoint and returns to level connectors");
+}
+
+void TestTwistSizingAndSurfaceSampling() {
+    const int minimumLength = TrackLimits::MinimumTwistLengthForRoadWidth(5, 5);
+    const int twistLength = std::max(TrackLimits::kDefaultTwistLength, minimumLength);
+    const int minimumRadius = TrackLimits::MinimumTwistRadiusForRoadWidth(5, 5);
+    Track shortTwist;
+    Expect(shortTwist.AddTwist(GridPosition{0, 0, 0}, Heading::East,
+                               minimumLength - 1) == 0,
+           "a short wide corkscrew is rejected before its loop becomes too tight");
+
+    Track twistTrack;
+    const std::uint32_t twistId = twistTrack.AddTwist(GridPosition{0, 0, 0}, Heading::East,
+                                                        twistLength);
+    const TrackPiece* twist = twistTrack.GetPiece(twistId);
+    Expect(twist != 0 && twist->ExitConnector().position ==
+               GridPosition{twistLength, 0, 0} &&
+               twist->curveRadius == static_cast<int>(TrackLimits::kDefaultTwistRadius),
+           "the wider default twist preserves a predictable forward connector");
+    if (twist != 0) {
+        const std::vector<TrackSurfaceSample> samples = twist->SurfaceSamples();
+        const std::vector<TrackPathPoint> points = twist->PathPoints();
+        const float radius = static_cast<float>(twist->curveRadius);
+        float minimumY = points.front().y;
+        float maximumY = points.front().y;
+        float minimumZ = points.front().z;
+        for (std::size_t index = 0; index < points.size(); ++index) {
+            minimumY = std::min(minimumY, points[index].y);
+            maximumY = std::max(maximumY, points[index].y);
+            minimumZ = std::min(minimumZ, points[index].z);
+        }
+        Expect(points.size() >= static_cast<std::size_t>(twistLength * 2 + 1) &&
+                   maximumY - minimumY >= radius * 2.0f - 0.05f && minimumZ <= -radius + 0.05f,
+               "the twist has a true wide corkscrew path instead of a flat rolling ribbon");
+        Expect(samples.size() >= static_cast<std::size_t>(twistLength * 2 + 1) &&
+                   samples.front().normalY > 0.99f && samples[samples.size() / 4].normalZ > 0.90f &&
+                   samples[samples.size() / 2].normalY < -0.99f &&
+                   samples.back().normalY > 0.99f,
+               "the full corkscrew uses smooth upright, side, inverted, and upright contact frames");
+        for (std::size_t index = 0; index < samples.size(); index += 16) {
+            const TrackSurfaceSample& sample = samples[index];
+            const float normalLength = std::sqrt(sample.normalX * sample.normalX + sample.normalY * sample.normalY +
+                                                 sample.normalZ * sample.normalZ);
+            const float perpendicular = sample.tangentX * sample.normalX + sample.tangentY * sample.normalY +
+                sample.tangentZ * sample.normalZ;
+            const TrackContact contact = twistTrack.QuerySurface(sample.x + sample.normalX * 0.16f,
+                                                                  sample.y + sample.normalY * 0.16f,
+                                                                  sample.z + sample.normalZ * 0.16f);
+            Expect(NearlyEqual(normalLength, 1.0f) && std::fabs(perpendicular) < 0.001f && contact.found &&
+                       contact.twistGuide && !contact.guardrailHit,
+                   "corkscrew samples retain an orthonormal, guideable road contact frame");
+        }
+    }
+
+    Track smallRadiusTwist;
+    const std::uint32_t smallRadiusId = smallRadiusTwist.AddTwist(
+        GridPosition{0, 0, 0}, Heading::East, twistLength, 5, 5, 0, 0,
+        SurfaceMaterial::Regular, minimumRadius);
+    const TrackPiece* smallRadius = smallRadiusTwist.GetPiece(smallRadiusId);
+    Expect(minimumRadius == 3 && smallRadius != 0 && smallRadius->curveRadius == minimumRadius,
+           "a default-width corkscrew accepts its independently selected small radius");
+    if (smallRadius != 0) {
+        const std::vector<TrackPathPoint> points = smallRadius->PathPoints();
+        float maximumY = points.front().y;
+        float minimumZ = points.front().z;
+        for (std::size_t index = 0; index < points.size(); ++index) {
+            maximumY = std::max(maximumY, points[index].y);
+            minimumZ = std::min(minimumZ, points[index].z);
+        }
+        Expect(std::fabs(maximumY - static_cast<float>(minimumRadius) * 2.0f) < 0.01f &&
+                   std::fabs(minimumZ + static_cast<float>(minimumRadius)) < 0.01f,
+               "twist geometry follows the selected small radius instead of deriving it from run length");
+    }
+
+    Track wideTwist;
+    const int wideMinimum = TrackLimits::MinimumTwistLengthForRoadWidth(11, 11);
+    const int wideMinimumRadius = TrackLimits::MinimumTwistRadiusForRoadWidth(11, 11);
+    const std::uint32_t automaticWideTwist = wideTwist.AddTwist(GridPosition{0, 0, 0}, Heading::East,
+                                                                 wideMinimum, 11);
+    const TrackPiece* automaticWidePiece = wideTwist.GetPiece(automaticWideTwist);
+    Expect(wideMinimumRadius == 6 &&
+               automaticWidePiece != 0 && automaticWidePiece->curveRadius == wideMinimumRadius &&
+               wideTwist.AddTwist(GridPosition{200, 0, 0}, Heading::East, wideMinimum - 1, 11, 11, 0, 0,
+                                  SurfaceMaterial::Regular, wideMinimumRadius) == 0 &&
+               wideTwist.AddTwist(GridPosition{400, 0, 0}, Heading::East, wideMinimum, 11, 11, 0, 0,
+                                  SurfaceMaterial::Regular, wideMinimumRadius - 1) == 0 &&
+               wideTwist.AddTwist(GridPosition{600, 0, 0}, Heading::East, wideMinimum, 11, 11, 0, 0,
+                                  SurfaceMaterial::Regular, wideMinimumRadius) != 0,
+           "a wider corkscrew chooses a safe default radius and rejects a radius that folds its road width");
+
+    Track longTwist;
+    Expect(longTwist.AddTwist(GridPosition{0, 0, 0}, Heading::East,
+                                TrackLimits::kMaximumTwistLength) != 0,
+           "the expanded maximum full-roll twist is accepted");
+    Track tooLongTwist;
+    Expect(tooLongTwist.AddTwist(GridPosition{0, 0, 0}, Heading::East,
+                                   TrackLimits::kMaximumTwistLength + 1) == 0,
+           "a twist beyond the expanded maximum is rejected");
+}
+
+void TestTwistDraftRoundTrip() {
+    Track original;
+    const int twistLength = std::max(TrackLimits::kDefaultTwistLength,
+                                     TrackLimits::MinimumTwistLengthForRoadWidth(7, 9));
+    const int explicitRadius = TrackLimits::MinimumTwistRadiusForRoadWidth(7, 9) + 1;
+    Expect(original.AddTwist(GridPosition{0, 0, 0}, Heading::East, twistLength, 7, 9,
+                             2, 1, SurfaceMaterial::HighResistance, explicitRadius) != 0,
+           "a wide corkscrew with advanced endpoints is accepted before persistence");
+    const std::string path = "/tmp/neon_racer_twist_draft_test.draft";
+    std::string error;
+    Expect(DraftIO::Save(original, path, error), "a wide corkscrew draft saves");
+    Track loaded;
+    Expect(DraftIO::Load(path, loaded, error) && loaded.Pieces().size() == 1,
+           "a wide corkscrew draft loads");
+    if (!loaded.Pieces().empty()) {
+        const TrackPiece& restored = loaded.Pieces().front();
+        const std::vector<TrackPathPoint> points = restored.PathPoints();
+        float maximumY = points.front().y;
+        for (std::size_t index = 0; index < points.size(); ++index) maximumY = std::max(maximumY, points[index].y);
+        Expect(restored.type == TrackPieceType::Twist && restored.length == twistLength &&
+                   restored.curveRadius == explicitRadius &&
+                   restored.ExitConnector().position == GridPosition{twistLength, 2, 1} &&
+                   maximumY >= static_cast<float>(explicitRadius) * 2.0f,
+               "a loaded corkscrew retains its long run, selected radius, endpoint, and loop geometry");
+    }
+    std::remove(path.c_str());
+}
+
+void TestLegacyFlatTwistLoad() {
+    const std::string path = "/tmp/neon_racer_legacy_flat_twist_test.draft";
+    const int length = 4;
+    {
+        std::ofstream file(path.c_str());
+        file << "NEON_RACER_DRAFT 5\nSTATUS DRAFT\nSTART 0 0\nPIECES 1\n";
+        file << "PIECE 1 " << static_cast<int>(TrackPieceType::Twist)
+             << " 0 0 0 " << static_cast<int>(Heading::East)
+             << " 5 5 " << length << " " << static_cast<int>(CurveTurn::Right)
+             << " 0 0 0 " << static_cast<int>(SurfaceMaterial::Regular) << " 90 0\n";
+    }
+
+    Track loaded;
+    std::string error;
+    Expect(DraftIO::Load(path, loaded, error) && loaded.Pieces().size() == 1,
+           "a pre-radius Twist record with zero radius remains loadable");
+    if (!loaded.Pieces().empty()) {
+        const TrackPiece& restored = loaded.Pieces().front();
+        const std::vector<TrackPathPoint> points = restored.PathPoints();
+        float maximumY = points.front().y;
+        for (std::size_t index = 0; index < points.size(); ++index)
+            maximumY = std::max(maximumY, points[index].y);
+        Expect(restored.type == TrackPieceType::Twist &&
+                   TrackLimits::IsLegacyFlatTwistRadius(restored.curveRadius) &&
+                   restored.ExitConnector().position == GridPosition{length, 0, 0} && NearlyEqual(maximumY, 0.0f),
+               "a v5 flat Twist keeps its original connector and flat path after loading");
+    }
+    std::remove(path.c_str());
+}
+
+void TestAutoTwistRadiusLoad() {
+    const std::string path = "/tmp/neon_racer_auto_twist_radius_test.draft";
+    const int length = TrackLimits::kDefaultTwistLength;
+    {
+        std::ofstream file(path.c_str());
+        file << "NEON_RACER_DRAFT 6\nSTATUS DRAFT\nSTART 0 0\nPIECES 1\n";
+        file << "PIECE 1 " << static_cast<int>(TrackPieceType::Twist)
+             << " 0 0 0 " << static_cast<int>(Heading::East)
+             << " 5 5 " << length << " " << static_cast<int>(CurveTurn::Right)
+             << " 0 0 0 " << static_cast<int>(SurfaceMaterial::Regular) << " 90 0\n";
+    }
+
+    Track loaded;
+    std::string error;
+    Expect(DraftIO::Load(path, loaded, error) && loaded.Pieces().size() == 1,
+           "a zero-radius auto Twist record remains loadable");
+    if (!loaded.Pieces().empty()) {
+        const TrackPiece& restored = loaded.Pieces().front();
+        const std::vector<TrackPathPoint> points = restored.PathPoints();
+        float maximumY = points.front().y;
+        for (std::size_t index = 0; index < points.size(); ++index)
+            maximumY = std::max(maximumY, points[index].y);
+        Expect(restored.type == TrackPieceType::Twist && restored.curveRadius == 0 &&
+                   NearlyEqual(maximumY, TrackLimits::TwistRadiusForLength(length) * 2.0f),
+               "a zero-radius auto Twist keeps its derived corkscrew geometry after loading");
+    }
+    std::remove(path.c_str());
 }
 
 void TestRoadSurfaceOverlap() {
@@ -503,6 +689,10 @@ int main() {
     TestPersistedPieceLimit();
     TestVariableStraightSurface();
     TestExtendedCurves();
+    TestTwistSizingAndSurfaceSampling();
+    TestTwistDraftRoundTrip();
+    TestLegacyFlatTwistLoad();
+    TestAutoTwistRadiusLoad();
     TestRoadSurfaceOverlap();
     TestConnectedCurveJoin();
     TestConnectorCollections();

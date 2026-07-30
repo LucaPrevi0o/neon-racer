@@ -34,7 +34,7 @@ void AppendText(std::uint64_t& value, const char* text) {
     AppendByte(value, 0u);
 }
 
-void AppendPiece(std::uint64_t& value, const TrackPiece& piece) {
+void AppendPiece(std::uint64_t& value, const TrackPiece& piece, bool legacyFlatTwist) {
     AppendSigned(value, static_cast<int>(piece.type));
     AppendSigned(value, piece.entryPosition.x);
     AppendSigned(value, piece.entryPosition.y);
@@ -44,7 +44,9 @@ void AppendPiece(std::uint64_t& value, const TrackPiece& piece) {
     AppendSigned(value, piece.exitWidth);
     AppendSigned(value, piece.length);
     AppendSigned(value, static_cast<int>(piece.curveTurn));
-    AppendSigned(value, piece.curveRadius);
+    const int radius = legacyFlatTwist && piece.type == TrackPieceType::Twist &&
+        TrackLimits::IsLegacyFlatTwistRadius(piece.curveRadius) ? 0 : piece.curveRadius;
+    AppendSigned(value, radius);
     AppendSigned(value, piece.curveDegrees);
     AppendSigned(value, piece.bankAngleDegrees);
     AppendSigned(value, piece.elevationDelta);
@@ -56,7 +58,9 @@ void AppendPiece(std::uint64_t& value, const TrackPiece& piece) {
 
 namespace TrackFingerprint {
 
-std::uint64_t Calculate(const Track& track) {
+namespace {
+
+std::uint64_t CalculateWithTwistEncoding(const Track& track, bool legacyFlatTwist) {
     std::uint64_t fingerprint = kFnvOffsetBasis;
     AppendText(fingerprint, "NEON_RACER_TRACK_LAYOUT_FINGERPRINT_V1");
 
@@ -76,10 +80,19 @@ std::uint64_t Calculate(const Track& track) {
     AppendUnsigned(fingerprint, startOrdinal);
     AppendSigned(fingerprint, static_cast<int>(track.SelectedRaceDirection()));
 
-    for (std::vector<TrackPiece>::const_iterator piece = pieces.begin(); piece != pieces.end(); ++piece) {
-        AppendPiece(fingerprint, *piece);
-    }
+    for (std::vector<TrackPiece>::const_iterator piece = pieces.begin(); piece != pieces.end(); ++piece)
+        AppendPiece(fingerprint, *piece, legacyFlatTwist);
     return fingerprint;
+}
+
+} // namespace
+
+std::uint64_t Calculate(const Track& track) {
+    return CalculateWithTwistEncoding(track, false);
+}
+
+std::uint64_t CalculateLegacyFlatTwist(const Track& track) {
+    return CalculateWithTwistEncoding(track, true);
 }
 
 } // namespace TrackFingerprint

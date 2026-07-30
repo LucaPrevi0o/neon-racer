@@ -31,6 +31,13 @@ struct TrackContact {
     TrackSurfaceSample surface;
     float distance;
     bool guardrailHit;
+    // Twists are enclosed corkscrew road frames. This flag allows vehicle
+    // dynamics to apply its bounded guide contact only inside that component;
+    // ordinary roads and vertical loops retain one-sided suspension behavior.
+    bool twistGuide;
+    // Signed distance from the sampled road centerline along its local side
+    // axis, before the query clamps a guardrail contact to the road edge.
+    float lateralOffset;
 };
 
 struct TrackMetadata {

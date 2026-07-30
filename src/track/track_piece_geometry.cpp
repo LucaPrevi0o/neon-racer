@@ -126,7 +126,8 @@ std::vector<GridPosition> TrackPiece::CenterlineCells() const {
     std::vector<GridPosition> cells;
     cells.push_back(entryPosition);
 
-    if (type == TrackPieceType::Straight || type == TrackPieceType::Twist) {
+    if (type == TrackPieceType::Straight ||
+        (type == TrackPieceType::Twist && TrackLimits::IsLegacyFlatTwistRadius(curveRadius))) {
         const GridPosition forward = Forward(entryHeading);
         const GridPosition side = Right(entryHeading);
         for (int step = 1; step <= length; ++step) {
@@ -142,8 +143,8 @@ std::vector<GridPosition> TrackPiece::CenterlineCells() const {
         return cells;
     }
 
-    const std::vector<TrackPathPoint> points = PathPoints(type == TrackPieceType::Loop ? std::max(24, curveRadius * 12) :
-        std::max(12, curveRadius * curveDegrees / 15));
+    const std::vector<TrackPathPoint> points = PathPoints(type == TrackPieceType::Twist ? std::max(128, length * 2) :
+        (type == TrackPieceType::Loop ? std::max(24, curveRadius * 12) : std::max(12, curveRadius * curveDegrees / 15)));
     for (std::vector<TrackPathPoint>::const_iterator point = points.begin(); point != points.end(); ++point) {
         const GridPosition cell = GridPosition{static_cast<int>(std::round(point->x)),
                                                static_cast<int>(std::round(point->y)),
@@ -155,7 +156,8 @@ std::vector<GridPosition> TrackPiece::CenterlineCells() const {
 
 std::vector<TrackPathPoint> TrackPiece::PathPoints(int curveSubdivisions) const {
     std::vector<TrackPathPoint> points;
-    if (type == TrackPieceType::Straight || type == TrackPieceType::Twist) {
+    if (type == TrackPieceType::Straight ||
+        (type == TrackPieceType::Twist && TrackLimits::IsLegacyFlatTwistRadius(curveRadius))) {
         const TrackConnector entry = EntryConnector();
         const TrackConnector exit = ExitConnector();
         const int segments = curveSubdivisions > 0 ? curveSubdivisions : 1;
@@ -168,6 +170,28 @@ std::vector<TrackPathPoint> TrackPiece::PathPoints(int curveSubdivisions) const 
                     (static_cast<float>(exit.position.y) - static_cast<float>(entry.position.y)) * progress,
                 static_cast<float>(entry.position.z) +
                     (static_cast<float>(exit.position.z) - static_cast<float>(entry.position.z)) * progress});
+        }
+        return points;
+    }
+
+    if (type == TrackPieceType::Twist) {
+        const TrackConnector entry = EntryConnector();
+        const TrackConnector exit = ExitConnector();
+        const GridPosition side = Right(entryHeading);
+        const int segments = curveSubdivisions > 0 ? curveSubdivisions : std::max(128, length * 2);
+        const float radius = TrackLimits::ResolveTwistRadius(length, curveRadius);
+        for (int index = 0; index <= segments; ++index) {
+            const float progress = static_cast<float>(index) / static_cast<float>(segments);
+            const float angle = TrackLimits::TwistAngle(progress);
+            const float baseX = static_cast<float>(entry.position.x) +
+                (static_cast<float>(exit.position.x) - static_cast<float>(entry.position.x)) * progress;
+            const float baseY = static_cast<float>(entry.position.y) +
+                (static_cast<float>(exit.position.y) - static_cast<float>(entry.position.y)) * progress;
+            const float baseZ = static_cast<float>(entry.position.z) +
+                (static_cast<float>(exit.position.z) - static_cast<float>(entry.position.z)) * progress;
+            points.push_back(TrackPathPoint{baseX - static_cast<float>(side.x) * radius * std::sin(angle),
+                                            baseY + radius * (1.0f - std::cos(angle)),
+                                            baseZ - static_cast<float>(side.z) * radius * std::sin(angle)});
         }
         return points;
     }

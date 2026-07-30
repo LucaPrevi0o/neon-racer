@@ -11,7 +11,7 @@
 // file's metadata, replay, or storage location.
 namespace TrackLayoutCodec {
 
-const int kCurrentVersion = 5;
+const int kCurrentVersion = 6;
 // Track loading compares every component against existing road geometry. A
 // bounded persisted count prevents hostile files from turning that work into a
 // pathological quadratic load while remaining far above practical circuits.
