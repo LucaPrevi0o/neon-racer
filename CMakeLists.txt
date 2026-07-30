@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(NEON_RACER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(NEON_RACER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(NEON_RACER_EDITOR_INCLUDE_DIR ${NEON_RACER_INCLUDE_DIR}/neon_racer/editor)
+
 option(NEON_RACER_BUILD_APP "Build the Raylib-backed Neon Racer application" ON)
 
 add_library(neon_racer_domain
@@ -47,10 +51,6 @@ target_link_libraries(neon_racer_time_trial PUBLIC neon_racer_domain neon_racer_
 
 if(NEON_RACER_BUILD_APP)
     add_library(neon_racer_raylib INTERFACE)
-    # Prefer Raylib's exported CMake target when available. It carries the
-    # platform libraries needed by a static Raylib build, so tagged release
-    # builds link consistently. Preserve the manual-library fallback used by
-    # simple local installations.
     find_package(raylib CONFIG QUIET)
     if(TARGET raylib)
         target_link_libraries(neon_racer_raylib INTERFACE raylib)
@@ -67,10 +67,21 @@ if(NEON_RACER_BUILD_APP)
     add_executable(neon-racer
         src/app/main.cpp src/app/application.cpp src/app/main_menu.cpp src/app/main_menu_flow.cpp
         src/app/playable_library.cpp src/app/raylib_race_input.cpp
-        src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
+        src/editor/core/editor.cpp
+        src/editor/interaction/editor_input.cpp
+        src/editor/model/editor_preview.cpp
+        src/editor/presentation/editor_scene.cpp
+        src/editor/presentation/editor_panel.cpp
+        src/editor/persistence/editor_library_ui.cpp
+        src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
         src/editor/editor_library.cpp src/editor/piece_catalog.cpp src/editor/piece_palette.cpp src/editor/editor_picking.cpp
         src/render/car_renderer.cpp src/render/race_scene.cpp src/render/time_trial_renderer.cpp
         src/render/track_renderer.cpp src/ui/neon.cpp
+    )
+    target_include_directories(neon-racer PRIVATE
+        ${NEON_RACER_INCLUDE_DIR}
+        ${NEON_RACER_EDITOR_INCLUDE_DIR}
+        ${NEON_RACER_SOURCE_DIR}
     )
     target_compile_options(neon-racer PRIVATE -Wall -Wextra)
     target_link_libraries(neon-racer PRIVATE neon_racer_time_trial neon_racer_playable neon_racer_raylib)
@@ -96,9 +107,7 @@ target_compile_options(neon-racer-ghost-replay-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-ghost-replay-tests PRIVATE neon_racer_ghost_replay)
 add_test(NAME neon-racer-ghost-replay-tests COMMAND neon-racer-ghost-replay-tests)
 
-add_executable(neon-racer-time-trial-tests
-    tests/unit/test_time_trial.cpp
-)
+add_executable(neon-racer-time-trial-tests tests/unit/test_time_trial.cpp)
 target_compile_options(neon-racer-time-trial-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-time-trial-tests PRIVATE neon_racer_time_trial)
 add_test(NAME neon-racer-time-trial-tests COMMAND neon-racer-time-trial-tests)
@@ -113,6 +122,11 @@ target_compile_options(neon-racer-main-menu-flow-tests PRIVATE -Wall -Wextra)
 add_test(NAME neon-racer-main-menu-flow-tests COMMAND neon-racer-main-menu-flow-tests)
 
 add_executable(neon-racer-piece-catalog-tests tests/unit/test_piece_catalog.cpp src/editor/piece_catalog.cpp)
+target_include_directories(neon-racer-piece-catalog-tests PRIVATE
+    ${NEON_RACER_INCLUDE_DIR}
+    ${NEON_RACER_EDITOR_INCLUDE_DIR}
+    ${NEON_RACER_SOURCE_DIR}
+)
 target_compile_options(neon-racer-piece-catalog-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-piece-catalog-tests PRIVATE neon_racer_domain)
 add_test(NAME neon-racer-piece-catalog-tests COMMAND neon-racer-piece-catalog-tests)
