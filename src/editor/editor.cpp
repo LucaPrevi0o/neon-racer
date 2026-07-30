@@ -15,6 +15,25 @@ namespace {
 const int kPanelX = 28;
 const int kPanelY = 80;
 
+int ClampGridValue(long long value) {
+    const long long maximum = static_cast<long long>(TrackLimits::kMaximumGridCoordinate);
+    if (value < -maximum) return -TrackLimits::kMaximumGridCoordinate;
+    if (value > maximum) return TrackLimits::kMaximumGridCoordinate;
+    return static_cast<int>(value);
+}
+
+int OffsetGridValue(int value, int offset) {
+    return ClampGridValue(static_cast<long long>(value) + static_cast<long long>(offset));
+}
+
+int OffsetElevationDelta(int value, int offset) {
+    const long long maximum = static_cast<long long>(TrackLimits::kMaximumElevationDelta);
+    const long long shifted = static_cast<long long>(value) + static_cast<long long>(offset);
+    if (shifted < -maximum) return -TrackLimits::kMaximumElevationDelta;
+    if (shifted > maximum) return TrackLimits::kMaximumElevationDelta;
+    return static_cast<int>(shifted);
+}
+
 Rectangle StartFinishButtonBounds() {
     return Rectangle{static_cast<float>(kPanelX + 18), 600.0f, 260.0f, 34.0f};
 }
@@ -421,8 +440,8 @@ bool TrackEditor::PreviewOverlaps(const TrackPiece& candidate) const {
 }
 
 void TrackEditor::MovePreview(int x, int z) {
-    preview_.entryPosition.x += x;
-    preview_.entryPosition.z += z;
+    preview_.entryPosition.x = OffsetGridValue(preview_.entryPosition.x, x);
+    preview_.entryPosition.z = OffsetGridValue(preview_.entryPosition.z, z);
 }
 
 void TrackEditor::RotatePreview() {
@@ -516,8 +535,8 @@ void TrackEditor::AdjustSelectedProperty(int direction) {
     if (index == 0) { ChangeDimension(direction); return; }
     if (index == 1) { preview_.width = std::max(5, std::min(11, preview_.width + direction)); return; }
     if (index == 2) { preview_.exitWidth = std::max(5, std::min(11, preview_.exitWidth + direction)); return; }
-    if (index == 3) { preview_.entryPosition.y += direction; return; }
-    if (index == 4) { preview_.elevationDelta += direction; return; }
+    if (index == 3) { preview_.entryPosition.y = OffsetGridValue(preview_.entryPosition.y, direction); return; }
+    if (index == 4) { preview_.elevationDelta = OffsetElevationDelta(preview_.elevationDelta, direction); return; }
     if (preview_.type == TrackPieceType::Straight || preview_.type == TrackPieceType::Twist) {
         if (index == 5) {
             const int maximum = preview_.length < 4 ? 2 : 3;

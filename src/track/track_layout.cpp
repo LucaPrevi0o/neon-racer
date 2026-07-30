@@ -103,6 +103,7 @@ std::uint32_t Track::LayoutRevision() const {
 }
 
 bool Track::SetStartFinish(std::uint32_t pieceId, RaceDirection direction) {
+    if (direction != RaceDirection::Forward && direction != RaceDirection::Reverse) return false;
     const TrackPiece* piece = FindPiece(pieceId);
     if (piece == 0 || piece->type != TrackPieceType::Straight) return false;
     startFinishPieceId_ = pieceId;

@@ -96,7 +96,14 @@ bool GridPositionFromRay(const Ray& ray, GridPosition& position) {
     if (distance < 0.0f) return false;
     const Vector3 hit = Vector3{ray.position.x + ray.direction.x * distance, 0.0f,
                                 ray.position.z + ray.direction.z * distance};
-    position = GridPosition{static_cast<int>(std::round(hit.x)), 0, static_cast<int>(std::round(hit.z))};
+    const float roundedX = std::round(hit.x);
+    const float roundedZ = std::round(hit.z);
+    const float maximum = static_cast<float>(TrackLimits::kMaximumGridCoordinate);
+    if (!std::isfinite(roundedX) || !std::isfinite(roundedZ) ||
+        roundedX < -maximum || roundedX > maximum || roundedZ < -maximum || roundedZ > maximum) {
+        return false;
+    }
+    position = GridPosition{static_cast<int>(roundedX), 0, static_cast<int>(roundedZ)};
     return true;
 }
 

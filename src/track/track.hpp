@@ -6,6 +6,17 @@
 
 #include "track_contracts.hpp"
 
+// The editor's world is intentionally large, but a finite envelope keeps
+// connector and road-geometry arithmetic safely inside a signed int. These
+// are domain invariants rather than viewport limits: ordinary editor movement
+// and persisted layouts may use any value in this range.
+namespace TrackLimits {
+
+const int kMaximumGridCoordinate = 1000000;
+const int kMaximumElevationDelta = 1000000;
+
+} // namespace TrackLimits
+
 // All layout data is deliberately integer based. One unit is one metre in the
 // editor grid, so saved layouts never accumulate floating-point placement drift.
 struct GridPosition {

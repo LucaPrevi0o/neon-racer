@@ -1,23 +1,59 @@
 #include "track.hpp"
 
-#include <cmath>
+namespace {
+
+bool IsWithinSymmetricRange(int value, int maximumMagnitude) {
+    return value >= -maximumMagnitude && value <= maximumMagnitude;
+}
+
+bool IsValidEntryPosition(const GridPosition& position) {
+    return IsWithinSymmetricRange(position.x, TrackLimits::kMaximumGridCoordinate) &&
+           IsWithinSymmetricRange(position.y, TrackLimits::kMaximumGridCoordinate) &&
+           IsWithinSymmetricRange(position.z, TrackLimits::kMaximumGridCoordinate);
+}
+
+bool IsKnownPieceType(TrackPieceType type) {
+    return type >= TrackPieceType::Straight && type <= TrackPieceType::Merge;
+}
+
+bool IsKnownHeading(Heading heading) {
+    return heading >= Heading::North && heading <= Heading::West;
+}
+
+bool IsKnownTurn(CurveTurn turn) {
+    return turn == CurveTurn::Left || turn == CurveTurn::Right;
+}
+
+bool IsKnownMaterial(SurfaceMaterial material) {
+    return material >= SurfaceMaterial::Regular && material <= SurfaceMaterial::HighResistance;
+}
+
+} // namespace
 
 // Component admissibility is independent of topology: a valid piece can still
 // be disconnected or overlap another piece in a particular layout.
 bool Track::IsValidPiece(const TrackPiece& piece) {
+    if (!IsKnownPieceType(piece.type) || !IsKnownHeading(piece.entryHeading) || !IsKnownTurn(piece.curveTurn) ||
+        !IsKnownMaterial(piece.material) || !IsValidEntryPosition(piece.entryPosition) ||
+        !IsWithinSymmetricRange(piece.elevationDelta, TrackLimits::kMaximumElevationDelta)) {
+        return false;
+    }
     if (piece.width < 5 || piece.width > 11 || piece.exitWidth < 5 || piece.exitWidth > 11) return false;
     if (piece.type == TrackPieceType::Straight || piece.type == TrackPieceType::Twist) {
         const int maximumOffset = piece.length < 4 ? 2 : 3;
-        return piece.length >= 3 && piece.length <= 20 && std::abs(piece.lateralOffset) <= maximumOffset;
+        return piece.length >= 3 && piece.length <= 20 &&
+               IsWithinSymmetricRange(piece.lateralOffset, maximumOffset);
     }
     if (piece.type == TrackPieceType::Loop)
-        return piece.curveRadius >= 3 && piece.curveRadius <= 10 && std::abs(piece.lateralOffset) <= 10;
+        return piece.curveRadius >= 3 && piece.curveRadius <= 10 &&
+               IsWithinSymmetricRange(piece.lateralOffset, 10);
     if (piece.type == TrackPieceType::Branch || piece.type == TrackPieceType::Merge)
-        return piece.length >= 3 && piece.length <= 20 && std::abs(piece.lateralOffset) >= 1 &&
-            std::abs(piece.lateralOffset) <= 10 && piece.elevationDelta == 0;
+        return piece.length >= 3 && piece.length <= 20 &&
+               (piece.lateralOffset <= -1 || piece.lateralOffset >= 1) &&
+               IsWithinSymmetricRange(piece.lateralOffset, 10) && piece.elevationDelta == 0;
     return piece.curveRadius >= 3 && piece.curveRadius <= 20 && piece.lateralOffset == 0 &&
         (piece.curveDegrees == 90 || piece.curveDegrees == 180 || piece.curveDegrees == 270) &&
-        std::abs(piece.bankAngleDegrees) <= 45;
+        IsWithinSymmetricRange(piece.bankAngleDegrees, 45);
 }
 
 Track Track::CreateSampleCircuit() {

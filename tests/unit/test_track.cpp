@@ -1,5 +1,6 @@
 #include "../../src/persistence/draft_io.hpp"
-#include "../../src/track/playable_export.hpp"
+#include "../../src/persistence/track_layout_codec.hpp"
+#include "../../src/track/track_fingerprint.hpp"
 #include "../../src/track/track.hpp"
 #include "../../src/track/track_road_geometry.hpp"
 
@@ -7,6 +8,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
 
 namespace {
@@ -31,7 +33,8 @@ void TestSurfaceContracts() {
     VerificationState verification;
     Expect(contact.found && contact.surface.pieceId == 7, "surface/contact contract stores a sampled piece");
     Expect(metadata.playableExportVersion == 0, "metadata starts at export version zero");
-    Expect(!verification.hasSavedGhost && !verification.isVerifiedForPlayableExport,
+    Expect(!verification.hasSavedGhost && !verification.isVerifiedForPlayableExport &&
+               verification.verifiedLayoutFingerprint == 0,
            "verification starts invalid");
 }
 
@@ -91,6 +94,94 @@ void TestDraftV2RoundTrip() {
     Expect(DraftIO::Load(path, loaded, error), "v2 draft loads");
     Expect(loaded.Pieces().size() == original.Pieces().size(), "v2 round-trip preserves piece count");
     Expect(loaded.HasStartFinish(), "v2 round-trip preserves start/finish");
+    std::remove(path.c_str());
+}
+
+void TestDraftRejectsDuplicatePieceIds() {
+    const std::string path = "/tmp/neon_racer_duplicate_piece_ids.draft";
+    {
+        std::ofstream file(path.c_str());
+        file << "NEON_RACER_DRAFT 5\n";
+        file << "STATUS DRAFT\n";
+        file << "START 0 0\n";
+        file << "PIECES 2\n";
+        file << "PIECE 1 0 0 0 0 1 5 5 4 1 0 0 0 0 90 0\n";
+        file << "PIECE 1 0 10 0 0 1 5 5 4 1 0 0 0 0 90 0\n";
+    }
+    Track unchanged = Track::CreateSampleCircuit();
+    const std::size_t originalPieceCount = unchanged.Pieces().size();
+    std::string error;
+    Expect(!DraftIO::Load(path, unchanged, error) && unchanged.Pieces().size() == originalPieceCount,
+           "duplicate serialized piece IDs are rejected without replacing a loaded track");
+    std::remove(path.c_str());
+}
+
+void TestTrackNumericSafetyLimits() {
+    Track bounded;
+    Expect(bounded.AddStraight(GridPosition{TrackLimits::kMaximumGridCoordinate - 20, 0, 0}, Heading::East, 20) != 0,
+           "the documented grid envelope allows a practical far-edge piece");
+    Expect(bounded.AddStraight(GridPosition{TrackLimits::kMaximumGridCoordinate + 1, 0, 0}, Heading::East, 4) == 0,
+           "the track domain rejects positions beyond its safe grid envelope");
+
+    TrackPiece malformed = bounded.Pieces().front();
+    malformed.lateralOffset = std::numeric_limits<int>::min();
+    Expect(bounded.HasOverlappingGeometry(malformed),
+           "malformed placement candidates are blocked before their geometry is evaluated");
+}
+
+void TestDraftRejectsUnsafeNumericFields() {
+    const std::string path = "/tmp/neon_racer_unsafe_numeric_draft.draft";
+    const std::string minimum = std::to_string(std::numeric_limits<int>::min());
+    const std::string maximum = std::to_string(std::numeric_limits<int>::max());
+    const std::vector<std::string> invalidPieces = {
+        "PIECE 1 0 0 0 0 1 5 5 4 1 0 0 " + minimum + " 0 90 0\n",
+        "PIECE 1 1 0 0 0 1 5 5 0 1 4 0 0 0 90 " + minimum + "\n",
+        "PIECE 1 0 " + maximum + " 0 0 1 5 5 4 1 0 0 0 0 90 0\n",
+        "PIECE 1 0 0 " + maximum + " 0 1 5 5 4 1 0 " + maximum + " 0 0 90 0\n",
+    };
+
+    for (std::size_t index = 0; index < invalidPieces.size(); ++index) {
+        {
+            std::ofstream file(path.c_str());
+            file << "NEON_RACER_DRAFT 5\nSTATUS DRAFT\nSTART 0 0\nPIECES 1\n" << invalidPieces[index];
+        }
+        Track destination = Track::CreateSampleCircuit();
+        const std::uint64_t destinationFingerprint = TrackFingerprint::Calculate(destination);
+        std::string error;
+        Expect(!DraftIO::Load(path, destination, error) &&
+                   TrackFingerprint::Calculate(destination) == destinationFingerprint,
+               "unsafe serialized integer fields are rejected transactionally before geometry arithmetic");
+    }
+    std::remove(path.c_str());
+}
+
+void TestPersistedPieceLimit() {
+    const std::string path = "/tmp/neon_racer_oversized_draft.draft";
+    {
+        std::ofstream file(path.c_str());
+        file << "NEON_RACER_DRAFT 5\nSTATUS DRAFT\nSTART 0 0\nPIECES "
+             << (TrackLayoutCodec::kMaximumPieceCount + 1u) << "\n";
+    }
+    Track destination = Track::CreateSampleCircuit();
+    const std::uint64_t destinationFingerprint = TrackFingerprint::Calculate(destination);
+    std::string error;
+    Expect(!DraftIO::Load(path, destination, error) &&
+               TrackFingerprint::Calculate(destination) == destinationFingerprint,
+           "an oversized persisted layout is rejected before component loading work begins");
+    std::remove(path.c_str());
+
+    Track oversized;
+    for (std::size_t index = 0; index <= TrackLayoutCodec::kMaximumPieceCount; ++index) {
+        Expect(oversized.AddStraight(GridPosition{static_cast<int>(index * 100u), 0, 0}, Heading::East, 4) != 0,
+               "oversized-save setup can create separate valid pieces");
+    }
+    const Track priorDraft = Track::CreateSampleCircuit();
+    const std::uint64_t priorFingerprint = TrackFingerprint::Calculate(priorDraft);
+    Expect(DraftIO::Save(priorDraft, path, error), "oversized-save setup stores a prior valid draft");
+    Track preserved;
+    Expect(!DraftIO::Save(oversized, path, error) && DraftIO::Load(path, preserved, error) &&
+               TrackFingerprint::Calculate(preserved) == priorFingerprint,
+           "an oversized save is rejected before it can clobber an existing draft");
     std::remove(path.c_str());
 }
 
@@ -320,19 +411,64 @@ void TestSharedRoadGeometry() {
            "shared road-axis helpers reject a degenerate surface frame");
 }
 
-void TestPlayableExport() {
-    PlayableTrack playable;
-    std::string error;
-    Track incomplete;
-    incomplete.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
-    Expect(!PlayableExport::Build(incomplete, "Incomplete", playable, error),
-           "playable export rejects an incomplete editable draft");
+void TestTrackFingerprint() {
+    const Track sample = Track::CreateSampleCircuit();
+    const std::uint64_t sampleFingerprint = TrackFingerprint::Calculate(sample);
 
-    const Track raceReady = Track::CreateSampleCircuit();
-    Expect(PlayableExport::Build(raceReady, "Night Run", playable, error) &&
-               playable.metadata.name == "Night Run" && playable.metadata.playableExportVersion == 1 &&
-               playable.sourceLayoutRevision == raceReady.LayoutRevision() && playable.layout.Validate().raceReady,
-           "playable export creates a frozen race-ready layout snapshot");
+    Track sameLayoutWithDifferentIds;
+    const std::uint32_t discardedId = sameLayoutWithDifferentIds.AddStraight(GridPosition{100, 0, 100}, Heading::East, 4);
+    Expect(discardedId != 0 && sameLayoutWithDifferentIds.RemovePiece(discardedId),
+           "fingerprint setup can advance generated IDs without retaining geometry");
+    for (std::vector<TrackPiece>::const_iterator piece = sample.Pieces().begin(); piece != sample.Pieces().end(); ++piece) {
+        Expect(sameLayoutWithDifferentIds.Add(*piece) != 0,
+               "fingerprint setup reconstructs every semantic piece with regenerated IDs");
+    }
+    std::size_t startOrdinal = sample.Pieces().size();
+    for (std::size_t index = 0; index < sample.Pieces().size(); ++index) {
+        if (sample.Pieces()[index].id == sample.StartFinishPieceId()) {
+            startOrdinal = index;
+            break;
+        }
+    }
+    Expect(sameLayoutWithDifferentIds.SetStartFinish(sameLayoutWithDifferentIds.Pieces()[startOrdinal].id,
+                                                     sample.SelectedRaceDirection()),
+           "fingerprint setup restores the start/finish semantic by ordinal");
+    Expect(sameLayoutWithDifferentIds.Pieces().front().id != sample.Pieces().front().id &&
+               sameLayoutWithDifferentIds.LayoutRevision() != sample.LayoutRevision() &&
+               TrackFingerprint::Calculate(sameLayoutWithDifferentIds) == sampleFingerprint,
+           "fingerprint ignores regenerated IDs and runtime layout revisions");
+
+    Track sameStateAfterRevision = sample;
+    Expect(sameStateAfterRevision.SetStartFinish(sameStateAfterRevision.StartFinishPieceId(),
+                                                 sameStateAfterRevision.SelectedRaceDirection()) &&
+               sameStateAfterRevision.LayoutRevision() != sample.LayoutRevision() &&
+               TrackFingerprint::Calculate(sameStateAfterRevision) == sampleFingerprint,
+           "fingerprint remains stable when an unchanged start/finish setting advances the revision");
+
+    Track reverseDirection = sample;
+    Expect(reverseDirection.SetStartFinish(reverseDirection.StartFinishPieceId(), RaceDirection::Reverse) &&
+               TrackFingerprint::Calculate(reverseDirection) != sampleFingerprint,
+           "fingerprint includes race direction");
+
+    Track differentStart = sample;
+    Expect(differentStart.SetStartFinish(differentStart.Pieces()[2].id, sample.SelectedRaceDirection()) &&
+               TrackFingerprint::Calculate(differentStart) != sampleFingerprint,
+           "fingerprint includes the selected start/finish piece ordinal");
+
+    Track changedPiece = sample;
+    TrackPiece replacement = changedPiece.Pieces().front();
+    replacement.material = SurfaceMaterial::Slippery;
+    Expect(changedPiece.ReplacePiece(replacement) && TrackFingerprint::Calculate(changedPiece) != sampleFingerprint,
+           "fingerprint includes persisted piece fields");
+
+    Track firstOrder;
+    firstOrder.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
+    firstOrder.AddStraight(GridPosition{20, 0, 0}, Heading::East, 4);
+    Track reversedOrder;
+    reversedOrder.AddStraight(GridPosition{20, 0, 0}, Heading::East, 4);
+    reversedOrder.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
+    Expect(TrackFingerprint::Calculate(firstOrder) != TrackFingerprint::Calculate(reversedOrder),
+           "fingerprint includes persisted piece order");
 }
 
 void TestLoopDraftRoundTrip() {
@@ -361,6 +497,10 @@ int main() {
     TestEmptyTrackClearInvariant();
     TestDraftV1Load();
     TestDraftV2RoundTrip();
+    TestDraftRejectsDuplicatePieceIds();
+    TestTrackNumericSafetyLimits();
+    TestDraftRejectsUnsafeNumericFields();
+    TestPersistedPieceLimit();
     TestVariableStraightSurface();
     TestExtendedCurves();
     TestRoadSurfaceOverlap();
@@ -371,7 +511,7 @@ int main() {
     TestBranchUsesDistinctExitConnectors();
     TestBranchMergeDraftRoundTrip();
     TestSharedRoadGeometry();
-    TestPlayableExport();
+    TestTrackFingerprint();
     TestLoopDraftRoundTrip();
     if (failures == 0) std::cout << "Neon Racer track tests passed.\n";
     return failures == 0 ? 0 : 1;

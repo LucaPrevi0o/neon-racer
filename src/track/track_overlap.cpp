@@ -16,6 +16,15 @@ struct RoadQuad {
     float maximumY;
 };
 
+struct RoadBounds {
+    float minimumX;
+    float maximumX;
+    float minimumY;
+    float maximumY;
+    float minimumZ;
+    float maximumZ;
+};
+
 float Cross2D(const RoadPoint& first, const RoadPoint& second, const RoadPoint& third) {
     return (second.x - first.x) * (third.z - first.z) - (second.z - first.z) * (third.x - first.x);
 }
@@ -106,10 +115,37 @@ std::vector<RoadQuad> RoadQuads(const TrackPiece& piece) {
     return quads;
 }
 
+RoadBounds BoundsFor(const std::vector<RoadQuad>& quads) {
+    const RoadPoint& first = quads.front().corners[0];
+    RoadBounds bounds = {first.x, first.x, first.y, first.y, first.z, first.z};
+    for (std::vector<RoadQuad>::const_iterator quad = quads.begin(); quad != quads.end(); ++quad) {
+        bounds.minimumY = std::min(bounds.minimumY, quad->minimumY);
+        bounds.maximumY = std::max(bounds.maximumY, quad->maximumY);
+        for (int corner = 0; corner < 4; ++corner) {
+            bounds.minimumX = std::min(bounds.minimumX, quad->corners[corner].x);
+            bounds.maximumX = std::max(bounds.maximumX, quad->corners[corner].x);
+            bounds.minimumZ = std::min(bounds.minimumZ, quad->corners[corner].z);
+            bounds.maximumZ = std::max(bounds.maximumZ, quad->corners[corner].z);
+        }
+    }
+    return bounds;
+}
+
+bool BoundsMayOverlap(const RoadBounds& first, const RoadBounds& second, float roadThickness) {
+    return !(first.maximumX < second.minimumX || second.maximumX < first.minimumX ||
+             first.maximumZ < second.minimumZ || second.maximumZ < first.minimumZ ||
+             first.maximumY + roadThickness < second.minimumY ||
+             second.maximumY + roadThickness < first.minimumY);
+}
+
 bool RoadSurfacesOverlap(const TrackPiece& first, const TrackPiece& second) {
     const std::vector<RoadQuad> firstQuads = RoadQuads(first);
     const std::vector<RoadQuad> secondQuads = RoadQuads(second);
     const float roadThickness = 0.20f;
+    if (firstQuads.empty() || secondQuads.empty() ||
+        !BoundsMayOverlap(BoundsFor(firstQuads), BoundsFor(secondQuads), roadThickness)) {
+        return false;
+    }
     for (std::vector<RoadQuad>::const_iterator firstQuad = firstQuads.begin(); firstQuad != firstQuads.end(); ++firstQuad) {
         for (std::vector<RoadQuad>::const_iterator secondQuad = secondQuads.begin(); secondQuad != secondQuads.end(); ++secondQuad) {
             const bool verticallySeparated = firstQuad->maximumY + roadThickness < secondQuad->minimumY ||
@@ -127,6 +163,10 @@ bool Connects(const TrackConnector& exit, const TrackConnector& entry) {
 } // namespace
 
 bool Track::HasOverlappingGeometry(const TrackPiece& candidate) const {
+    // Callers use this as a placement predicate. Treat malformed candidates as
+    // blocked before asking their geometry for connectors, which also keeps
+    // arbitrary external data from reaching integer grid arithmetic.
+    if (!IsValidPiece(candidate)) return true;
     for (std::vector<TrackPiece>::const_iterator it = pieces_.begin(); it != pieces_.end(); ++it) {
         if (candidate.id != 0 && candidate.id == it->id) continue;
         // Adjacent road ribbons intentionally share a small mitered area at a
