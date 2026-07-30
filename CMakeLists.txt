@@ -111,3 +111,8 @@ add_test(NAME neon-racer-playable-io-tests COMMAND neon-racer-playable-io-tests)
 add_executable(neon-racer-main-menu-flow-tests tests/unit/test_main_menu_flow.cpp src/app/main_menu_flow.cpp)
 target_compile_options(neon-racer-main-menu-flow-tests PRIVATE -Wall -Wextra)
 add_test(NAME neon-racer-main-menu-flow-tests COMMAND neon-racer-main-menu-flow-tests)
+
+add_executable(neon-racer-piece-catalog-tests tests/unit/test_piece_catalog.cpp src/editor/piece_catalog.cpp)
+target_compile_options(neon-racer-piece-catalog-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-piece-catalog-tests PRIVATE neon_racer_domain)
+add_test(NAME neon-racer-piece-catalog-tests COMMAND neon-racer-piece-catalog-tests)

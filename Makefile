@@ -18,6 +18,7 @@ GHOST_REPLAY_TEST := $(BUILD_DIR)/tests/ghost_replay_tests
 TIME_TRIAL_TEST := $(BUILD_DIR)/tests/time_trial_tests
 PLAYABLE_IO_TEST := $(BUILD_DIR)/tests/playable_io_tests
 MAIN_MENU_FLOW_TEST := $(BUILD_DIR)/tests/main_menu_flow_tests
+PIECE_CATALOG_TEST := $(BUILD_DIR)/tests/piece_catalog_tests
 
 DRAFT_PERSISTENCE_SOURCES := src/persistence/draft_io.cpp \
 	src/persistence/storage_paths.cpp \
@@ -116,6 +117,10 @@ PLAYABLE_IO_TEST_SOURCES := tests/unit/test_playable_io.cpp \
 MAIN_MENU_FLOW_TEST_SOURCES := tests/unit/test_main_menu_flow.cpp \
 	src/app/main_menu_flow.cpp
 
+PIECE_CATALOG_TEST_SOURCES := tests/unit/test_piece_catalog.cpp \
+	src/editor/piece_catalog.cpp \
+	$(RACE_TRACK_SOURCES)
+
 .PHONY: all build run test clean help publish-tag neon-racer racer racer-test
 
 help:
@@ -165,7 +170,11 @@ $(MAIN_MENU_FLOW_TEST): $(MAIN_MENU_FLOW_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(MAIN_MENU_FLOW_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST)
+$(PIECE_CATALOG_TEST): $(PIECE_CATALOG_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -o $@ $(PIECE_CATALOG_TEST_SOURCES)
+
+test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST) $(PIECE_CATALOG_TEST)
 	./$(TRACK_TEST)
 	./$(RACE_PHYSICS_TEST)
 	./$(VEHICLE_DYNAMICS_TEST)
@@ -173,6 +182,7 @@ test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(G
 	./$(TIME_TRIAL_TEST)
 	./$(PLAYABLE_IO_TEST)
 	./$(MAIN_MENU_FLOW_TEST)
+	./$(PIECE_CATALOG_TEST)
 
 # GitHub Actions receives a tag only after Git pushes it. Publish exactly one
 # validated main-history version tag so a release workflow gets one event.
