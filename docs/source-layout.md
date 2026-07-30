@@ -97,7 +97,7 @@ src/persistence/
   playable/playable_package_validation.cpp
 ```
 
-The public storage API is separate from implementation-only codec and validation declarations. Draft and playable writes share the same bounded temporary-file and atomic-rename primitive. A forwarding header remains at the former `src/persistence/playable_track_io.hpp` path until all older includes are migrated.
+The public storage API is separate from implementation-only codec and validation declarations. Draft and playable writes share the same bounded temporary-file and atomic-rename primitive. A forwarding header remains at the former `src/persistence/playable_track_io.hpp` path only for older source and test includes; it should disappear when those modules migrate their own declarations.
 
 ## Suggested migration order
 
