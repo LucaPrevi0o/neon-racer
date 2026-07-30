@@ -6,21 +6,25 @@ on Raylib. Raylib belongs at the application's presentation boundary.
 ```text
 app ───────► editor ───────► persistence
  │              │                 │
- │              └──────► track ◄──┘
- │                            ▲
- ├──────► race ───────────────┤
+ │              └──────► track ◄──┤
+ ├──────► race ───────────────┤   │
+ ├──────► playable ◄──────────┴───┘
  ├──────► render ─────────────┤
  └──────► ui                  │
 ```
 
 `src/track` is the authoritative layout domain. It owns track pieces,
 connectors, geometry sampling, overlap checks, surface queries, validation, and
-the frozen playable-track snapshot. It must stay free of Raylib types.
+the durable fingerprint of persisted layout semantics. It must stay free of
+Raylib types.
 
 `src/editor` owns mutable editing state and communicates with the track domain
-through its public model API. `src/persistence` reads and writes drafts without
-knowing how they are displayed. `src/race` uses track surface queries to run a
-time trial from a plain input snapshot supplied by the application boundary.
+through its public model API. `src/persistence` reads and writes both drafts and
+the self-contained playable-package file format without knowing how they are
+displayed. `src/playable` owns the cross-domain frozen package and export policy:
+it may depend on track and value-only race contracts, but neither track nor race
+may depend on it. `src/race` uses track surface queries to run a time trial from
+a plain input snapshot supplied by the application boundary.
 
 `src/render` and `src/ui` are presentation code. They may depend on Raylib and
 on read-only domain types, but neither may define game rules. `src/app` is the
@@ -28,11 +32,11 @@ composition root: it creates the window, chooses the active screen, and wires
 the modules together.
 
 The CMake build mirrors these boundaries: `neon_racer_domain` owns the
-Raylib-independent track and persistence layer;
-`neon_racer_vehicle_dynamics` builds vehicle simulation on that domain; and
-`neon_racer_time_trial` adds time-trial orchestration on top. The `neon-racer`
-executable links those Raylib-free libraries to the Raylib-backed application
-modules.
+Raylib-independent track and draft-layout codec; `neon_racer_vehicle_dynamics`
+builds vehicle simulation on that domain; `neon_racer_time_trial` adds
+time-trial orchestration; and `neon_racer_playable` combines the package policy
+with persistence and the replay transfer contract. The `neon-racer` executable
+links those Raylib-free libraries to the Raylib-backed application modules.
 
 ## Current refactoring boundaries
 
@@ -53,19 +57,30 @@ track-piece selections. `editor.cpp` remains the coordinator for input
 dispatch, mutable editor state, commands, and drawing.
 `app/raylib_race_input.cpp` translates Raylib devices into a plain `RaceInput`;
 `TimeTrial` receives that frame snapshot and reuses its held axes for every
-fixed step. `race_contracts.hpp` owns the simulation's vector, vehicle, and
-ghost values. `vehicle_dynamics.hpp/.cpp` owns surface-query-driven suspension,
+fixed step. `app/playable_library.cpp` presents the paged frozen-package library
+and export metadata form, while `RacerApplication` validates launch and export
+requests before changing session state. `race_contracts.hpp` owns the
+simulation's vector, vehicle, and ghost-transfer values. `vehicle_dynamics.hpp/.cpp` owns surface-query-driven suspension,
 steering, traction, braking, air drag, and guardrail response behind a narrow
 `VehicleSurfaceQuery` interface. `ghost_replay.hpp/.cpp` owns candidate sample
-capture, fastest-run replacement, replay interpolation, and looping playback.
+capture, fastest-run replacement, replay interpolation, bounded replay-value
+validation, and looping playback.
 `time_trial.cpp` keeps the `TimeTrial` facade, fixed-step scheduling, lap policy,
-layout-revision invalidation, verification policy, and player-facing status
-messages. The Raylib-free `race_physics.cpp` owns brake-damping policy and its
-digital-input cap. `time_trial_renderer.cpp` owns the chase camera, 3D race
+layout-revision/fingerprint invalidation, verification policy, and player-facing
+status messages. `track_fingerprint.cpp` calculates the durable identity used
+by verified replay and package checks. `playable_export.cpp` builds either an
+unverified preview or a verified frozen package; `playable_track_io.cpp` writes,
+loads, lists, and atomically replaces `.nrplay` files using the shared
+`track_layout_codec.cpp` structural records. The Raylib-free `race_physics.cpp`
+owns brake-damping policy and its digital-input cap. `time_trial_renderer.cpp` owns the chase camera, 3D race
 composition, and time-trial HUD; it only reads `TimeTrial` and track state.
 
 ## Data locations
 
 Versioned example tracks are assets under `assets/tracks/examples`. Editable
 runtime drafts are written outside the repository under the operating-system
-application-data directory; see `track-format.md` for the exact lookup order.
+application-data directory; frozen playable packages use its sibling
+`playables` directory. `storage_paths.cpp` performs regular-file and size
+preflight checks, while `format_reading.hpp` bounds format labels before the
+shared codecs parse them. See `track-format.md` and
+`playable-track-format.md` for the exact lookup order and formats.
