@@ -1,7 +1,6 @@
 #pragma once
 
-#include <vector>
-
+#include "ghost_replay.hpp"
 #include "race_contracts.hpp"
 #include "race_input.hpp"
 #include "vehicle_dynamics.hpp"
@@ -50,10 +49,7 @@ private:
     bool paused_;
     bool finished_;
     bool ready_;
-    std::vector<GhostSample> recordingSamples_;
-    std::vector<GhostSample> verifiedGhostSamples_;
-    float nextGhostSampleTime_;
-    float verifiedGhostDuration_;
+    GhostReplay ghostReplay_;
     VerificationState verification_;
     const char* statusMessage_;
 };

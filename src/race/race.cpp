@@ -8,7 +8,6 @@ namespace {
 const float kPi = 3.14159265358979323846f;
 const float kFixedStep = 1.0f / 120.0f;
 const float kMaxFrameTime = 0.10f;
-const float kGhostSampleInterval = 1.0f / 30.0f;
 
 float HeadingRadians(Heading heading) {
     switch (heading) {
@@ -22,19 +21,6 @@ float HeadingRadians(Heading heading) {
 
 RaceVector3 Forward(float heading) {
     return RaceVector3{std::cos(heading), 0.0f, std::sin(heading)};
-}
-
-float Dot(RaceVector3 a, RaceVector3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-
-RaceVector3 Scale(RaceVector3 vector, float amount) {
-    return RaceVector3{vector.x * amount, vector.y * amount, vector.z * amount};
-}
-
-float Magnitude(RaceVector3 vector) { return std::sqrt(Dot(vector, vector)); }
-
-RaceVector3 Normalize(RaceVector3 vector, RaceVector3 fallback) {
-    const float length = Magnitude(vector);
-    return length > 0.0001f ? Scale(vector, 1.0f / length) : fallback;
 }
 
 // TimeTrial owns the selected Track but adapts it at the vehicle boundary so
@@ -56,14 +42,12 @@ private:
 TimeTrial::TimeTrial()
     : track_(0), accumulator_(0.0f), currentLapTime_(0.0f), bestLapTime_(0.0f), totalTime_(0.0f),
       previousStartProjection_(0.0f), completedLaps_(0), hasLeftStart_(false), paused_(false),
-      finished_(false), ready_(false), nextGhostSampleTime_(0.0f), verifiedGhostDuration_(0.0f),
-      statusMessage_("Open a race-ready track in the editor.") {
+      finished_(false), ready_(false), statusMessage_("Open a race-ready track in the editor.") {
 }
 
 void TimeTrial::Start(const Track& track) {
     if (verification_.hasSavedGhost && verification_.verifiedLayoutRevision != track.LayoutRevision()) {
-        verifiedGhostSamples_.clear();
-        verifiedGhostDuration_ = 0.0f;
+        ghostReplay_.ClearVerified();
         verification_ = VerificationState();
     }
     track_ = &track;
@@ -96,8 +80,7 @@ void TimeTrial::Reset() {
     currentLapTime_ = 0.0f;
     bestLapTime_ = 0.0f;
     totalTime_ = 0.0f;
-    recordingSamples_.clear();
-    nextGhostSampleTime_ = 0.0f;
+    ghostReplay_.ResetCandidate();
     completedLaps_ = 0;
     hasLeftStart_ = false;
     paused_ = false;
@@ -126,31 +109,7 @@ bool TimeTrial::HasVerifiedGhost() const { return verification_.isVerifiedForPla
 const VerificationState& TimeTrial::Verification() const { return verification_; }
 
 RaceCar TimeTrial::GhostCar() const {
-    if (verifiedGhostSamples_.empty() || verifiedGhostDuration_ <= 0.0f) return vehicle_.Car();
-    const float playbackTime = std::fmod(totalTime_, verifiedGhostDuration_);
-    for (std::size_t index = 1; index < verifiedGhostSamples_.size(); ++index) {
-        const GhostSample& next = verifiedGhostSamples_[index];
-        if (next.time < playbackTime) continue;
-        const GhostSample& previous = verifiedGhostSamples_[index - 1];
-        const float span = next.time - previous.time;
-        const float amount = span > 0.0f ? (playbackTime - previous.time) / span : 0.0f;
-        return RaceCar{RaceVector3{previous.car.position.x + (next.car.position.x - previous.car.position.x) * amount,
-                                   previous.car.position.y + (next.car.position.y - previous.car.position.y) * amount,
-                                   previous.car.position.z + (next.car.position.z - previous.car.position.z) * amount},
-                       RaceVector3{previous.car.velocity.x + (next.car.velocity.x - previous.car.velocity.x) * amount,
-                                   previous.car.velocity.y + (next.car.velocity.y - previous.car.velocity.y) * amount,
-                                   previous.car.velocity.z + (next.car.velocity.z - previous.car.velocity.z) * amount},
-                       Normalize(RaceVector3{previous.car.forward.x + (next.car.forward.x - previous.car.forward.x) * amount,
-                                             previous.car.forward.y + (next.car.forward.y - previous.car.forward.y) * amount,
-                                             previous.car.forward.z + (next.car.forward.z - previous.car.forward.z) * amount},
-                                 previous.car.forward),
-                       Normalize(RaceVector3{previous.car.up.x + (next.car.up.x - previous.car.up.x) * amount,
-                                             previous.car.up.y + (next.car.up.y - previous.car.up.y) * amount,
-                                             previous.car.up.z + (next.car.up.z - previous.car.up.z) * amount}, previous.car.up),
-                       previous.car.headingRadians + (next.car.headingRadians - previous.car.headingRadians) * amount,
-                       previous.car.speed + (next.car.speed - previous.car.speed) * amount};
-    }
-    return verifiedGhostSamples_.back().car;
+    return ghostReplay_.SampleAt(totalTime_, vehicle_.Car());
 }
 
 const char* TimeTrial::StatusMessage() const { return statusMessage_; }
@@ -165,10 +124,7 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     }
 
     const RaceCar& car = vehicle_.Car();
-    if (totalTime_ >= nextGhostSampleTime_) {
-        recordingSamples_.push_back(GhostSample{car, totalTime_});
-        nextGhostSampleTime_ += kGhostSampleInterval;
-    }
+    ghostReplay_.Capture(car, totalTime_);
 
     currentLapTime_ += deltaTime;
     totalTime_ += deltaTime;
@@ -194,10 +150,8 @@ void TimeTrial::CompleteLap() {
     if (bestLapTime_ == 0.0f || currentLapTime_ < bestLapTime_) bestLapTime_ = currentLapTime_;
     if (completedLaps_ >= 3) {
         finished_ = true;
-        if (verifiedGhostSamples_.empty() || totalTime_ < verifiedGhostDuration_) {
-            verifiedGhostSamples_ = recordingSamples_;
-            verifiedGhostDuration_ = totalTime_;
-            verification_.hasSavedGhost = !verifiedGhostSamples_.empty();
+        if (ghostReplay_.PromoteCandidateIfFaster(totalTime_)) {
+            verification_.hasSavedGhost = ghostReplay_.HasVerified();
             verification_.isVerifiedForPlayableExport = verification_.hasSavedGhost;
             verification_.verifiedLayoutRevision = track_->LayoutRevision();
         }

@@ -14,12 +14,16 @@ APP := $(BUILD_DIR)/neon-racer
 TRACK_TEST := $(BUILD_DIR)/tests/track_tests
 RACE_PHYSICS_TEST := $(BUILD_DIR)/tests/race_physics_tests
 VEHICLE_DYNAMICS_TEST := $(BUILD_DIR)/tests/vehicle_dynamics_tests
+GHOST_REPLAY_TEST := $(BUILD_DIR)/tests/ghost_replay_tests
 TIME_TRIAL_TEST := $(BUILD_DIR)/tests/time_trial_tests
 
 RACE_VEHICLE_SOURCES := src/race/vehicle_dynamics.cpp \
 	src/race/race_physics.cpp
 
+RACE_GHOST_SOURCES := src/race/ghost_replay.cpp
+
 RACE_CORE_SOURCES := src/race/race.cpp \
+	$(RACE_GHOST_SOURCES) \
 	$(RACE_VEHICLE_SOURCES)
 
 APP_SOURCES := src/app/main.cpp \
@@ -78,6 +82,9 @@ VEHICLE_DYNAMICS_TEST_SOURCES := tests/unit/test_vehicle_dynamics.cpp \
 	$(RACE_VEHICLE_SOURCES) \
 	$(RACE_TRACK_SOURCES)
 
+GHOST_REPLAY_TEST_SOURCES := tests/unit/test_ghost_replay.cpp \
+	$(RACE_GHOST_SOURCES)
+
 TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
 	$(RACE_CORE_SOURCES) \
 	$(RACE_TRACK_SOURCES)
@@ -115,14 +122,19 @@ $(VEHICLE_DYNAMICS_TEST): $(VEHICLE_DYNAMICS_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(VEHICLE_DYNAMICS_TEST_SOURCES)
 
+$(GHOST_REPLAY_TEST): $(GHOST_REPLAY_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -o $@ $(GHOST_REPLAY_TEST_SOURCES)
+
 $(TIME_TRIAL_TEST): $(TIME_TRIAL_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(TIME_TRIAL_TEST)
+test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST)
 	./$(TRACK_TEST)
 	./$(RACE_PHYSICS_TEST)
 	./$(VEHICLE_DYNAMICS_TEST)
+	./$(GHOST_REPLAY_TEST)
 	./$(TIME_TRIAL_TEST)
 
 # GitHub Actions receives a tag only after Git pushes it. Publish exactly one

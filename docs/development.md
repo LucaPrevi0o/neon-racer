@@ -17,8 +17,8 @@ cmake --build build/cmake
 ctest --test-dir build/cmake --output-on-failure
 ```
 
-Track, race-physics, vehicle-dynamics, and time-trial tests must not include
-or link Raylib.
+Track, race-physics, vehicle-dynamics, ghost-replay, and time-trial tests must
+not include or link Raylib.
 Add behavior tests under `tests/unit` whenever changing track geometry,
 validation, serialization, playable-export rules, or isolated race-dynamics
 math.

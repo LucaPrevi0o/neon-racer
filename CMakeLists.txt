@@ -29,9 +29,12 @@ add_library(neon_racer_vehicle_dynamics
 target_compile_options(neon_racer_vehicle_dynamics PRIVATE -Wall -Wextra)
 target_link_libraries(neon_racer_vehicle_dynamics PUBLIC neon_racer_domain)
 
+add_library(neon_racer_ghost_replay src/race/ghost_replay.cpp)
+target_compile_options(neon_racer_ghost_replay PRIVATE -Wall -Wextra)
+
 add_library(neon_racer_race src/race/race.cpp)
 target_compile_options(neon_racer_race PRIVATE -Wall -Wextra)
-target_link_libraries(neon_racer_race PUBLIC neon_racer_domain neon_racer_vehicle_dynamics)
+target_link_libraries(neon_racer_race PUBLIC neon_racer_domain neon_racer_vehicle_dynamics neon_racer_ghost_replay)
 
 if(NEON_RACER_BUILD_APP)
     add_library(neon_racer_raylib INTERFACE)
@@ -76,6 +79,11 @@ add_executable(neon-racer-vehicle-dynamics-tests tests/unit/test_vehicle_dynamic
 target_compile_options(neon-racer-vehicle-dynamics-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-vehicle-dynamics-tests PRIVATE neon_racer_vehicle_dynamics)
 add_test(NAME neon-racer-vehicle-dynamics-tests COMMAND neon-racer-vehicle-dynamics-tests)
+
+add_executable(neon-racer-ghost-replay-tests tests/unit/test_ghost_replay.cpp)
+target_compile_options(neon-racer-ghost-replay-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-ghost-replay-tests PRIVATE neon_racer_ghost_replay)
+add_test(NAME neon-racer-ghost-replay-tests COMMAND neon-racer-ghost-replay-tests)
 
 add_executable(neon-racer-time-trial-tests
     tests/unit/test_time_trial.cpp

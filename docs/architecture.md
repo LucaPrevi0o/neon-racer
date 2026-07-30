@@ -56,11 +56,12 @@ dispatch, mutable editor state, commands, and drawing.
 fixed step. `race_contracts.hpp` owns the simulation's vector, vehicle, and
 ghost values. `vehicle_dynamics.hpp/.cpp` owns surface-query-driven suspension,
 steering, traction, braking, air drag, and guardrail response behind a narrow
-`VehicleSurfaceQuery` interface. `race.cpp` now keeps the `TimeTrial` facade,
-fixed-step scheduling, lap policy, ghost recording/playback, and player-facing
-status messages. The Raylib-free `race_physics.cpp` owns brake-damping policy
-and its digital-input cap. A later commit will extract ghost replay from the
-time-trial coordinator.
+`VehicleSurfaceQuery` interface. `ghost_replay.hpp/.cpp` owns candidate sample
+capture, fastest-run replacement, replay interpolation, and looping playback.
+`race.cpp` keeps the `TimeTrial` facade, fixed-step scheduling, lap policy,
+layout-revision invalidation, verification policy, and player-facing status
+messages. The Raylib-free `race_physics.cpp` owns brake-damping policy and its
+digital-input cap.
 
 ## Data locations
 
