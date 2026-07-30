@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "../persistence/playable_track_io.hpp"
+#include "neon_racer/persistence/playable_track_io.hpp"
 #include "../track/track_contracts.hpp"
 
 // Raylib-facing modal UI for frozen playable time-trial packages. The
