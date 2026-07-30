@@ -1,5 +1,7 @@
 #include "time_trial.hpp"
 
+#include "../track/track_fingerprint.hpp"
+
 #include <cmath>
 #include <cstdio>
 
@@ -46,7 +48,10 @@ TimeTrial::TimeTrial()
 }
 
 void TimeTrial::Start(const Track& track) {
-    if (verification_.hasSavedGhost && verification_.verifiedLayoutRevision != track.LayoutRevision()) {
+    const std::uint64_t layoutFingerprint = TrackFingerprint::Calculate(track);
+    if (verification_.hasSavedGhost &&
+        (verification_.verifiedLayoutRevision != track.LayoutRevision() ||
+         verification_.verifiedLayoutFingerprint != layoutFingerprint)) {
         ghostReplay_.ClearVerified();
         verification_ = VerificationState();
     }
@@ -105,11 +110,44 @@ float TimeTrial::TotalTime() const { return totalTime_; }
 const RaceCar& TimeTrial::Car() const { return vehicle_.Car(); }
 bool TimeTrial::IsOnTrack() const { return vehicle_.IsOnTrack(); }
 SurfaceMaterial TimeTrial::CurrentSurfaceMaterial() const { return vehicle_.CurrentSurfaceMaterial(); }
-bool TimeTrial::HasVerifiedGhost() const { return verification_.isVerifiedForPlayableExport; }
+bool TimeTrial::HasVerifiedGhost() const {
+    return track_ != 0 && ready_ && verification_.hasSavedGhost && verification_.isVerifiedForPlayableExport &&
+           verification_.verifiedLayoutRevision == track_->LayoutRevision() &&
+           verification_.verifiedLayoutFingerprint == TrackFingerprint::Calculate(*track_);
+}
 const VerificationState& TimeTrial::Verification() const { return verification_; }
 
+bool TimeTrial::ExportVerifiedGhost(VerifiedGhostData& output) const {
+    if (track_ == 0 || !ready_ || !verification_.hasSavedGhost || !verification_.isVerifiedForPlayableExport ||
+        verification_.verifiedLayoutRevision != track_->LayoutRevision() ||
+        verification_.verifiedLayoutFingerprint != TrackFingerprint::Calculate(*track_)) {
+        return false;
+    }
+
+    VerifiedGhostData exported;
+    if (!ghostReplay_.ExportVerified(exported)) return false;
+    exported.layoutFingerprint = TrackFingerprint::Calculate(*track_);
+    output = exported;
+    return true;
+}
+
+bool TimeTrial::ImportVerifiedGhost(const VerifiedGhostData& input) {
+    if (track_ == 0 || !ready_ || input.layoutFingerprint != TrackFingerprint::Calculate(*track_)) return false;
+    if (!ghostReplay_.ImportVerified(input)) return false;
+
+    verification_.hasSavedGhost = ghostReplay_.HasVerified();
+    verification_.isVerifiedForPlayableExport = verification_.hasSavedGhost;
+    verification_.verifiedLayoutRevision = track_->LayoutRevision();
+    verification_.verifiedLayoutFingerprint = input.layoutFingerprint;
+    return true;
+}
+
+std::uint64_t TimeTrial::ActiveLayoutFingerprint() const {
+    return track_ == 0 ? 0 : TrackFingerprint::Calculate(*track_);
+}
+
 RaceCar TimeTrial::GhostCar() const {
-    return ghostReplay_.SampleAt(totalTime_, vehicle_.Car());
+    return HasVerifiedGhost() ? ghostReplay_.SampleAt(totalTime_, vehicle_.Car()) : vehicle_.Car();
 }
 
 const char* TimeTrial::StatusMessage() const { return statusMessage_; }
@@ -154,8 +192,11 @@ void TimeTrial::CompleteLap() {
             verification_.hasSavedGhost = ghostReplay_.HasVerified();
             verification_.isVerifiedForPlayableExport = verification_.hasSavedGhost;
             verification_.verifiedLayoutRevision = track_->LayoutRevision();
+            verification_.verifiedLayoutFingerprint = TrackFingerprint::Calculate(*track_);
         }
-        statusMessage_ = "Three laps complete. Ghost verified. Press R to race it.";
+        statusMessage_ = ghostReplay_.HasVerified()
+            ? "Three laps complete. Ghost verified. Press R to race it."
+            : "Three laps complete, but this run could not be verified for replay.";
         return;
     }
     currentLapTime_ = 0.0f;

@@ -26,13 +26,56 @@ RaceVector3 Interpolate(RaceVector3 first, RaceVector3 second, float amount) {
                        first.z + (second.z - first.z) * amount};
 }
 
+bool IsFiniteAndBounded(float value) {
+    return std::isfinite(value) && std::fabs(value) <= GhostReplayLimits::kMaximumReplayScalar;
+}
+
+bool IsFiniteVector(RaceVector3 vector) {
+    return IsFiniteAndBounded(vector.x) && IsFiniteAndBounded(vector.y) && IsFiniteAndBounded(vector.z);
+}
+
+bool HasNonZeroMagnitude(RaceVector3 vector) {
+    const float squaredMagnitude = Dot(vector, vector);
+    return std::isfinite(squaredMagnitude) && squaredMagnitude > 0.00000001f;
+}
+
+bool IsValidSample(const GhostSample& sample) {
+    const RaceCar& car = sample.car;
+    return std::isfinite(sample.time) && IsFiniteVector(car.position) && IsFiniteVector(car.velocity) &&
+           IsFiniteVector(car.forward) && IsFiniteVector(car.up) && HasNonZeroMagnitude(car.forward) &&
+           HasNonZeroMagnitude(car.up) && IsFiniteAndBounded(car.headingRadians) && IsFiniteAndBounded(car.speed);
+}
+
+bool HasValidSamples(const std::vector<GhostSample>& samples, float durationSeconds) {
+    if (!std::isfinite(durationSeconds) || durationSeconds <= 0.0f ||
+        durationSeconds > GhostReplayLimits::kMaximumVerifiedDurationSeconds || samples.empty() ||
+        samples.size() > GhostReplayLimits::kMaximumVerifiedSampleCount || samples.front().time != 0.0f) {
+        return false;
+    }
+
+    float previousTime = -1.0f;
+    for (std::vector<GhostSample>::const_iterator sample = samples.begin(); sample != samples.end(); ++sample) {
+        if (!IsValidSample(*sample) || sample->time < 0.0f || sample->time > durationSeconds ||
+            sample->time <= previousTime) {
+            return false;
+        }
+        previousTime = sample->time;
+    }
+    return true;
+}
+
 } // namespace
 
-GhostReplay::GhostReplay() : nextSampleTime_(0.0f), verifiedDuration_(0.0f) {}
+GhostReplay::GhostReplay() : nextSampleTime_(0.0f), verifiedDuration_(0.0f), candidateTruncated_(false) {}
+
+bool GhostReplay::IsValidVerifiedData(const VerifiedGhostData& data) {
+    return HasValidSamples(data.samples, data.durationSeconds);
+}
 
 void GhostReplay::ResetCandidate() {
     candidateSamples_.clear();
     nextSampleTime_ = 0.0f;
+    candidateTruncated_ = false;
 }
 
 void GhostReplay::ClearVerified() {
@@ -42,11 +85,16 @@ void GhostReplay::ClearVerified() {
 
 void GhostReplay::Capture(const RaceCar& car, float elapsedSeconds) {
     if (elapsedSeconds < nextSampleTime_) return;
+    if (!std::isfinite(elapsedSeconds) || candidateSamples_.size() >= GhostReplayLimits::kMaximumVerifiedSampleCount) {
+        candidateTruncated_ = true;
+        return;
+    }
     candidateSamples_.push_back(GhostSample{car, elapsedSeconds});
     nextSampleTime_ += kSampleInterval;
 }
 
 bool GhostReplay::PromoteCandidateIfFaster(float durationSeconds) {
+    if (candidateTruncated_ || !HasValidSamples(candidateSamples_, durationSeconds)) return false;
     if (!verifiedSamples_.empty() && durationSeconds >= verifiedDuration_) return false;
     verifiedSamples_ = candidateSamples_;
     verifiedDuration_ = durationSeconds;
@@ -54,6 +102,30 @@ bool GhostReplay::PromoteCandidateIfFaster(float durationSeconds) {
 }
 
 bool GhostReplay::HasVerified() const { return !verifiedSamples_.empty() && verifiedDuration_ > 0.0f; }
+
+bool GhostReplay::ExportVerified(VerifiedGhostData& output) const {
+    if (!HasVerified()) return false;
+
+    VerifiedGhostData exported;
+    exported.samples = verifiedSamples_;
+    exported.durationSeconds = verifiedDuration_;
+    if (!IsValidVerifiedData(exported)) return false;
+    output = exported;
+    return true;
+}
+
+bool GhostReplay::ImportVerified(const VerifiedGhostData& input) {
+    if (!IsValidVerifiedData(input)) return false;
+
+    // Copy before changing either replay collection so malformed input and a
+    // failed allocation cannot leave a partial verified replay behind.
+    std::vector<GhostSample> importedSamples = input.samples;
+    candidateSamples_.clear();
+    nextSampleTime_ = 0.0f;
+    verifiedSamples_.swap(importedSamples);
+    verifiedDuration_ = input.durationSeconds;
+    return true;
+}
 
 RaceCar GhostReplay::SampleAt(float playbackSeconds, const RaceCar& fallback) const {
     if (!HasVerified()) return fallback;

@@ -30,6 +30,14 @@ public:
     bool HasVerifiedGhost() const;
     RaceCar GhostCar() const;
     const VerificationState& Verification() const;
+
+    // Transfers a replay only when it is verified for the active, unchanged
+    // layout.  Imported replay data must carry the active layout fingerprint;
+    // verification state is then derived from this TimeTrial's Track.
+    bool ExportVerifiedGhost(VerifiedGhostData& output) const;
+    bool ImportVerifiedGhost(const VerifiedGhostData& input);
+    std::uint64_t ActiveLayoutFingerprint() const;
+
     const char* StatusMessage() const;
 
 private:
