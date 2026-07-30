@@ -13,6 +13,17 @@ class Track;
 // only movement through an expected connector gate advances to another piece.
 class TrackPositionTracker {
 public:
+    struct Gate {
+        RaceVector3 center;
+        RaceVector3 forward;
+        float halfWidth;
+    };
+
+    struct Transition {
+        std::uint32_t toPieceId;
+        Gate gate;
+    };
+
     TrackPositionTracker();
 
     void Configure(const Track& track);
@@ -27,17 +38,6 @@ public:
     float CurrentProgress() const;
 
 private:
-    struct Gate {
-        RaceVector3 center;
-        RaceVector3 forward;
-        float halfWidth;
-    };
-
-    struct Transition {
-        std::uint32_t toPieceId;
-        Gate gate;
-    };
-
     typedef std::map<std::uint32_t, std::vector<Transition> > TransitionGraph;
 
     void UpdateProjectedProgress(RaceVector3 position);
