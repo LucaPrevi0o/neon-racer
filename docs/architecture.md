@@ -114,8 +114,9 @@ Persistence owns:
 - temporary-file and atomic-replacement behavior.
 
 The public playable storage declaration lives at
-`include/neon_racer/persistence/playable_track_io.hpp`. Implementation-only
-interfaces stay under `src/persistence/internal`.
+`include/neon_racer/persistence/playable_track_io.hpp`. New callers use the
+`neon_racer/persistence/playable_track_io.hpp` include prefix, while
+implementation-only interfaces stay under `src/persistence/internal`.
 
 | Path | Responsibility |
 | --- | --- |
