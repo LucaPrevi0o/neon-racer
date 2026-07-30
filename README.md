@@ -163,6 +163,8 @@ document for each topic.
   ownership, and runtime flows.
 - [`docs/development.md`](docs/development.md): contributor workflow, test
   expectations, smoke checks, and release publishing.
+- [`docs/design-specification.md`](docs/design-specification.md): product
+  direction and design invariants.
 - [`docs/track-format.md`](docs/track-format.md): editable draft format.
 - [`docs/playable-track-format.md`](docs/playable-track-format.md): frozen
   playable-package format.
