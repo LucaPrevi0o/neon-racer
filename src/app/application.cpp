@@ -7,20 +7,30 @@
 #include "../ui/neon.hpp"
 
 RacerApplication::RacerApplication()
-    : state_(AppState::Editor),
+    : state_(AppState::MainMenu),
+      raceReturnState_(AppState::MainMenu),
       editorCamera_{},
+      mainMenu_(),
       editor_() {
+    ResetEditorCamera();
+}
+
+void RacerApplication::ResetEditorCamera() {
     editorCamera_.position = Vector3{18.0f, 18.0f, 18.0f};
     editorCamera_.target = Vector3{0.0f, 0.0f, 0.0f};
     editorCamera_.up = Vector3{0.0f, 1.0f, 0.0f};
     editorCamera_.fovy = 45.0f;
     editorCamera_.projection = CAMERA_PERSPECTIVE;
-
 }
 
 void RacerApplication::Update(float frameTime) {
     if (playableLibrary_.IsOpen()) {
         UpdatePlayableLibrary();
+        return;
+    }
+
+    if (state_ == AppState::MainMenu) {
+        UpdateMainMenu();
         return;
     }
 
@@ -34,24 +44,25 @@ void RacerApplication::Update(float frameTime) {
         return;
     }
 
-    if (IsKeyPressed(KEY_TAB)) {
-        const AppState nextState = state_ == AppState::Editor ? AppState::Race : AppState::Editor;
-        if (nextState == AppState::Race) {
-            std::string error;
-            if (PlayableExport::BuildPreview(editor_.GetTrack(), "Editor session", playableTrack_, error)) {
-                timeTrial_.Start(playableTrack_.layout);
-            } else {
-                // Start preserves its existing, clear validation feedback when an
-                // export cannot be made yet.
-                timeTrial_.Start(editor_.GetTrack());
-            }
+    if (state_ == AppState::Editor && IsKeyPressed(KEY_TAB)) {
+        std::string error;
+        if (PlayableExport::BuildPreview(editor_.GetTrack(), "Editor session", playableTrack_, error)) {
+            timeTrial_.Start(playableTrack_.layout);
+        } else {
+            // Start preserves its existing, clear validation feedback when an
+            // export cannot be made yet.
+            timeTrial_.Start(editor_.GetTrack());
         }
-        state_ = nextState;
+        raceReturnState_ = AppState::Editor;
+        state_ = AppState::Race;
+    } else if (state_ == AppState::Race && IsKeyPressed(KEY_TAB)) {
+        state_ = raceReturnState_;
+        return;
     }
 
     if (state_ == AppState::Editor) {
         UpdateEditor();
-    } else {
+    } else if (state_ == AppState::Race) {
         UpdateRace(frameTime);
     }
 }
@@ -59,14 +70,26 @@ void RacerApplication::Update(float frameTime) {
 void RacerApplication::Draw() const {
     Neon::DrawBackground(AppSettings::kWindowWidth, AppSettings::kWindowHeight);
 
-    if (state_ == AppState::Editor) {
+    if (state_ == AppState::MainMenu) {
+        DrawMainMenu();
+    } else if (state_ == AppState::Editor) {
         DrawEditor();
     } else {
         DrawRace();
     }
 
-    DrawStateHint();
+    if (state_ != AppState::MainMenu) DrawStateHint();
     playableLibrary_.Draw();
+}
+
+void RacerApplication::UpdateMainMenu() {
+    mainMenu_.Update();
+    const MainMenuAction action = mainMenu_.ConsumeAction();
+    if (action == MainMenuAction::OpenPlayableLibrary) {
+        playableLibrary_.Open();
+    } else if (action == MainMenuAction::BeginNewTrack) {
+        StartNewEditorSession();
+    }
 }
 
 void RacerApplication::UpdateEditor() {
@@ -112,8 +135,21 @@ void RacerApplication::LaunchPlayableTrack(const std::string& path) {
         playableLibrary_.ReportMessage("Could not activate the playable package ghost.");
         return;
     }
+    // The package list can also be opened from a completed race's export
+    // flow. Preserve that race's original source instead of creating a
+    // Race -> Race Tab return loop when another package is launched there.
+    raceReturnState_ = state_ == AppState::Race ? raceReturnState_ : state_;
     state_ = AppState::Race;
     playableLibrary_.Close();
+}
+
+void RacerApplication::StartNewEditorSession() {
+    editor_.BeginNewTrack();
+    ResetEditorCamera();
+    playableTrack_ = PlayableTrack();
+    timeTrial_ = TimeTrial();
+    timeTrialRenderer_ = TimeTrialRenderer();
+    state_ = AppState::Editor;
 }
 
 void RacerApplication::ExportVerifiedPlayable(TrackMetadata metadata) {
@@ -143,6 +179,10 @@ void RacerApplication::ExportVerifiedPlayable(TrackMetadata metadata) {
                                   std::to_string(metadata.playableExportVersion) + ".");
 }
 
+void RacerApplication::DrawMainMenu() const {
+    mainMenu_.Draw();
+}
+
 void RacerApplication::DrawEditor() const {
     BeginMode3D(editorCamera_);
     DrawGridFloor(24, 1.0f, Fade(Neon::Cyan, 0.20f));
@@ -159,9 +199,15 @@ void RacerApplication::DrawRace() const {
 }
 
 void RacerApplication::DrawStateHint() const {
-    const char* hint = state_ == AppState::Editor
-        ? "TAB: race preview    Ctrl+P/F6: playable library    ESC: quit"
-        : "TAB: return to editor    ESC: quit";
+    const char* hint = 0;
+    if (state_ == AppState::Editor) {
+        hint = "TAB: race preview    Ctrl+P/F6: playable library    ESC: quit";
+    } else if (state_ == AppState::Race) {
+        hint = raceReturnState_ == AppState::MainMenu
+            ? "TAB: return to menu    ESC: quit"
+            : "TAB: return to editor    ESC: quit";
+    }
+    if (hint == 0) return;
     Neon::DrawOverlayPanel(Rectangle{28.0f, static_cast<float>(AppSettings::kWindowHeight - 58), 570.0f, 34.0f}, 0.72f);
     DrawText(hint, 42, AppSettings::kWindowHeight - 49, 17, Neon::Yellow);
 }

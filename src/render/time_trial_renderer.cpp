@@ -55,7 +55,7 @@ void TimeTrialRenderer::DrawHud(const TimeTrial& timeTrial) const {
     if (!timeTrial.IsReady()) {
         DrawText("TRACK NOT READY", 46, 100, 20, Neon::Orange);
         DrawText(timeTrial.StatusMessage(), 46, 134, 15, Fade(RAYWHITE, 0.80f));
-        DrawText("Press Tab to return to the editor.", 46, 166, 15, Neon::Yellow);
+        DrawText("Press Tab to return to the previous screen.", 46, 166, 15, Neon::Yellow);
         return;
     }
 
