@@ -17,8 +17,8 @@ cmake --build build/cmake
 ctest --test-dir build/cmake --output-on-failure
 ```
 
-Track, race-physics, vehicle-dynamics, ghost-replay, time-trial, and
-playable-package tests must not include or link Raylib.
+Track, race-physics, vehicle-dynamics, ghost-replay, time-trial,
+playable-package, and main-menu-flow tests must not include or link Raylib.
 Add behavior tests under `tests/unit` whenever changing track geometry,
 validation, serialization, playable-package rules, or isolated race-dynamics
 math.
@@ -47,6 +47,15 @@ New editor sessions start with an empty layout. `CLEAR TRACK` must clear only
 the current in-memory layout, reset its start/finish state, remain undoable with
 `Ctrl+Z`, and leave saved custom drafts untouched. Manually check those cases
 after changing editor commands or history.
+
+When changing startup-menu flow, manually verify both keyboard and mouse
+selection. Creating a new track must reset only the current in-memory editor
+session (including undo/redo and the editor camera) while leaving saved drafts
+on disk untouched. Opening and closing the playable library from the menu must
+return to the menu; launching a package must enter its verified race and Tab
+must return to the menu. The equivalent library launched from the editor must
+still return a race to that editor, including after selecting another package
+from the completed-race export library.
 
 When changing shared road geometry, place a branch and a merge in an editor
 preview. Check that both visible arms can be selected with Shift+left-click,

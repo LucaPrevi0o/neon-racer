@@ -18,7 +18,7 @@ make test
 The root Makefile explicitly lists the application sources and links
 the UI module. It produces `build/neon-racer`; `make test` builds
 and runs Raylib-free track, race-physics, vehicle-dynamics, ghost-replay,
-time-trial, and playable-package tests.
+time-trial, playable-package, and main-menu-flow tests.
 Only building or running the graphical application requires Raylib, installed
 or supplied through `RAYLIB_CFLAGS` and `RAYLIB_LIBS` as documented there.
 
@@ -54,7 +54,12 @@ starts the remote release.
 
 ## Current controls
 
-- `Tab`: switch between the editor and race-preview application states
+- Main menu: use Up/Down or `W`/`S` to select, Enter/Space to choose, or
+  hover and click a card. **Play a complete track** opens the verified
+  playable-track library; **Create a new track** begins a fresh empty editor
+  session without changing saved drafts.
+- `Tab`: enter a race preview from the editor, or return a race to the screen
+  that launched it (the editor or main menu)
 - `Esc`: quit
 - Editor: move the mouse to position the grid-snapped preview; **Shift** +
   left-click a placed component to select it for editing. Plain left-click
@@ -87,7 +92,8 @@ starts the remote release.
 
 ## Time trial controls
 
-- `Tab`: enter or leave the time trial (the editor layout must be race-ready).
+- `Tab`: return to the editor preview or main menu that launched the time
+  trial. An editor layout must be race-ready before its preview can start.
 - Keyboard: `W`/up accelerates, `S`/down applies a moderated digital brake,
   `X` reverses, `A`/`D` or left/right steers, `R` restarts all three laps, and
   `P` pauses.
@@ -102,8 +108,8 @@ starts the remote release.
 
 ## Project structure
 
-- `src/app`: Raylib window lifecycle, application-state coordination, and
-  playable-library/export UI.
+- `src/app`: Raylib window lifecycle, startup-menu flow/presentation,
+  application-state coordination, and playable-library/export UI.
 - `src/editor`: track editing interaction and editor interface.
 - `src/persistence`: draft and playable-package serialization, storage paths,
   and the shared structural layout codec.

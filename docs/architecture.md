@@ -31,6 +31,13 @@ on read-only domain types, but neither may define game rules. `src/app` is the
 composition root: it creates the window, chooses the active screen, and wires
 the modules together.
 
+`app/main_menu_flow.*` is deliberately Raylib-free despite being an
+application-owned model: it holds the selected startup-menu choice and emits a
+one-shot semantic action. `app/main_menu.*` supplies the Raylib input and neon
+presentation for that model, while `RacerApplication` decides whether an action
+opens the playable library or starts a fresh editor session. This keeps the
+menu's navigation behavior unit-testable without coupling it to window state.
+
 The CMake build mirrors these boundaries: `neon_racer_domain` owns the
 Raylib-independent track and draft-layout codec; `neon_racer_vehicle_dynamics`
 builds vehicle simulation on that domain; `neon_racer_time_trial` adds
@@ -57,7 +64,10 @@ track-piece selections. `editor.cpp` remains the coordinator for input
 dispatch, mutable editor state, commands, and drawing.
 `app/raylib_race_input.cpp` translates Raylib devices into a plain `RaceInput`;
 `TimeTrial` receives that frame snapshot and reuses its held axes for every
-fixed step. `app/playable_library.cpp` presents the paged frozen-package library
+fixed step. `app/main_menu.cpp` presents the two-entry startup menu and hands
+its pure `main_menu_flow.cpp` intent to `RacerApplication`; a race records
+whether it originated from the menu or editor so Tab returns to the correct
+screen. `app/playable_library.cpp` presents the paged frozen-package library
 and export metadata form, while `RacerApplication` validates launch and export
 requests before changing session state. `race_contracts.hpp` owns the
 simulation's vector, vehicle, and ghost-transfer values. `vehicle_dynamics.hpp/.cpp` owns surface-query-driven suspension,
