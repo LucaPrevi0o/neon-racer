@@ -22,7 +22,7 @@ RACE_VEHICLE_SOURCES := src/race/vehicle_dynamics.cpp \
 
 RACE_GHOST_SOURCES := src/race/ghost_replay.cpp
 
-RACE_CORE_SOURCES := src/race/race.cpp \
+TIME_TRIAL_SOURCES := src/race/time_trial.cpp \
 	$(RACE_GHOST_SOURCES) \
 	$(RACE_VEHICLE_SOURCES)
 
@@ -36,7 +36,7 @@ APP_SOURCES := src/app/main.cpp \
 	src/editor/editor_library.cpp \
 	src/editor/editor_picking.cpp \
 	src/persistence/draft_io.cpp \
-	$(RACE_CORE_SOURCES) \
+	$(TIME_TRIAL_SOURCES) \
 	src/render/car_renderer.cpp \
 	src/render/race_scene.cpp \
 	src/render/track_renderer.cpp \
@@ -86,7 +86,7 @@ GHOST_REPLAY_TEST_SOURCES := tests/unit/test_ghost_replay.cpp \
 	$(RACE_GHOST_SOURCES)
 
 TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
-	$(RACE_CORE_SOURCES) \
+	$(TIME_TRIAL_SOURCES) \
 	$(RACE_TRACK_SOURCES)
 
 .PHONY: all build run test clean help publish-tag neon-racer racer racer-test

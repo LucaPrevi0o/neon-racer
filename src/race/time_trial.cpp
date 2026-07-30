@@ -1,4 +1,4 @@
-#include "race.hpp"
+#include "time_trial.hpp"
 
 #include <cmath>
 #include <cstdio>

@@ -82,11 +82,11 @@ void RacerApplication::Update(float frameTime) {
         if (nextState == AppState::Race) {
             std::string error;
             if (PlayableExport::Build(editor_.GetTrack(), "Editor session", playableTrack_, error)) {
-                race_.Start(playableTrack_.layout);
+                timeTrial_.Start(playableTrack_.layout);
             } else {
                 // Start preserves its existing, clear validation feedback when an
                 // export cannot be made yet.
-                race_.Start(editor_.GetTrack());
+                timeTrial_.Start(editor_.GetTrack());
             }
         }
         state_ = nextState;
@@ -116,10 +116,10 @@ void RacerApplication::UpdateEditor() {
 }
 
 void RacerApplication::UpdateRace(float frameTime) {
-    race_.Update(frameTime, ReadRaylibRaceInput());
-    if (!race_.IsReady()) return;
+    timeTrial_.Update(frameTime, ReadRaylibRaceInput());
+    if (!timeTrial_.IsReady()) return;
 
-    const RaceCar& car = race_.Car();
+    const RaceCar& car = timeTrial_.Car();
     const Vector3 behind = Vector3{-std::cos(car.headingRadians) * 8.0f, 4.5f,
                                    -std::sin(car.headingRadians) * 8.0f};
     const Vector3 desiredPosition = Vector3{car.position.x + behind.x, car.position.y + behind.y,
@@ -142,33 +142,34 @@ void RacerApplication::DrawEditor() const {
 void RacerApplication::DrawRace() const {
     BeginMode3D(raceCamera_);
     DrawGridFloor(40, 1.0f, Fade(Neon::Cyan, 0.15f));
-    DrawRaceTrackScene(race_.IsReady() ? playableTrack_.layout : editor_.GetTrack());
-    if (race_.IsReady() && race_.HasVerifiedGhost()) DrawGhostRaceCar(race_.GhostCar());
-    if (race_.IsReady()) DrawRaceCar(race_.Car());
+    DrawRaceTrackScene(timeTrial_.IsReady() ? playableTrack_.layout : editor_.GetTrack());
+    if (timeTrial_.IsReady() && timeTrial_.HasVerifiedGhost()) DrawGhostRaceCar(timeTrial_.GhostCar());
+    if (timeTrial_.IsReady()) DrawRaceCar(timeTrial_.Car());
     EndMode3D();
 
     Neon::DrawHeader("NEON RACER  //  TIME TRIAL", AppSettings::kWindowWidth);
     Neon::DrawOverlayPanel(Rectangle{28.0f, 80.0f, 300.0f, 198.0f});
-    if (!race_.IsReady()) {
+    if (!timeTrial_.IsReady()) {
         DrawText("TRACK NOT READY", 46, 100, 20, Neon::Orange);
-        DrawText(race_.StatusMessage(), 46, 134, 15, Fade(RAYWHITE, 0.80f));
+        DrawText(timeTrial_.StatusMessage(), 46, 134, 15, Fade(RAYWHITE, 0.80f));
         DrawText("Press Tab to return to the editor.", 46, 166, 15, Neon::Yellow);
         return;
     }
-    DrawText(TextFormat("LAP %i / 3", race_.CurrentLap()), 46, 100, 21, Neon::Cyan);
-    DrawText(TextFormat("CURRENT  %s", FormatRaceTime(race_.CurrentLapTime())), 46, 132, 18, RAYWHITE);
-    DrawText(TextFormat("BEST     %s", race_.BestLapTime() > 0.0f ? FormatRaceTime(race_.BestLapTime()) : "--:--.--"),
+    DrawText(TextFormat("LAP %i / 3", timeTrial_.CurrentLap()), 46, 100, 21, Neon::Cyan);
+    DrawText(TextFormat("CURRENT  %s", FormatRaceTime(timeTrial_.CurrentLapTime())), 46, 132, 18, RAYWHITE);
+    DrawText(TextFormat("BEST     %s", timeTrial_.BestLapTime() > 0.0f ? FormatRaceTime(timeTrial_.BestLapTime()) : "--:--.--"),
              46, 158, 18, Neon::Green);
-    DrawText(TextFormat("TOTAL    %s", FormatRaceTime(race_.TotalTime())), 46, 184, 18, RAYWHITE);
-    DrawText(TextFormat("SPEED    %03i km/h", static_cast<int>(std::fabs(race_.Car().speed) * 8.0f)),
+    DrawText(TextFormat("TOTAL    %s", FormatRaceTime(timeTrial_.TotalTime())), 46, 184, 18, RAYWHITE);
+    DrawText(TextFormat("SPEED    %03i km/h", static_cast<int>(std::fabs(timeTrial_.Car().speed) * 8.0f)),
              46, 210, 18, Neon::Pink);
-    const char* surface = race_.CurrentSurfaceMaterial() == SurfaceMaterial::Slippery ? "SLIPPERY" :
-                          race_.CurrentSurfaceMaterial() == SurfaceMaterial::HighResistance ? "HIGH RESISTANCE" :
+    const char* surface = timeTrial_.CurrentSurfaceMaterial() == SurfaceMaterial::Slippery ? "SLIPPERY" :
+                          timeTrial_.CurrentSurfaceMaterial() == SurfaceMaterial::HighResistance ? "HIGH RESISTANCE" :
                           "REGULAR";
-    DrawText(TextFormat("SURFACE  %s", race_.IsOnTrack() ? surface : "OFF TRACK"), 46, 244, 14,
-             race_.IsOnTrack() ? Neon::Cyan : Neon::Orange);
-    DrawText(race_.StatusMessage(), 46, 264, 14, race_.IsPaused() ? Neon::Yellow : Fade(RAYWHITE, 0.78f));
-    if (race_.HasVerifiedGhost()) DrawText("VERIFIED GHOST ACTIVE", 46, 282, 13, Neon::Green);
+    DrawText(TextFormat("SURFACE  %s", timeTrial_.IsOnTrack() ? surface : "OFF TRACK"), 46, 244, 14,
+             timeTrial_.IsOnTrack() ? Neon::Cyan : Neon::Orange);
+    DrawText(timeTrial_.StatusMessage(), 46, 264, 14,
+             timeTrial_.IsPaused() ? Neon::Yellow : Fade(RAYWHITE, 0.78f));
+    if (timeTrial_.HasVerifiedGhost()) DrawText("VERIFIED GHOST ACTIVE", 46, 282, 13, Neon::Green);
     Neon::DrawOverlayPanel(Rectangle{28.0f, 296.0f, 420.0f, 34.0f}, 0.72f);
     DrawText("WASD / arrows drive  X reverse  R reset  P pause", 42, 305, 16, Neon::Yellow);
 }

@@ -3,7 +3,7 @@
 #include <raylib.h>
 
 #include "../editor/editor.hpp"
-#include "../race/race.hpp"
+#include "../race/time_trial.hpp"
 #include "../track/playable_export.hpp"
 
 // The application owns only high-level flow. Track editing, validation and
@@ -32,5 +32,5 @@ private:
     Camera3D raceCamera_;
     TrackEditor editor_;
     PlayableTrack playableTrack_;
-    TimeTrial race_;
+    TimeTrial timeTrial_;
 };

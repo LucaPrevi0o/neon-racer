@@ -6,6 +6,8 @@
 #include "vehicle_dynamics.hpp"
 #include "../track/track.hpp"
 
+// Coordinates a complete three-lap attempt around the reusable simulation
+// components without owning device polling, vehicle dynamics, or replay math.
 class TimeTrial {
 public:
     TimeTrial();
