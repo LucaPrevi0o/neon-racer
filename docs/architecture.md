@@ -113,6 +113,21 @@ Persistence owns:
 - the shared structural layout codec;
 - temporary-file and atomic-replacement behavior.
 
+The public playable storage declaration lives at
+`include/neon_racer/persistence/playable_track_io.hpp`. Implementation-only
+interfaces stay under `src/persistence/internal`.
+
+| Path | Responsibility |
+| --- | --- |
+| `common/atomic_file_writer.cpp` | Bounded temporary sibling writes, flush, close, cleanup, and atomic rename |
+| `draft_io.cpp` | Editable draft listing, migration, save, and load orchestration |
+| `playable/playable_library_storage.cpp` | Custom package paths, discovery, sorting, and export version selection |
+| `playable/playable_package_codec.cpp` | Normative `.nrplay` grammar, embedded layout, ghost samples, and legacy migration |
+| `playable/playable_package_validation.cpp` | Race readiness, metadata, fingerprint, and verified-ghost checks |
+| `playable/playable_package_store.cpp` | File preflight plus package save/load orchestration |
+| `storage_paths.cpp` | Runtime data directories, safe file stems, and filesystem preflight |
+| `track_layout_codec.cpp` | Shared versioned track-layout serialization |
+
 It does not decide how a loaded object is rendered or whether the application
 changes screens after an operation.
 
@@ -215,7 +230,8 @@ A failed load leaves the caller's current editor or race state unchanged.
 
 The build mirrors the module boundaries:
 
-- `neon_racer_domain` owns Raylib-free track code and the draft layout codec.
+- `neon_racer_domain` owns Raylib-free track code, the draft layout codec, and
+  the shared atomic-file primitive.
 - `neon_racer_vehicle_dynamics` builds simulation on the domain.
 - `neon_racer_time_trial` adds time-trial orchestration.
 - `neon_racer_playable` combines package policy, persistence, and replay
