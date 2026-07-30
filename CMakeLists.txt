@@ -9,8 +9,10 @@ option(NEON_RACER_BUILD_APP "Build the Raylib-backed Neon Racer application" ON)
 
 add_library(neon_racer_domain
     src/persistence/draft_io.cpp
-    src/track/playable_export.cpp
+    src/persistence/storage_paths.cpp
+    src/persistence/track_layout_codec.cpp
     src/track/track_layout.cpp
+    src/track/track_fingerprint.cpp
     src/track/track_piece_geometry.cpp
     src/track/track_overlap.cpp
     src/track/track_graph.cpp
@@ -31,6 +33,13 @@ target_link_libraries(neon_racer_vehicle_dynamics PUBLIC neon_racer_domain)
 
 add_library(neon_racer_ghost_replay src/race/ghost_replay.cpp)
 target_compile_options(neon_racer_ghost_replay PRIVATE -Wall -Wextra)
+
+add_library(neon_racer_playable
+    src/persistence/playable_track_io.cpp
+    src/playable/playable_export.cpp
+)
+target_compile_options(neon_racer_playable PRIVATE -Wall -Wextra)
+target_link_libraries(neon_racer_playable PUBLIC neon_racer_domain neon_racer_ghost_replay)
 
 add_library(neon_racer_time_trial src/race/time_trial.cpp)
 target_compile_options(neon_racer_time_trial PRIVATE -Wall -Wextra)
@@ -56,14 +65,14 @@ if(NEON_RACER_BUILD_APP)
     endif()
 
     add_executable(neon-racer
-        src/app/main.cpp src/app/application.cpp src/app/raylib_race_input.cpp
+        src/app/main.cpp src/app/application.cpp src/app/playable_library.cpp src/app/raylib_race_input.cpp
         src/editor/editor.cpp src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
         src/editor/editor_library.cpp src/editor/editor_picking.cpp
         src/render/car_renderer.cpp src/render/race_scene.cpp src/render/time_trial_renderer.cpp
         src/render/track_renderer.cpp src/ui/neon.cpp
     )
     target_compile_options(neon-racer PRIVATE -Wall -Wextra)
-    target_link_libraries(neon-racer PRIVATE neon_racer_time_trial neon_racer_raylib)
+    target_link_libraries(neon-racer PRIVATE neon_racer_time_trial neon_racer_playable neon_racer_raylib)
 endif()
 
 enable_testing()
@@ -92,3 +101,8 @@ add_executable(neon-racer-time-trial-tests
 target_compile_options(neon-racer-time-trial-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-time-trial-tests PRIVATE neon_racer_time_trial)
 add_test(NAME neon-racer-time-trial-tests COMMAND neon-racer-time-trial-tests)
+
+add_executable(neon-racer-playable-io-tests tests/unit/test_playable_io.cpp)
+target_compile_options(neon-racer-playable-io-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-playable-io-tests PRIVATE neon_racer_playable neon_racer_time_trial)
+add_test(NAME neon-racer-playable-io-tests COMMAND neon-racer-playable-io-tests)

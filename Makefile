@@ -16,6 +16,15 @@ RACE_PHYSICS_TEST := $(BUILD_DIR)/tests/race_physics_tests
 VEHICLE_DYNAMICS_TEST := $(BUILD_DIR)/tests/vehicle_dynamics_tests
 GHOST_REPLAY_TEST := $(BUILD_DIR)/tests/ghost_replay_tests
 TIME_TRIAL_TEST := $(BUILD_DIR)/tests/time_trial_tests
+PLAYABLE_IO_TEST := $(BUILD_DIR)/tests/playable_io_tests
+
+DRAFT_PERSISTENCE_SOURCES := src/persistence/draft_io.cpp \
+	src/persistence/storage_paths.cpp \
+	src/persistence/track_layout_codec.cpp
+
+PLAYABLE_PERSISTENCE_SOURCES := src/persistence/playable_track_io.cpp
+
+PLAYABLE_SOURCES := src/playable/playable_export.cpp
 
 RACE_VEHICLE_SOURCES := src/race/vehicle_dynamics.cpp \
 	src/race/race_physics.cpp
@@ -28,6 +37,7 @@ TIME_TRIAL_SOURCES := src/race/time_trial.cpp \
 
 APP_SOURCES := src/app/main.cpp \
 	src/app/application.cpp \
+	src/app/playable_library.cpp \
 	src/app/raylib_race_input.cpp \
 	src/editor/editor.cpp \
 	src/editor/editor_camera.cpp \
@@ -35,19 +45,21 @@ APP_SOURCES := src/app/main.cpp \
 	src/editor/editor_history.cpp \
 	src/editor/editor_library.cpp \
 	src/editor/editor_picking.cpp \
-	src/persistence/draft_io.cpp \
+	$(DRAFT_PERSISTENCE_SOURCES) \
+	$(PLAYABLE_PERSISTENCE_SOURCES) \
 	$(TIME_TRIAL_SOURCES) \
+	$(PLAYABLE_SOURCES) \
 	src/render/car_renderer.cpp \
 	src/render/race_scene.cpp \
 	src/render/time_trial_renderer.cpp \
 	src/render/track_renderer.cpp \
-	src/track/playable_export.cpp \
 	src/track/track_graph.cpp \
 	src/track/track_rules.cpp \
 	src/track/track_road_geometry.cpp \
 	src/track/track_surface_geometry.cpp \
 	src/track/track_surface_query.cpp \
 	src/track/track_validation.cpp \
+	src/track/track_fingerprint.cpp \
 	src/track/track_layout.cpp \
 	src/track/track_piece_geometry.cpp \
 	src/track/track_overlap.cpp \
@@ -63,8 +75,8 @@ TRACK_TEST_SOURCES := tests/unit/test_track.cpp \
 	src/track/track_surface_geometry.cpp \
 	src/track/track_surface_query.cpp \
 	src/track/track_validation.cpp \
-	src/persistence/draft_io.cpp \
-	src/track/playable_export.cpp
+	src/track/track_fingerprint.cpp \
+	$(DRAFT_PERSISTENCE_SOURCES)
 
 RACE_PHYSICS_TEST_SOURCES := tests/unit/test_race_physics.cpp \
 	src/race/race_physics.cpp
@@ -77,7 +89,8 @@ RACE_TRACK_SOURCES := src/track/track_layout.cpp \
 	src/track/track_road_geometry.cpp \
 	src/track/track_surface_geometry.cpp \
 	src/track/track_surface_query.cpp \
-	src/track/track_validation.cpp
+	src/track/track_validation.cpp \
+	src/track/track_fingerprint.cpp
 
 VEHICLE_DYNAMICS_TEST_SOURCES := tests/unit/test_vehicle_dynamics.cpp \
 	$(RACE_VEHICLE_SOURCES) \
@@ -87,6 +100,13 @@ GHOST_REPLAY_TEST_SOURCES := tests/unit/test_ghost_replay.cpp \
 	$(RACE_GHOST_SOURCES)
 
 TIME_TRIAL_TEST_SOURCES := tests/unit/test_time_trial.cpp \
+	$(TIME_TRIAL_SOURCES) \
+	$(RACE_TRACK_SOURCES)
+
+PLAYABLE_IO_TEST_SOURCES := tests/unit/test_playable_io.cpp \
+	$(PLAYABLE_SOURCES) \
+	$(PLAYABLE_PERSISTENCE_SOURCES) \
+	$(DRAFT_PERSISTENCE_SOURCES) \
 	$(TIME_TRIAL_SOURCES) \
 	$(RACE_TRACK_SOURCES)
 
@@ -131,12 +151,17 @@ $(TIME_TRIAL_TEST): $(TIME_TRIAL_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -o $@ $(TIME_TRIAL_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST)
+$(PLAYABLE_IO_TEST): $(PLAYABLE_IO_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -o $@ $(PLAYABLE_IO_TEST_SOURCES)
+
+test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(PLAYABLE_IO_TEST)
 	./$(TRACK_TEST)
 	./$(RACE_PHYSICS_TEST)
 	./$(VEHICLE_DYNAMICS_TEST)
 	./$(GHOST_REPLAY_TEST)
 	./$(TIME_TRIAL_TEST)
+	./$(PLAYABLE_IO_TEST)
 
 # GitHub Actions receives a tag only after Git pushes it. Publish exactly one
 # validated main-history version tag so a release workflow gets one event.
