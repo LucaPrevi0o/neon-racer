@@ -144,8 +144,12 @@ VehicleStepResult VehicleDynamics::Step(const VehicleSurfaceQuery& surfaceQuery,
     const float brake = input.brake;
     const float reverse = input.reverse;
 
-    VehicleStepResult result = VehicleStepResult{false};
+    VehicleStepResult result = VehicleStepResult{false, false, 0};
     const TrackContact contact = surfaceQuery.QuerySurface(car_.position, 1.4f);
+    if (contact.found) {
+        result.hasSurfaceContact = true;
+        result.surfacePieceId = contact.surface.pieceId;
+    }
     const float grip = onTrack_ ? GripFor(surfaceMaterial_) : 0.20f;
     RaceVector3 acceleration = RaceVector3{0.0f, -kGravity, 0.0f};
 
@@ -231,6 +235,10 @@ VehicleStepResult VehicleDynamics::Step(const VehicleSurfaceQuery& surfaceQuery,
     // more after movement as well: a car can cross an edge during this fixed
     // step even when it began inside the road.
     const TrackContact postMoveContact = surfaceQuery.QuerySurface(car_.position, 1.4f);
+    if (postMoveContact.found) {
+        result.hasSurfaceContact = true;
+        result.surfacePieceId = postMoveContact.surface.pieceId;
+    }
     if (ResolveGuardrailContact(car_, postMoveContact, 0)) result.guardrailImpact = true;
 
     car_.headingRadians = std::atan2(car_.forward.z, car_.forward.x);
