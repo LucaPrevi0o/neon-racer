@@ -130,8 +130,15 @@ A draft becomes race-ready only when it has:
 Race direction may be selected in either orientation, but eligibility and graph
 rules must remain valid for the chosen traversal.
 
-A stronger checkpoint-based route proof is planned. Until then, a lap is
-recognized when the car crosses the start/finish in the configured direction.
+During a time trial, stable surface contacts must follow the directed connector
+graph selected by the race direction. A lap is eligible only after the car
+leaves the start piece through a connected edge, follows connected pieces, and
+returns to the start piece before crossing the finish zone in the configured
+direction. Either connected arm of a branch is valid. A non-adjacent shortcut or
+wrong-way piece transition invalidates the active run until reset.
+
+This automatic route proof is based on component transitions. Explicit authored
+checkpoint gates and checkpoint respawning remain future extensions.
 
 ## Editor experience
 
@@ -162,7 +169,9 @@ A completed run records:
 - a timestamped vehicle replay suitable for ghost playback and verification.
 
 Reset restarts the complete run. Pause freezes both simulation and timer.
-Ghosts are non-colliding visual cars and never affect physics.
+Ghosts are non-colliding visual cars and never affect physics. A run whose route
+progress becomes invalid cannot complete or produce a verified ghost until the
+player resets it.
 
 ## Vehicle behavior
 
@@ -211,8 +220,7 @@ unchanged.
 
 Planned extensions include:
 
-- checkpoints and stronger lap-route validation;
-- respawning at the latest checkpoint;
+- explicit checkpoint placement and respawning at the latest checkpoint;
 - more detailed branch-arm configuration;
 - additional curve variants where the shared geometry model can support them
   safely;
