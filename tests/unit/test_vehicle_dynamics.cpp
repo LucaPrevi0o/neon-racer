@@ -1,5 +1,7 @@
 #include "../../src/race/vehicle_dynamics.hpp"
+#include "../../src/track/track.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -28,7 +30,7 @@ TrackContact FlatContact(SurfaceMaterial material = SurfaceMaterial::Regular, bo
     return TrackContact{true,
                         TrackSurfaceSample{0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
                                            0.0f, 1.0f, 0.0f, 2.5f, material, 1},
-                        0.0f, guardrailHit};
+                        0.0f, guardrailHit, false, 0.0f};
 }
 
 class ScriptedSurfaceQuery : public VehicleSurfaceQuery {
@@ -39,7 +41,7 @@ public:
     TrackContact QuerySurface(RaceVector3 position, float maxDistance) const override {
         queriedPositions_.push_back(position);
         queriedDistances_.push_back(maxDistance);
-        if (contacts_.empty()) return TrackContact{false, FlatContact().surface, 0.0f, false};
+        if (contacts_.empty()) return TrackContact{false, FlatContact().surface, 0.0f, false, false, 0.0f};
         const std::size_t index = nextContact_ < contacts_.size() ? nextContact_ : contacts_.size() - 1;
         ++nextContact_;
         return contacts_[index];
@@ -56,6 +58,18 @@ private:
     mutable std::vector<float> queriedDistances_;
 };
 
+class TrackSurfaceQuery : public VehicleSurfaceQuery {
+public:
+    explicit TrackSurfaceQuery(const Track& track) : track_(track) {}
+
+    TrackContact QuerySurface(RaceVector3 position, float maxDistance) const override {
+        return track_.QuerySurface(position.x, position.y, position.z, maxDistance);
+    }
+
+private:
+    const Track& track_;
+};
+
 void TestResetPose() {
     VehicleDynamics vehicle;
     vehicle.ResetPose(RaceVector3{3.0f, 2.0f, -4.0f}, 0.0f);
@@ -68,6 +82,70 @@ void TestResetPose() {
                NearlyEqual(car.up.y, 1.0f) && NearlyEqual(car.up.z, 0.0f) &&
                NearlyEqual(car.headingRadians, 0.0f) && NearlyEqual(car.speed, 0.0f),
            "reset pose applies ride height and restores a canonical car state");
+}
+
+void TestVisualBodyCenter() {
+    RaceCar car = RaceCar{RaceVector3{3.0f, 2.0f, -4.0f}, RaceVector3{0.0f, 0.0f, 0.0f},
+                          RaceVector3{1.0f, 0.0f, 0.0f}, RaceVector3{0.0f, 1.0f, 0.0f}, 0.0f, 0.0f};
+    RaceVector3 bodyCenter = RaceCarVisualCenter(car);
+    Expect(NearlyEqual(bodyCenter.x, 3.0f) &&
+               NearlyEqual(bodyCenter.y, 2.0f + kRaceCarVisualBodyLift) && NearlyEqual(bodyCenter.z, -4.0f),
+           "the rendered chassis center clears a flat road from the suspension reference");
+
+    car.up = RaceVector3{0.0f, 0.0f, 1.0f};
+    bodyCenter = RaceCarVisualCenter(car);
+    Expect(NearlyEqual(bodyCenter.x, 3.0f) && NearlyEqual(bodyCenter.y, 2.0f) &&
+               NearlyEqual(bodyCenter.z, -4.0f + kRaceCarVisualBodyLift),
+           "the visual chassis lift follows the road normal on banked track");
+}
+
+void TestDefaultTwistMaintainsContact() {
+    Track track;
+    const int approachLength = 40;
+    Expect(track.AddStraight(GridPosition{-approachLength, 0, 0}, Heading::East, 20) != 0 &&
+               track.AddStraight(GridPosition{-20, 0, 0}, Heading::East, 20) != 0,
+           "twist contact setup provides a straight run-up");
+    const std::uint32_t twistId = track.AddTwist(GridPosition{0, 0, 0}, Heading::East,
+                                                   TrackLimits::kDefaultTwistLength);
+    Expect(track.AddStraight(GridPosition{TrackLimits::kDefaultTwistLength, 0, 0}, Heading::East, 20) != 0,
+           "twist contact setup provides a straight exit");
+    TrackSurfaceQuery query(track);
+    VehicleDynamics vehicle;
+    vehicle.ResetPose(RaceVector3{-static_cast<float>(approachLength), 0.0f, 0.0f}, 0.0f);
+
+    bool lostContactInsideTwist = false;
+    bool enteredTwist = false;
+    bool reachedExit = false;
+    bool sawInvertedFrame = false;
+    float highestPosition = -1000000.0f;
+    float maximumRideHeightError = 0.0f;
+    for (int step = 0; step < 3000; ++step) {
+        vehicle.Step(query, kFixedStep, Input(0.0f, 1.0f));
+        const RaceCar& car = vehicle.Car();
+        const TrackContact contact = track.QuerySurface(car.position.x, car.position.y, car.position.z, 1.4f);
+        if (contact.found && contact.surface.pieceId == twistId) {
+            enteredTwist = true;
+            sawInvertedFrame = sawInvertedFrame || car.up.y < -0.80f;
+            highestPosition = std::max(highestPosition, car.position.y);
+            const float height = (car.position.x - contact.surface.x) * contact.surface.normalX +
+                (car.position.y - contact.surface.y) * contact.surface.normalY +
+                (car.position.z - contact.surface.z) * contact.surface.normalZ;
+            maximumRideHeightError = std::max(maximumRideHeightError, std::fabs(height - 0.16f));
+            if (!vehicle.IsOnTrack() || !contact.twistGuide || contact.guardrailHit) lostContactInsideTwist = true;
+        }
+        if (enteredTwist && car.position.x >= static_cast<float>(TrackLimits::kDefaultTwistLength + 4)) {
+            reachedExit = true;
+            break;
+        }
+    }
+
+    const float expectedTop = static_cast<float>(TrackLimits::kDefaultTwistRadius) * 2.0f;
+    Expect(twistId != 0 && enteredTwist && reachedExit,
+           "an accelerating car enters and exits the default wide corkscrew");
+    Expect(!lostContactInsideTwist && sawInvertedFrame,
+           "the default wide corkscrew keeps a car guided through its inverted frame");
+    Expect(highestPosition >= expectedTop - 1.0f && maximumRideHeightError < 0.75f,
+           "the default wide corkscrew reaches its high loop apex without excess ride-height drift");
 }
 
 void TestDriveAndSurfaceState() {
@@ -174,6 +252,8 @@ void TestPostMoveGuardrailEvent() {
 
 int main() {
     TestResetPose();
+    TestVisualBodyCenter();
+    TestDefaultTwistMaintainsContact();
     TestDriveAndSurfaceState();
     TestOffTrackTransition();
     TestResetPreservesContactHistory();
