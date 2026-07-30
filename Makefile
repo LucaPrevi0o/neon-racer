@@ -48,6 +48,8 @@ APP_SOURCES := src/app/main.cpp \
 	src/editor/editor_commands.cpp \
 	src/editor/editor_history.cpp \
 	src/editor/editor_library.cpp \
+	src/editor/piece_catalog.cpp \
+	src/editor/piece_palette.cpp \
 	src/editor/editor_picking.cpp \
 	$(DRAFT_PERSISTENCE_SOURCES) \
 	$(PLAYABLE_PERSISTENCE_SOURCES) \

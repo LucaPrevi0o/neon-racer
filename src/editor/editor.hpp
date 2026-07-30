@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "piece_palette.hpp"
 #include "../track/track.hpp"
 
 class TrackEditor {
@@ -24,6 +25,7 @@ public:
 
 private:
     TrackPiece BuildPreview() const;
+    void SelectPreviewType(TrackPieceType type);
     void MovePreview(int x, int z);
     void RotatePreview();
     void ChangeDimension(int amount);
@@ -62,6 +64,7 @@ private:
     std::string message_;
     bool libraryOpen_;
     bool helpPanelExpanded_;
+    PiecePalette piecePalette_;
     bool namingDraft_;
     std::string draftName_;
     std::vector<std::string> savedDrafts_;

@@ -2,6 +2,7 @@
 
 #include "editor_camera.hpp"
 #include "editor_picking.hpp"
+#include "piece_catalog.hpp"
 
 #include "../persistence/draft_io.hpp"
 #include "../render/track_renderer.hpp"
@@ -97,11 +98,8 @@ void DrawPieceConnectorGuides(const TrackPiece& piece) {
 }
 
 const char* PieceName(TrackPieceType type) {
-    if (type == TrackPieceType::Straight) return "Straight";
-    if (type == TrackPieceType::Curve) return "Curve";
-    if (type == TrackPieceType::Loop) return "Loop";
-    if (type == TrackPieceType::Twist) return "Twist";
-    return type == TrackPieceType::Branch ? "Branch" : "Merge";
+    const EditorPieceCatalog::Item* item = EditorPieceCatalog::Find(type);
+    return item != 0 ? item->name : "Unknown";
 }
 
 const char* MaterialName(SurfaceMaterial material) {
@@ -137,6 +135,7 @@ TrackEditor::TrackEditor()
       message_("Start with an empty track: place a component or load a draft."),
       libraryOpen_(false),
       helpPanelExpanded_(true),
+      piecePalette_(),
       namingDraft_(false),
       draftName_("untitled"),
       previewOverlapCacheValid_(false),
@@ -170,57 +169,40 @@ void TrackEditor::Update(Camera3D& camera) {
         if (libraryOpen_) RefreshDraftList();
     }
     const bool libraryConsumed = UpdateTrackLibraryInput();
-    const bool helpToggled = !libraryConsumed && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-        CheckCollisionPointRec(GetMousePosition(), HelpToggleBounds(helpPanelExpanded_));
+    const Vector2 mouse = GetMousePosition();
+    piecePalette_.Update(mouse, GetScreenWidth(), GetScreenHeight(), GetFrameTime(), !libraryConsumed);
+    const bool paletteConsumesPointer = !libraryConsumed && piecePalette_.ConsumesPointer(mouse);
+    const bool leftClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    TrackPieceType paletteSelection = TrackPieceType::Straight;
+    const bool piecePaletteClicked = !libraryConsumed && leftClick &&
+        piecePalette_.ConsumeSelection(mouse, paletteSelection);
+    const bool helpToggled = !libraryConsumed && !paletteConsumesPointer && leftClick &&
+        CheckCollisionPointRec(mouse, HelpToggleBounds(helpPanelExpanded_));
     if (helpToggled) {
         helpPanelExpanded_ = !helpPanelExpanded_;
         return;
     }
 
-    if (IsKeyPressed(KEY_ONE)) {
-        preview_.type = TrackPieceType::Straight;
-        selectedPropertyIndex_ = 0;
-        SetMessage("Straight selected for placement.");
-    }
-    if (IsKeyPressed(KEY_TWO)) {
-        preview_.type = TrackPieceType::Curve;
-        selectedPropertyIndex_ = 0;
-        SetMessage("Curve selected for placement. Edit its properties in the panel.");
-    }
-    if (IsKeyPressed(KEY_THREE)) {
-        preview_.type = TrackPieceType::Loop;
-        selectedPropertyIndex_ = 0;
-        SetMessage("Vertical loop selected for placement.");
-    }
-    if (IsKeyPressed(KEY_FOUR)) {
-        preview_.type = TrackPieceType::Twist;
-        selectedPropertyIndex_ = 0;
-        SetMessage("Twist selected for placement.");
-    }
-    if (IsKeyPressed(KEY_FIVE)) {
-        preview_.type = TrackPieceType::Branch;
-        preview_.lateralOffset = std::max(1, std::abs(preview_.lateralOffset));
-        selectedPropertyIndex_ = 0;
-        SetMessage("Two-arm branch selected for placement.");
-    }
-    if (IsKeyPressed(KEY_SIX)) {
-        preview_.type = TrackPieceType::Merge;
-        preview_.lateralOffset = std::max(1, std::abs(preview_.lateralOffset));
-        selectedPropertyIndex_ = 0;
-        SetMessage("Two-arm merge selected for placement.");
+    const int pieceShortcutKeys[] = {KEY_ONE, KEY_TWO, KEY_THREE, KEY_FOUR, KEY_FIVE, KEY_SIX};
+    for (std::size_t index = 0; index < sizeof(pieceShortcutKeys) / sizeof(pieceShortcutKeys[0]); ++index) {
+        if (libraryConsumed || !IsKeyPressed(pieceShortcutKeys[index])) continue;
+        const EditorPieceCatalog::Item* item = EditorPieceCatalog::FindShortcut(static_cast<int>(index) + 1);
+        if (item != 0) SelectPreviewType(item->type);
     }
     const float wheel = GetMouseWheelMove();
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     const bool zooming = shift;
-    if (control && wheel > 0.0f) ChangeDimension(1);
-    if (control && wheel < 0.0f) ChangeDimension(-1);
-    if (!control && zooming && wheel != 0.0f) EditorCamera::Zoom(camera, wheel);
-    if (!control && !zooming && wheel > 0.0f) RotatePreview();
-    if (!control && !zooming && wheel < 0.0f) {
-        preview_.entryHeading = static_cast<Heading>((static_cast<int>(preview_.entryHeading) + 3) % 4);
-        SetMessage("Preview rotated 90 degrees.");
+    if (!paletteConsumesPointer) {
+        if (control && wheel > 0.0f) ChangeDimension(1);
+        if (control && wheel < 0.0f) ChangeDimension(-1);
+        if (!control && zooming && wheel != 0.0f) EditorCamera::Zoom(camera, wheel);
+        if (!control && !zooming && wheel > 0.0f) RotatePreview();
+        if (!control && !zooming && wheel < 0.0f) {
+            preview_.entryHeading = static_cast<Heading>((static_cast<int>(preview_.entryHeading) + 3) % 4);
+            SetMessage("Preview rotated 90 degrees.");
+        }
     }
-    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) EditorCamera::Orbit(camera, GetMouseDelta());
+    if (!paletteConsumesPointer && IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) EditorCamera::Orbit(camera, GetMouseDelta());
     if (IsKeyPressed(KEY_HOME)) EditorCamera::Reset(camera);
     if (IsKeyPressed(KEY_R)) RotatePreview();
     if (!libraryConsumed && IsKeyPressed(KEY_UP)) CycleProperty(-1);
@@ -240,27 +222,28 @@ void TrackEditor::Update(Camera3D& camera) {
     // A selected component stays anchored while its properties are edited.
     // Without this guard, merely moving the mouse before applying a turn flip
     // silently changed its entry position and made its connectors appear wrong.
-    if (selectedPieceId_ == 0) {
-        const Ray mouseRay = GetMouseRay(GetMousePosition(), camera);
+    if (!paletteConsumesPointer && selectedPieceId_ == 0) {
+        const Ray mouseRay = GetMouseRay(mouse, camera);
         if (EditorPicking::GridPositionFromRay(mouseRay, mousePosition)) {
             preview_.entryPosition.x = mousePosition.x;
             preview_.entryPosition.z = mousePosition.z;
         }
     }
 
-    const bool leftClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     const bool selectionClick = leftClick && shift;
-    const bool clearTrackClicked = !libraryConsumed && helpPanelExpanded_ && leftClick &&
-        CheckCollisionPointRec(GetMousePosition(), ClearTrackButtonBounds());
-    const bool startFinishClicked = !libraryConsumed && helpPanelExpanded_ && leftClick &&
-        CheckCollisionPointRec(GetMousePosition(), StartFinishButtonBounds());
-    if (clearTrackClicked) {
+    const bool clearTrackClicked = !libraryConsumed && !paletteConsumesPointer && helpPanelExpanded_ && leftClick &&
+        CheckCollisionPointRec(mouse, ClearTrackButtonBounds());
+    const bool startFinishClicked = !libraryConsumed && !paletteConsumesPointer && helpPanelExpanded_ && leftClick &&
+        CheckCollisionPointRec(mouse, StartFinishButtonBounds());
+    if (piecePaletteClicked) {
+        SelectPreviewType(paletteSelection);
+    } else if (clearTrackClicked) {
         ClearTrack();
     } else if (startFinishClicked) {
         SetStartFinish();
-    } else if (!libraryConsumed && selectionClick) {
+    } else if (!libraryConsumed && !paletteConsumesPointer && selectionClick) {
         const std::uint32_t pickedPieceId =
-            EditorPicking::PickPieceFromRay(GetMouseRay(GetMousePosition(), camera), track_.Pieces());
+            EditorPicking::PickPieceFromRay(GetMouseRay(mouse, camera), track_.Pieces());
         if (pickedPieceId != 0 && pickedPieceId != selectedPieceId_) {
             const TrackPiece* selected = track_.GetPiece(pickedPieceId);
             if (selected != 0) {
@@ -272,7 +255,7 @@ void TrackEditor::Update(Camera3D& camera) {
         } else if (pickedPieceId == 0) {
             SetMessage("No component under the pointer to select.");
         }
-    } else if (!libraryConsumed && (leftClick || IsKeyPressed(KEY_ENTER))) {
+    } else if (!libraryConsumed && (IsKeyPressed(KEY_ENTER) || (!paletteConsumesPointer && leftClick))) {
         // Plain clicks never ray-pick. They place a free preview or apply an
         // already selected edit, so nearby road surfaces cannot steal a click.
         if (selectedPieceId_ == 0) PlacePreview();
@@ -351,6 +334,7 @@ void TrackEditor::DrawInterface() const {
         DrawText("SHOW EDITOR HELP", 42, 92, 15, Neon::Cyan);
         DrawPropertyPanel();
         DrawTrackLibrary();
+        piecePalette_.Draw(preview_.type);
         return;
     }
     const TrackValidation validation = track_.Validate();
@@ -402,7 +386,7 @@ void TrackEditor::DrawInterface() const {
              13, Fade(RAYWHITE, 0.72f));
     DrawText("Properties: Up/Down select a panel row; Left/Right adjust it", kPanelX + 18, kPanelY + 314 + detailOffset,
              13, Fade(RAYWHITE, 0.72f));
-    DrawText("1/2 component type, R rotate, Home reset camera", kPanelX + 18,
+    DrawText("Piece library: hover bottom bar or press 1-6; R rotate, Home reset camera", kPanelX + 18,
              kPanelY + 331 + detailOffset, 13, Fade(RAYWHITE, 0.72f));
     DrawText("CUSTOM DRAFT: Ctrl+S save  Ctrl+O load", kPanelX + 18, kPanelY + 348 + detailOffset,
              13, Neon::Yellow);
@@ -427,6 +411,7 @@ void TrackEditor::DrawInterface() const {
              canClear ? BLACK : Fade(RAYWHITE, 0.62f));
     DrawPropertyPanel();
     DrawTrackLibrary();
+    piecePalette_.Draw(preview_.type);
 }
 
 const Track& TrackEditor::GetTrack() const { return track_; }
@@ -435,6 +420,32 @@ TrackPiece TrackEditor::BuildPreview() const {
     TrackPiece candidate = preview_;
     candidate.id = selectedPieceId_;
     return candidate;
+}
+
+void TrackEditor::SelectPreviewType(TrackPieceType type) {
+    const EditorPieceCatalog::Item* item = EditorPieceCatalog::Find(type);
+    if (item == 0) return;
+    const bool editingSelectedPiece = selectedPieceId_ != 0;
+    preview_.type = type;
+    if (type == TrackPieceType::Branch || type == TrackPieceType::Merge) {
+        preview_.lateralOffset = std::max(1, std::abs(preview_.lateralOffset));
+    }
+    selectedPropertyIndex_ = 0;
+
+    // Type selection has always been usable while a component is selected.
+    // Preserve that explicit transform workflow for both the 1–6 shortcuts
+    // and the visual palette instead of silently discarding the edit target.
+    if (editingSelectedPiece) {
+        SetMessage(std::string(item->name) + " selected for the active edit. Click or press M to apply.");
+        return;
+    }
+
+    if (type == TrackPieceType::Straight) SetMessage("Straight selected for placement.");
+    else if (type == TrackPieceType::Curve) SetMessage("Curve selected for placement. Edit its properties in the panel.");
+    else if (type == TrackPieceType::Loop) SetMessage("Vertical loop selected for placement.");
+    else if (type == TrackPieceType::Twist) SetMessage("Twist selected for placement.");
+    else if (type == TrackPieceType::Branch) SetMessage("Two-arm branch selected for placement.");
+    else SetMessage("Two-arm merge selected for placement.");
 }
 
 bool TrackEditor::PreviewOverlaps(const TrackPiece& candidate) const {
