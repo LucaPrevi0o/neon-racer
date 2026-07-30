@@ -146,24 +146,27 @@ race remain independent of it.
 ### `src/race`: simulation and time-trial rules
 
 The race module owns the plain input snapshot, vehicle state, surface-query
-driving, directed route progress, ghost replay, lap policy, and verification
-lifecycle.
+driving, connector-gated track position, ghost replay, lap policy, and
+verification lifecycle.
 
 | File | Responsibility |
 | --- | --- |
 | `race_contracts.hpp` | Vector, vehicle, and ghost-transfer value types |
 | `race_physics.cpp` | Raylib-free brake-damping policy |
-| `vehicle_dynamics.*` | Suspension/contact, steering, traction, braking, drag, guide contact, guardrail response, and contacted-piece reporting |
+| `vehicle_dynamics.*` | Suspension/contact, steering, traction, braking, drag, guide contact, and guardrail response |
 | `ghost_replay.*` | Sample capture, fastest-run replacement, validation, interpolation, and playback |
-| `internal/route_progress.hpp` | Private directed-route state-machine contract |
-| `time_trial/route_progress.cpp` | Stable connector-edge transitions, branch alternatives, wrong-way rejection, and lap eligibility |
-| `time_trial.cpp` | Fixed-step scheduling, finish-zone detection, laps, resets, layout invalidation, verification, and status messages |
+| `internal/track_position_tracker.hpp` | Private confirmed-piece, connector-gate, and normalized-progress contract |
+| `time_trial/track_position_tracker.cpp` | Directed connector crossings, branch selection, finish handling, and centerline projection |
+| `time_trial.cpp` | Fixed-step scheduling, movement-segment handoff, laps, resets, layout invalidation, verification, and status messages |
 
 `VehicleDynamics` depends on the narrow `VehicleSurfaceQuery` interface rather
-than presentation or editor state. Its step result exposes the exact surface
-piece selected by physics so `TimeTrial` does not perform a competing nearest-
-road query. `TimeTrial` receives one input snapshot per application frame and
-reuses its held axes for each fixed simulation step.
+than presentation or editor state. `TimeTrial` records the car position before
+and after each fixed physics step and passes that movement segment to
+`TrackPositionTracker`. The tracker does not use nearest-surface piece identity
+as topological truth.
+
+`TimeTrial` receives one input snapshot per application frame and reuses its held
+axes for every fixed simulation step.
 
 ### `src/render` and `src/ui`: presentation
 
@@ -209,16 +212,18 @@ The preview is transient. It does not create a `.nrplay` package.
 ### Lap completion
 
 ```text
-VehicleDynamics selects one surface piece
-  → RouteProgress confirms stable directed connector transitions
-  → one connected branch arm may be followed
-  → route returns to the start piece
-  → TimeTrial confirms the finish zone and selected travel direction
-  → lap timing advances
+VehicleDynamics advances one fixed physics step
+  → TimeTrial supplies the before/after car positions
+  → TrackPositionTracker tests only the confirmed piece's outgoing gates
+  → a correctly directed gate crossing confirms the connected successor
+  → centerline projection estimates progress within that confirmed piece
+  → a confirmed route return plus finish-gate crossing completes the lap
 ```
 
-A non-adjacent or wrong-way transition invalidates the active run. Merely
-recrossing the start plane without a connected return cannot complete a lap.
+Wrong-way crossings, non-current connector crossings, and nearest-surface
+fluctuations do not invalidate a run. They leave the confirmed route position
+unchanged. A shortcut therefore cannot create the connector sequence required
+for lap completion, while normal cornering cannot poison later progress.
 
 ### Verified export
 
@@ -253,7 +258,7 @@ The build mirrors the module boundaries:
 - `neon_racer_domain` owns Raylib-free track code, the draft layout codec, and
   the shared atomic-file primitive.
 - `neon_racer_vehicle_dynamics` builds simulation on the domain.
-- `neon_racer_time_trial` adds directed route progress and time-trial
+- `neon_racer_time_trial` adds connector-gated track position and time-trial
   orchestration.
 - `neon_racer_playable` combines package policy, persistence, and replay
   transfer contracts.
