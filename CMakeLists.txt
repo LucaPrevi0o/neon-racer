@@ -116,3 +116,8 @@ add_executable(neon-racer-piece-catalog-tests tests/unit/test_piece_catalog.cpp 
 target_compile_options(neon-racer-piece-catalog-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-piece-catalog-tests PRIVATE neon_racer_domain)
 add_test(NAME neon-racer-piece-catalog-tests COMMAND neon-racer-piece-catalog-tests)
+
+add_executable(neon-racer-repository-hardening-tests tests/unit/test_repository_hardening.cpp)
+target_compile_options(neon-racer-repository-hardening-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-repository-hardening-tests PRIVATE neon_racer_domain)
+add_test(NAME neon-racer-repository-hardening-tests COMMAND neon-racer-repository-hardening-tests)
