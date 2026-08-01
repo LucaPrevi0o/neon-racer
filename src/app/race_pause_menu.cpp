@@ -49,7 +49,7 @@ bool ChoiceAt(Vector2 point, RacePauseChoice& choice) {
 const char* ChoiceTitle(RacePauseChoice choice, bool returnsToMainMenu) {
     switch (choice) {
     case RacePauseChoice::Resume: return "RESUME RACE";
-    case RacePauseChoice::Recover: return "RECOVER TO CHECKPOINT";
+    case RacePauseChoice::Recover: return "RETURN TO CHECKPOINT";
     case RacePauseChoice::Restart: return "RESTART RUN";
     case RacePauseChoice::Return: return returnsToMainMenu ? "RETURN TO MAIN MENU" : "RETURN TO EDITOR";
     case RacePauseChoice::Quit: return "QUIT NEON RACER";
