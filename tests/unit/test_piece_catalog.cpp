@@ -58,12 +58,14 @@ void TestLoadedHalfTurnCannotPoisonLaterPreviews() {
     const std::uint32_t halfTurnId = loadedLayout.AddCurve(GridPosition{0, 0, 0}, Heading::East,
                                                             CurveTurn::Right, 4, 5, 5, 0,
                                                             SurfaceMaterial::Regular, 180);
-    const TrackPiece* loadedHalfTurn = loadedLayout.GetPiece(halfTurnId);
-    Expect(loadedHalfTurn != 0 && loadedHalfTurn->length == 0 && loadedHalfTurn->curveDegrees == 180,
+    const TrackPiece* loadedHalfTurnPointer = loadedLayout.GetPiece(halfTurnId);
+    Expect(loadedHalfTurnPointer != 0 && loadedHalfTurnPointer->length == 0 &&
+               loadedHalfTurnPointer->curveDegrees == 180,
            "loaded-curve setup uses the domain representation that has no straight length");
-    if (loadedHalfTurn == 0) return;
+    if (loadedHalfTurnPointer == 0) return;
+    const TrackPiece loadedHalfTurn = *loadedHalfTurnPointer;
 
-    TrackPiece staleStraight = *loadedHalfTurn;
+    TrackPiece staleStraight = loadedHalfTurn;
     staleStraight.type = TrackPieceType::Straight;
     staleStraight.entryPosition = GridPosition{100, 0, 100};
     Track standalone;
@@ -80,13 +82,13 @@ void TestLoadedHalfTurnCannotPoisonLaterPreviews() {
     Expect(!loadedLayout.HasOverlappingGeometry(repairedStraight) && loadedLayout.Add(repairedStraight) != 0,
            "a repaired far-away preview remains placeable after a loaded 180-degree turn");
 
-    TrackPiece tunedHalfTurn = *loadedHalfTurn;
+    TrackPiece tunedHalfTurn = loadedHalfTurn;
     tunedHalfTurn.bankAngleDegrees = 25;
     const TrackPiece unchanged = EditorPieceCatalog::RetargetPreview(tunedHalfTurn, TrackPieceType::Curve);
     Expect(unchanged.curveDegrees == 180 && unchanged.bankAngleDegrees == 25 && unchanged.length == 0,
            "a valid same-type half-turn keeps its tuned curve fields unchanged");
 
-    TrackPiece staleBranch = *loadedHalfTurn;
+    TrackPiece staleBranch = loadedHalfTurn;
     staleBranch.type = TrackPieceType::Branch;
     staleBranch.elevationDelta = 3;
     const TrackPiece repairedBranch = EditorPieceCatalog::RetargetPreview(staleBranch, TrackPieceType::Branch);
