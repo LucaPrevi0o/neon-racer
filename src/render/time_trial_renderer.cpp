@@ -15,6 +15,18 @@ Vector3 LerpVector3(Vector3 from, Vector3 to, float amount) {
                    from.z + (to.z - from.z) * amount};
 }
 
+Vector3 DesiredCameraTarget(const RaceCar& car) {
+    const RaceVector3 visualCenter = RaceCarVisualCenter(car);
+    return Vector3{visualCenter.x, visualCenter.y, visualCenter.z};
+}
+
+Vector3 DesiredCameraPosition(const RaceCar& car) {
+    const RaceVector3 visualCenter = RaceCarVisualCenter(car);
+    return Vector3{visualCenter.x - std::cos(car.headingRadians) * 8.0f,
+                   visualCenter.y + 4.5f,
+                   visualCenter.z - std::sin(car.headingRadians) * 8.0f};
+}
+
 } // namespace
 
 TimeTrialRenderer::TimeTrialRenderer() : camera_{} {
@@ -29,14 +41,14 @@ void TimeTrialRenderer::Update(const TimeTrial& timeTrial) {
     if (!timeTrial.IsReady()) return;
 
     const RaceCar& car = timeTrial.Car();
-    const RaceVector3 visualCenter = RaceCarVisualCenter(car);
-    const Vector3 behind = Vector3{-std::cos(car.headingRadians) * 8.0f, 4.5f,
-                                   -std::sin(car.headingRadians) * 8.0f};
-    const Vector3 desiredPosition = Vector3{visualCenter.x + behind.x, visualCenter.y + behind.y,
-                                            visualCenter.z + behind.z};
-    const Vector3 desiredTarget = Vector3{visualCenter.x, visualCenter.y, visualCenter.z};
-    camera_.position = LerpVector3(camera_.position, desiredPosition, 0.10f);
-    camera_.target = LerpVector3(camera_.target, desiredTarget, 0.14f);
+    camera_.position = LerpVector3(camera_.position, DesiredCameraPosition(car), 0.10f);
+    camera_.target = LerpVector3(camera_.target, DesiredCameraTarget(car), 0.14f);
+}
+
+void TimeTrialRenderer::SnapTo(const TimeTrial& timeTrial) {
+    if (!timeTrial.IsReady()) return;
+    camera_.position = DesiredCameraPosition(timeTrial.Car());
+    camera_.target = DesiredCameraTarget(timeTrial.Car());
 }
 
 void TimeTrialRenderer::Draw(const Track& track, const TimeTrial& timeTrial) const {
@@ -68,9 +80,4 @@ void TimeTrialRenderer::DrawHud(const TimeTrial& timeTrial) const {
              46, 156, 18, Neon::Green);
     DrawText(TextFormat("SPEED    %03i km/h", static_cast<int>(std::fabs(timeTrial.Car().speed) * 8.0f)), 46,
              182, 18, Neon::Pink);
-
-    if (timeTrial.IsFinished() && timeTrial.HasVerifiedGhost()) {
-        Neon::DrawOverlayPanel(Rectangle{28.0f, 226.0f, 304.0f, 34.0f}, 0.72f);
-        DrawText("E: SAVE PLAYABLE TRACK", 42, 235, 16, Neon::Green);
-    }
 }
