@@ -53,6 +53,7 @@ target_link_libraries(neon_racer_playable PUBLIC neon_racer_domain neon_racer_gh
 
 add_library(neon_racer_time_trial
     src/race/time_trial.cpp
+    src/race/time_trial/track_position_geometry.cpp
     src/race/time_trial/track_position_tracker.cpp
 )
 target_compile_options(neon_racer_time_trial PRIVATE -Wall -Wextra)
@@ -131,6 +132,11 @@ add_executable(neon-racer-track-position-tests tests/unit/test_track_position_tr
 target_compile_options(neon-racer-track-position-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-track-position-tests PRIVATE neon_racer_time_trial)
 add_test(NAME neon-racer-track-position-tests COMMAND neon-racer-track-position-tests)
+
+add_executable(neon-racer-checkpoint-recovery-tests tests/unit/test_checkpoint_recovery.cpp)
+target_compile_options(neon-racer-checkpoint-recovery-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-checkpoint-recovery-tests PRIVATE neon_racer_time_trial)
+add_test(NAME neon-racer-checkpoint-recovery-tests COMMAND neon-racer-checkpoint-recovery-tests)
 
 add_executable(neon-racer-playable-io-tests tests/unit/test_playable_io.cpp)
 target_compile_options(neon-racer-playable-io-tests PRIVATE -Wall -Wextra)
