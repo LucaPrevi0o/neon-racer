@@ -122,14 +122,15 @@ session; it is undoable and never deletes saved drafts.
 | Steer | `A`/`D` or Left/Right | Left stick |
 | Recover to the last confirmed checkpoint | `R` | Upper face button |
 | Restart the complete three-lap run | `Shift+R` | Middle-left button |
-| Open / close the pause menu | `P` or `Esc` | Start or B |
+| Open the pause menu | `P` or `Esc` | Start |
 | Quick-return to the launching screen | `Tab` | Use the pause menu |
 | Open playable export after verification | `E` | — |
 
 The pause menu provides **Resume**, **Recover to checkpoint**, **Restart run**,
 a contextual **Return to editor/main menu**, and **Quit**. Restart, return, and
 quit require a second confirmation; recovery is immediate and leaves the
-modal race screen frozen until the player resumes.
+modal race screen frozen until the player resumes. Start or B resumes from the
+pause menu, while B remains available as the digital brake during active play.
 
 Recovery returns the car to a safe pose just inside the last track piece reached
 through a valid checkpoint portal. It preserves the current lap, all recorded
