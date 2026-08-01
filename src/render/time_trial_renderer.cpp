@@ -52,38 +52,25 @@ void TimeTrialRenderer::Draw(const Track& track, const TimeTrial& timeTrial) con
 
 void TimeTrialRenderer::DrawHud(const TimeTrial& timeTrial) const {
     Neon::DrawHeader("NEON RACER  //  TIME TRIAL", GetScreenWidth());
-    Neon::DrawOverlayPanel(Rectangle{28.0f, 80.0f, 300.0f, 198.0f});
     if (!timeTrial.IsReady()) {
+        Neon::DrawOverlayPanel(Rectangle{28.0f, 80.0f, 300.0f, 112.0f});
         DrawText("TRACK NOT READY", 46, 100, 20, Neon::Orange);
         DrawText(timeTrial.StatusMessage(), 46, 134, 15, Fade(RAYWHITE, 0.80f));
-        DrawText("Press Tab to return to the previous screen.", 46, 166, 15, Neon::Yellow);
+        DrawText("Press Tab to return.", 46, 166, 15, Neon::Yellow);
         return;
     }
 
-    DrawText(TextFormat("LAP %i / 3", timeTrial.CurrentLap()), 46, 100, 21, Neon::Cyan);
-    DrawText(TextFormat("CURRENT  %s", FormatRaceTime(timeTrial.CurrentLapTime())), 46, 132, 18, RAYWHITE);
+    Neon::DrawOverlayPanel(Rectangle{28.0f, 80.0f, 300.0f, 132.0f});
+    DrawText(TextFormat("LAP      %i / 3", timeTrial.CurrentLap()), 46, 100, 20, Neon::Cyan);
+    DrawText(TextFormat("TIME     %s", FormatRaceTime(timeTrial.CurrentLapTime())), 46, 130, 18, RAYWHITE);
     DrawText(TextFormat("BEST     %s",
                         timeTrial.BestLapTime() > 0.0f ? FormatRaceTime(timeTrial.BestLapTime()) : "--:--.--"),
-             46, 158, 18, Neon::Green);
-    DrawText(TextFormat("TOTAL    %s", FormatRaceTime(timeTrial.TotalTime())), 46, 184, 18, RAYWHITE);
+             46, 156, 18, Neon::Green);
     DrawText(TextFormat("SPEED    %03i km/h", static_cast<int>(std::fabs(timeTrial.Car().speed) * 8.0f)), 46,
-             210, 18, Neon::Pink);
+             182, 18, Neon::Pink);
 
-    const char* surface = timeTrial.CurrentSurfaceMaterial() == SurfaceMaterial::Slippery
-                              ? "SLIPPERY"
-                              : timeTrial.CurrentSurfaceMaterial() == SurfaceMaterial::HighResistance
-                                    ? "HIGH RESISTANCE"
-                                    : "REGULAR";
-    DrawText(TextFormat("SURFACE  %s", timeTrial.IsOnTrack() ? surface : "OFF TRACK"), 46, 244, 14,
-             timeTrial.IsOnTrack() ? Neon::Cyan : Neon::Orange);
-    DrawText(timeTrial.StatusMessage(), 46, 264, 14,
-             timeTrial.IsPaused() ? Neon::Yellow : Fade(RAYWHITE, 0.78f));
-    if (timeTrial.HasVerifiedGhost()) DrawText("VERIFIED GHOST ACTIVE", 46, 282, 13, Neon::Green);
-    Neon::DrawOverlayPanel(Rectangle{28.0f, 296.0f, 650.0f, 34.0f}, 0.72f);
-    DrawText("WASD / arrows drive  X reverse  R recover  Shift+R restart  P pause", 42, 305, 15,
-             Neon::Yellow);
     if (timeTrial.IsFinished() && timeTrial.HasVerifiedGhost()) {
-        Neon::DrawOverlayPanel(Rectangle{28.0f, 338.0f, 304.0f, 34.0f}, 0.72f);
-        DrawText("E: SAVE PLAYABLE TRACK", 42, 347, 16, Neon::Green);
+        Neon::DrawOverlayPanel(Rectangle{28.0f, 226.0f, 304.0f, 34.0f}, 0.72f);
+        DrawText("E: SAVE PLAYABLE TRACK", 42, 235, 16, Neon::Green);
     }
 }
