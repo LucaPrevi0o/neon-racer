@@ -26,6 +26,7 @@ TrackEditor::TrackEditor()
       piecePalette_(),
       namingDraft_(false),
       draftName_("untitled"),
+      currentDraftName_(),
       previewOverlapCacheValid_(false),
       cachedPreview_(preview_),
       cachedPreviewRevision_(0),
