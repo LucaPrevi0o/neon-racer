@@ -137,6 +137,8 @@ void MainMenu::Draw() const {
     Neon::DrawCenteredText("Click a card to begin  |  W/S or Up/Down: select  |  Enter/Space: choose",
                            AppSettings::kWindowWidth, 584, 15, Neon::Yellow);
     Neon::DrawCenteredText("ESC: quit", AppSettings::kWindowWidth, 616, 14, Fade(RAYWHITE, 0.66f));
+    DrawText(AppSettings::kVersion, 20, AppSettings::kWindowHeight - 28, 12,
+             Fade(RAYWHITE, 0.48f));
 }
 
 MainMenuAction MainMenu::ConsumeAction() { return flow_.ConsumeAction(); }
