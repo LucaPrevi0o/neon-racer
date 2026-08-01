@@ -38,7 +38,7 @@ void TestImmediateActionsAndBack() {
     flow.Select(RacePauseChoice::Recover);
     flow.ActivateSelectedChoice();
     Expect(flow.ConsumeAction() == RacePauseAction::Recover,
-           "checkpoint recovery activates immediately");
+           "return to checkpoint emits its immediate recovery-and-resume action");
     Expect(flow.ConsumeAction() == RacePauseAction::None,
            "a pause action is consumed once");
 
