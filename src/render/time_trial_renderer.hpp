@@ -12,6 +12,7 @@ public:
     TimeTrialRenderer();
 
     void Update(const TimeTrial& timeTrial);
+    void SnapTo(const TimeTrial& timeTrial);
     void Draw(const Track& track, const TimeTrial& timeTrial) const;
 
 private:
