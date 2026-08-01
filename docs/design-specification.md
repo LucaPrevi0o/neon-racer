@@ -130,8 +130,24 @@ A draft becomes race-ready only when it has:
 Race direction may be selected in either orientation, but eligibility and graph
 rules must remain valid for the chosen traversal.
 
-A stronger checkpoint-based route proof is planned. Until then, a lap is
-recognized when the car crosses the start/finish in the configured direction.
+During a time trial, the player's route position is a confirmed topological
+state rather than the identity of whichever sampled road surface happens to be
+nearest. The tracker stores the confirmed piece and estimates normalized
+progress within it by projecting the car onto that piece's physical centerline.
+
+Topology advances only when the car's movement crosses one of the confirmed
+piece's outgoing connector gates in the selected direction, within the gate's
+road width and vertical tolerance. Either connected branch exit is valid, and
+the crossed gate selects that route.
+
+Wrong-way crossings, unrelated connector crossings, and noisy surface-query
+ownership are non-destructive: they leave the confirmed position unchanged. A
+shortcut therefore cannot establish the full connector sequence required for a
+lap, but it does not permanently invalidate an otherwise recoverable run.
+
+A lap completes only after the confirmed route returns to the start piece and
+the car crosses the start/finish gate in the configured direction. Explicit
+authored checkpoints and checkpoint respawning remain future extensions.
 
 ## Editor experience
 
@@ -162,7 +178,9 @@ A completed run records:
 - a timestamped vehicle replay suitable for ghost playback and verification.
 
 Reset restarts the complete run. Pause freezes both simulation and timer.
-Ghosts are non-colliding visual cars and never affect physics.
+Ghosts are non-colliding visual cars and never affect physics. A shortcut or
+wrong-way excursion cannot complete the connector sequence for a lap, but the
+player may recover by returning to the still-confirmed route position.
 
 ## Vehicle behavior
 
@@ -211,8 +229,7 @@ unchanged.
 
 Planned extensions include:
 
-- checkpoints and stronger lap-route validation;
-- respawning at the latest checkpoint;
+- explicit checkpoint placement and respawning at the latest checkpoint;
 - more detailed branch-arm configuration;
 - additional curve variants where the shared geometry model can support them
   safely;

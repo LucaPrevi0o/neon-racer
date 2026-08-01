@@ -42,9 +42,10 @@ private:
 } // namespace
 
 TimeTrial::TimeTrial()
-    : track_(0), accumulator_(0.0f), currentLapTime_(0.0f), bestLapTime_(0.0f), totalTime_(0.0f),
-      previousStartProjection_(0.0f), completedLaps_(0), hasLeftStart_(false), paused_(false),
-      finished_(false), ready_(false), statusMessage_("Open a race-ready track in the editor.") {
+    : track_(0), vehicle_(), trackPosition_(), accumulator_(0.0f), currentLapTime_(0.0f),
+      bestLapTime_(0.0f), totalTime_(0.0f), previousStartProjection_(0.0f), completedLaps_(0),
+      paused_(false), finished_(false), ready_(false), ghostReplay_(), verification_(),
+      statusMessage_("Open a race-ready track in the editor.") {
 }
 
 void TimeTrial::Start(const Track& track) {
@@ -56,6 +57,7 @@ void TimeTrial::Start(const Track& track) {
         verification_ = VerificationState();
     }
     track_ = &track;
+    trackPosition_.Configure(track);
     ready_ = track.Validate().raceReady;
     if (!ready_) {
         statusMessage_ = "Track is not race-ready. Complete and validate it in the editor.";
@@ -87,7 +89,7 @@ void TimeTrial::Reset() {
     totalTime_ = 0.0f;
     ghostReplay_.ResetCandidate();
     completedLaps_ = 0;
-    hasLeftStart_ = false;
+    trackPosition_.Reset();
     paused_ = false;
     finished_ = false;
     statusMessage_ = "Time trial in progress.";
@@ -154,6 +156,7 @@ const char* TimeTrial::StatusMessage() const { return statusMessage_; }
 
 void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     TrackVehicleSurfaceQuery surfaceQuery(*track_);
+    const RaceVector3 previousPosition = vehicle_.Car().position;
     const VehicleStepResult vehicleStep = vehicle_.Step(surfaceQuery, deltaTime, input);
     if (vehicleStep.guardrailImpact) {
         statusMessage_ = "Guardrail impact.";
@@ -162,6 +165,7 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     }
 
     const RaceCar& car = vehicle_.Car();
+    trackPosition_.Update(previousPosition, car.position);
     ghostReplay_.Capture(car, totalTime_);
 
     currentLapTime_ += deltaTime;
@@ -175,16 +179,21 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     const float dz = car.position.z - static_cast<float>(start.position.z);
     const float projection = dx * startDirection.x + dz * startDirection.z;
     const float lateral = std::fabs(dx * -startDirection.z + dz * startDirection.x);
+    const float directionSpeed = car.velocity.x * startDirection.x + car.velocity.z * startDirection.z;
+    const bool crossedStart = previousStartProjection_ < 0.0f && projection >= 0.0f && lateral < 2.0f &&
+        directionSpeed > 1.0f;
 
-    if (projection > 4.0f) hasLeftStart_ = true;
-    if (hasLeftStart_ && previousStartProjection_ < 0.0f && projection >= 0.0f && lateral < 2.0f && car.speed > 1.0f) {
+    if (trackPosition_.LapCompleted()) {
         CompleteLap();
+    } else if (crossedStart && trackPosition_.HasDepartedStart() && !trackPosition_.HasReturnedToStart()) {
+        statusMessage_ = "Lap not counted: complete the connected route in the selected direction.";
     }
     previousStartProjection_ = projection;
 }
 
 void TimeTrial::CompleteLap() {
     ++completedLaps_;
+    trackPosition_.BeginNextLap();
     if (bestLapTime_ == 0.0f || currentLapTime_ < bestLapTime_) bestLapTime_ = currentLapTime_;
     if (completedLaps_ >= 3) {
         finished_ = true;
