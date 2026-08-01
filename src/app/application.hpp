@@ -5,6 +5,7 @@
 #include "neon_racer/editor/editor.hpp"
 #include "main_menu.hpp"
 #include "playable_library.hpp"
+#include "race_pause_menu.hpp"
 #include "../race/time_trial.hpp"
 #include "../render/time_trial_renderer.hpp"
 #include "../playable/playable_export.hpp"
@@ -23,16 +24,19 @@ public:
 
     void Update(float frameTime);
     void Draw() const;
+    bool QuitRequested() const;
 
 private:
     void ResetEditorCamera();
     void UpdateMainMenu();
     void UpdateEditor();
     void UpdateRace(float frameTime);
+    void UpdateRacePauseMenu();
     void UpdatePlayableLibrary();
     void StartNewEditorSession();
     void LaunchPlayableTrack(const std::string& path);
     void ExportVerifiedPlayable(TrackMetadata metadata);
+    void ReturnFromRace();
     void DrawMainMenu() const;
     void DrawEditor() const;
     void DrawRace() const;
@@ -40,10 +44,12 @@ private:
 
     AppState state_;
     // A playable package can be launched from either the menu or editor.
-    // Tab returns the race to this source screen instead of assuming editor.
+    // The race pause menu and Tab return to this source screen.
     AppState raceReturnState_;
+    bool quitRequested_;
     Camera3D editorCamera_;
     MainMenu mainMenu_;
+    RacePauseMenu racePauseMenu_;
     TrackEditor editor_;
     PlayableTrack playableTrack_;
     TimeTrial timeTrial_;

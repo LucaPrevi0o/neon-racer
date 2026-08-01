@@ -109,15 +109,24 @@ void MainMenu::Update() {
     // card, so Enter/Space follows the mouse without requiring a click.
     if (hasHoveredChoice_) flow_.Select(hoveredChoice_);
 
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) flow_.SelectPrevious();
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) flow_.SelectNext();
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+        flow_.SelectPrevious();
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+        flow_.SelectNext();
+    }
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && hasHoveredChoice_) {
         flow_.Select(hoveredChoice_);
         flow_.ActivateSelectedChoice();
         return;
     }
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) flow_.ActivateSelectedChoice();
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+        flow_.ActivateSelectedChoice();
+    }
 }
 
 void MainMenu::Draw() const {
@@ -134,9 +143,9 @@ void MainMenu::Draw() const {
     DrawChoice(MainMenuChoice::CreateNewTrack, selectedChoice == MainMenuChoice::CreateNewTrack);
     DrawHowToPlay();
 
-    Neon::DrawCenteredText("Click a card to begin  |  W/S or Up/Down: select  |  Enter/Space: choose",
+    Neon::DrawCenteredText("Click / Enter / A: choose  |  W/S, Up/Down or D-pad: select",
                            AppSettings::kWindowWidth, 584, 15, Neon::Yellow);
-    Neon::DrawCenteredText("ESC: quit", AppSettings::kWindowWidth, 616, 14, Fade(RAYWHITE, 0.66f));
+    Neon::DrawCenteredText("ESC / B: quit", AppSettings::kWindowWidth, 616, 14, Fade(RAYWHITE, 0.66f));
     DrawText(AppSettings::kVersion, 20, AppSettings::kWindowHeight - 28, 12,
              Fade(RAYWHITE, 0.48f));
 }
