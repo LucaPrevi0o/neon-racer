@@ -9,7 +9,7 @@ int main() {
     SetTargetFPS(60);
 
     RacerApplication application;
-    while (!WindowShouldClose() && !IsKeyPressed(KEY_ESCAPE)) {
+    while (!WindowShouldClose() && !application.QuitRequested()) {
         application.Update(GetFrameTime());
 
         BeginDrawing();
