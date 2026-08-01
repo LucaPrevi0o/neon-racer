@@ -73,7 +73,10 @@ void TrackEditor::DrawTrackLibrary() const {
     const Neon::ButtonState saveState = Neon::GetButtonState(save, actionsEnabled);
     const Neon::ButtonState refreshState = Neon::GetButtonState(refresh, actionsEnabled);
     Neon::DrawButton(save, Neon::Pink, saveState, actionsEnabled);
-    DrawText("SAVE AS", static_cast<int>(save.x) + 54, static_cast<int>(save.y) + 9, 15,
+    const char* saveLabel = currentDraftName_.empty() ? "SAVE AS" : "SAVE CURRENT";
+    const int saveLabelWidth = MeasureText(saveLabel, 15);
+    DrawText(saveLabel, static_cast<int>(save.x + save.width * 0.5f) - saveLabelWidth / 2,
+             static_cast<int>(save.y) + 9, 15,
              actionsEnabled ? BLACK : Fade(RAYWHITE, 0.36f));
     Neon::DrawButton(refresh, Neon::Cyan, refreshState);
     DrawText("REFRESH", static_cast<int>(refresh.x) + 54, static_cast<int>(refresh.y) + 9, 15,
@@ -92,16 +95,22 @@ void TrackEditor::DrawTrackLibrary() const {
     }
 
     DrawText("CUSTOM DRAFTS  |  click one to load", 840, 175, 16, RAYWHITE);
-    if (savedDrafts_.empty()) {
+    if (!currentDraftName_.empty()) {
+        DrawText(("CURRENT: " + currentDraftName_).c_str(), 840, 202, 14, Neon::Yellow);
+    } else if (savedDrafts_.empty()) {
         DrawText("No saved custom tracks yet.", 840, 205, 16, Fade(RAYWHITE, 0.65f));
     }
-    for (std::size_t index = 0; index < savedDrafts_.size() && index < 12; ++index) {
-        const Rectangle row{840.0f, 192.0f + static_cast<float>(index) * 27.0f, 375.0f, 23.0f};
+    const float rowStart = currentDraftName_.empty() ? 192.0f : 222.0f;
+    for (std::size_t index = 0; index < savedDrafts_.size() && index < 11; ++index) {
+        const Rectangle row{840.0f, rowStart + static_cast<float>(index) * 27.0f, 375.0f, 23.0f};
         const Neon::ButtonState rowState = Neon::GetButtonState(row);
         Neon::DrawButton(row, Neon::Cyan, rowState);
         DrawText(savedDrafts_[index].c_str(), static_cast<int>(row.x) + 10,
                  static_cast<int>(row.y) + 4, 15,
                  Neon::IsButtonHighlighted(rowState) ? RAYWHITE : Neon::Cyan);
     }
-    DrawText("Ctrl+S save  |  Ctrl+O/F5 library", 840, 540, 14, Neon::Yellow);
+    DrawText(currentDraftName_.empty()
+                 ? "Ctrl+S: name and save  |  Ctrl+O/F5: library"
+                 : "Ctrl+S: update current draft  |  Ctrl+O/F5: library",
+             840, 540, 14, Neon::Yellow);
 }
