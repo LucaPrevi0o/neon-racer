@@ -59,6 +59,12 @@ void TrackEditor::Update(Camera3D& camera) {
         namingDraft_ = false;
         if (libraryOpen_) RefreshDraftList();
     }
+    if (IsKeyPressed(KEY_G)) {
+        trackingGraphVisible_ = !trackingGraphVisible_;
+        SetMessage(trackingGraphVisible_
+                       ? "Tracking graph visible: nodes, directed edges, and checkpoint portals are shown."
+                       : "Tracking graph hidden. Press G to show it again.");
+    }
 
     const bool libraryConsumed = UpdateTrackLibraryInput();
     const Vector2 mouse = GetMousePosition();

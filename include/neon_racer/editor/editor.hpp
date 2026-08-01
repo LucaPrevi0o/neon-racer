@@ -36,6 +36,7 @@ private:
     std::string PropertyValue(int index) const;
     float PropertyFraction(int index) const;
     void DrawPropertyPanel() const;
+    void DrawTrackingGraph3D() const;
     bool PreviewOverlaps(const TrackPiece& candidate) const;
     void CycleSelection();
     void PlacePreview();
@@ -64,6 +65,7 @@ private:
     std::string message_;
     bool libraryOpen_;
     bool helpPanelExpanded_;
+    bool trackingGraphVisible_;
     PiecePalette piecePalette_;
     bool namingDraft_;
     std::string draftName_;

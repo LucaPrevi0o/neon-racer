@@ -72,6 +72,7 @@ menu.
 | Select a placed component | Shift + left-click |
 | Rotate the preview | Mouse wheel or `R` |
 | Choose a component | `1`–`6`, or click a Piece Library card |
+| Toggle the checkpoint graph overlay | `G` |
 | Change the primary dimension | Ctrl + mouse wheel |
 | Cycle curve extent | `V` |
 | Increase/decrease curve bank | `B` / `N` |
@@ -97,6 +98,13 @@ component, including dimensions, endpoint widths, height, ramp delta, lateral
 offset, material, curve turn and extent, bank angle, and Twist run/radius.
 Cyan arrows mark entries and pink arrows mark exits. A connector join requires
 the same grid position, travel heading, elevation, and width.
+
+Press `G` to inspect the progress graph used by lap tracking. Cyan spheres are
+ordinary checkpoint states, yellow spheres are branch/merge states, and orange
+spheres are pieces that are not part of a current connection. Pink arrows show
+the selected race direction. Yellow rectangular portals are connector planes
+the car must cross to confirm a transition; the green portal is the finish
+plane. The overlay is hidden by default and is not persisted in drafts.
 
 After completing a valid closed race graph, select an eligible straight and use
 **SET START / FINISH**. **CLEAR TRACK** resets only the in-memory editor
@@ -149,7 +157,7 @@ rules, and atomic-write behavior.
 | `src/playable` | Frozen package contracts and export policy |
 | `src/race` | Vehicle dynamics, ghost replay, and time-trial orchestration |
 | `src/render` | Track, vehicle, and race presentation |
-| `src/track` | Track model, geometry, validation, surface queries, and fingerprints |
+| `src/track` | Track model, geometry, validation, progress graphs, surface queries, and fingerprints |
 | `src/ui` | Shared neon presentation primitives |
 | `tests/unit` | Raylib-free behavior tests |
 | `assets/tracks/examples` | Versioned example drafts |

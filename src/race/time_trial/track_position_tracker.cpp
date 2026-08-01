@@ -1,6 +1,7 @@
 #include "../internal/track_position_tracker.hpp"
 
 #include "../../track/track.hpp"
+#include "../../track/track_progress_graph.hpp"
 #include "../../track/track_road_geometry.hpp"
 
 #include <algorithm>
@@ -53,13 +54,12 @@ RaceVector3 Point(const TrackPathPoint& point) {
     return RaceVector3{point.x, point.y, point.z};
 }
 
-TrackPositionTracker::Gate GateFor(const TrackConnector& connector, bool forwardRace) {
-    RaceVector3 forward = HeadingVector(connector.heading);
-    if (!forwardRace) forward = Scale(forward, -1.0f);
+TrackPositionTracker::Gate GateFor(const TrackProgressPortal& portal) {
+    const TrackConnector& connector = portal.connector;
     return TrackPositionTracker::Gate{
         RaceVector3{static_cast<float>(connector.position.x), static_cast<float>(connector.position.y),
                     static_cast<float>(connector.position.z)},
-        forward,
+        HeadingVector(portal.crossingHeading),
         static_cast<float>(connector.width) * 0.5f,
     };
 }
@@ -145,27 +145,16 @@ TrackPositionTracker::TrackPositionTracker()
 void TrackPositionTracker::Configure(const Track& track) {
     track_ = &track;
     transitions_.clear();
-    const bool forwardRace = track.SelectedRaceDirection() == RaceDirection::Forward;
-    const std::vector<TrackConnection> connections = track.Connections();
-    for (std::vector<TrackConnection>::const_iterator connection = connections.begin();
-         connection != connections.end(); ++connection) {
-        const std::uint32_t fromPieceId = forwardRace ? connection->exit.pieceId : connection->entry.pieceId;
-        const std::uint32_t toPieceId = forwardRace ? connection->entry.pieceId : connection->exit.pieceId;
-        const TrackPiece* gatePiece = track.GetPiece(fromPieceId);
-        if (gatePiece == 0) continue;
-
-        const std::vector<TrackConnector> connectors = forwardRace ? gatePiece->ExitConnectors() :
-            gatePiece->EntryConnectors();
-        const std::size_t connectorIndex = forwardRace ? connection->exit.connectorIndex :
-            connection->entry.connectorIndex;
-        if (connectorIndex >= connectors.size()) continue;
-        transitions_[fromPieceId].push_back(Transition{toPieceId, GateFor(connectors[connectorIndex], forwardRace)});
+    const TrackProgressGraph graph = BuildTrackProgressGraph(track);
+    for (std::vector<TrackProgressTransition>::const_iterator transition = graph.transitions.begin();
+         transition != graph.transitions.end(); ++transition) {
+        transitions_[transition->fromPieceId].push_back(
+            Transition{transition->toPieceId, GateFor(transition->portal)});
     }
 
-    startPieceId_ = track.HasStartFinish() ? track.StartFinishPieceId() : 0;
-    const TrackPiece* startPiece = track.GetPiece(startPieceId_);
-    configured_ = startPiece != 0;
-    if (configured_) finishGate_ = GateFor(startPiece->EntryConnector(), forwardRace);
+    startPieceId_ = graph.hasStartFinish ? graph.startFinishPieceId : 0;
+    configured_ = graph.hasStartFinish && track.GetPiece(startPieceId_) != 0;
+    if (configured_) finishGate_ = GateFor(graph.finishPortal);
     Reset();
 }
 

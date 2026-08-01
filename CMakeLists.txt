@@ -21,6 +21,7 @@ add_library(neon_racer_domain
     src/track/track_piece_geometry.cpp
     src/track/track_overlap.cpp
     src/track/track_graph.cpp
+    src/track/track_progress_graph.cpp
     src/track/track_rules.cpp
     src/track/track_road_geometry.cpp
     src/track/track_surface_geometry.cpp
@@ -80,6 +81,7 @@ if(NEON_RACER_BUILD_APP)
         src/editor/model/editor_preview.cpp
         src/editor/presentation/editor_scene.cpp
         src/editor/presentation/editor_panel.cpp
+        src/editor/presentation/editor_tracking_graph.cpp
         src/editor/persistence/editor_library_ui.cpp
         src/editor/editor_camera.cpp src/editor/editor_commands.cpp src/editor/editor_history.cpp
         src/editor/editor_library.cpp src/editor/piece_catalog.cpp src/editor/piece_palette.cpp src/editor/editor_picking.cpp
@@ -100,6 +102,11 @@ add_executable(neon-racer-track-tests tests/unit/test_track.cpp)
 target_compile_options(neon-racer-track-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-track-tests PRIVATE neon_racer_domain)
 add_test(NAME neon-racer-track-tests COMMAND neon-racer-track-tests)
+
+add_executable(neon-racer-track-progress-graph-tests tests/unit/test_track_progress_graph.cpp)
+target_compile_options(neon-racer-track-progress-graph-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-track-progress-graph-tests PRIVATE neon_racer_domain)
+add_test(NAME neon-racer-track-progress-graph-tests COMMAND neon-racer-track-progress-graph-tests)
 
 add_executable(neon-racer-race-physics-tests tests/unit/test_race_physics.cpp src/race/race_physics.cpp)
 target_compile_options(neon-racer-race-physics-tests PRIVATE -Wall -Wextra)
