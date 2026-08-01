@@ -48,6 +48,7 @@ private:
     bool UpdateTrackLibraryInput();
     void DrawTrackLibrary() const;
     void RefreshDraftList();
+    void SaveDraft();
     void BeginSaveDraft();
     void SaveNamedDraft();
     void LoadDraft(const std::string& name);
@@ -69,6 +70,7 @@ private:
     PiecePalette piecePalette_;
     bool namingDraft_;
     std::string draftName_;
+    std::string currentDraftName_;
     std::vector<std::string> savedDrafts_;
     mutable bool previewOverlapCacheValid_;
     mutable TrackPiece cachedPreview_;
