@@ -16,6 +16,7 @@ public:
     void Start(const Track& track);
     void Update(float frameTime, const RaceInput& input);
     void Reset();
+    void Recover();
     void TogglePause();
 
     bool IsReady() const;
@@ -45,6 +46,7 @@ private:
     void FixedUpdate(float deltaTime, const RaceInput& input);
     void CompleteLap();
     void ResetCarToStart();
+    void SynchronizeStartProjection();
     RaceVector3 StartPosition() const;
     float StartHeading() const;
 
