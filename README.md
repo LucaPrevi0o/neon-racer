@@ -51,7 +51,9 @@ the exact raced layout, metadata, and its verification ghost.
 
 `Tab` returns a race to the screen that launched it: the editor or the main
 menu. The race pause menu offers the same contextual return action with
-keyboard, mouse, or gamepad navigation.
+keyboard, mouse, or gamepad navigation. Completing lap three opens a results
+screen with the total time, best lap, race-again, playable-export, contextual
+return, and quit actions.
 
 ## Controls
 
@@ -59,10 +61,12 @@ keyboard, mouse, or gamepad navigation.
 
 | Action | Controls |
 | --- | --- |
-| Navigate the main or pause menu | Up/Down, `W`/`S`, or gamepad D-pad; hover with the mouse |
-| Confirm a main or pause action | Enter, Space, gamepad A, or left-click |
+| Navigate the main, pause, results, or playable-library menu | Up/Down, `W`/`S`, or gamepad D-pad; hover with the mouse |
+| Confirm a menu action | Enter, Space, gamepad A, or left-click |
 | Cancel a confirmation / go back | `Esc` or gamepad B |
-| Return between editor/menu and race | `Tab`, or the contextual pause-menu action |
+| Page the playable library | Left/Right, Page Up/Page Down, or gamepad D-pad Left/Right |
+| Refresh the playable library | `R`, `F5`, or gamepad X |
+| Return between editor/menu and race | `Tab`, or the contextual pause/results action |
 | Quit from the main menu | `Esc` or gamepad B |
 
 ### Track editor
@@ -124,14 +128,19 @@ session; it is undoable and never deletes saved drafts.
 | Restart the complete three-lap run | `Shift+R` | Middle-left button |
 | Open the pause menu | `P` or `Esc` | Start |
 | Quick-return to the launching screen | `Tab` | Use the pause menu |
-| Open playable export after verification | `E` | — |
 
 The pause menu provides **Resume**, **Return to checkpoint**, **Restart run**,
 a contextual **Return to editor/main menu**, and **Quit**. Restart, return, and
 quit require a second confirmation. Returning to the checkpoint is immediate:
 it restores the car to the last confirmed recovery pose, closes the pause menu,
-and resumes the race. Start or B resumes from the pause menu, while B remains
-available as the digital brake during active play.
+resumes the race, and snaps the chase camera to the recovered car. Start or B
+resumes from the pause menu, while B remains available as the digital brake
+during active play.
+
+The completed-race results menu provides **Race again**, **Save playable track**
+when the run is verified, a contextual **Return to editor/main menu**, and
+**Quit**. It shows the final three-lap total and best lap. Race again resets the
+attempt and snaps the camera to the start; return and quit require confirmation.
 
 Recovery returns the car to a safe pose just inside the last track piece reached
 through a valid checkpoint portal. It preserves the current lap, all recorded

@@ -76,7 +76,9 @@ if(NEON_RACER_BUILD_APP)
 
     add_executable(neon-racer
         src/app/main.cpp src/app/application.cpp src/app/main_menu.cpp src/app/main_menu_flow.cpp
-        src/app/playable_library.cpp src/app/race_pause_menu.cpp src/app/race_pause_flow.cpp
+        src/app/playable_library.cpp src/app/playable_library_flow.cpp
+        src/app/race_pause_menu.cpp src/app/race_pause_flow.cpp
+        src/app/race_results_menu.cpp src/app/race_results_flow.cpp
         src/app/raylib_race_input.cpp
         src/editor/core/editor.cpp
         src/editor/interaction/editor_input.cpp
@@ -148,9 +150,18 @@ add_executable(neon-racer-main-menu-flow-tests tests/unit/test_main_menu_flow.cp
 target_compile_options(neon-racer-main-menu-flow-tests PRIVATE -Wall -Wextra)
 add_test(NAME neon-racer-main-menu-flow-tests COMMAND neon-racer-main-menu-flow-tests)
 
+add_executable(neon-racer-playable-library-flow-tests
+    tests/unit/test_playable_library_flow.cpp src/app/playable_library_flow.cpp)
+target_compile_options(neon-racer-playable-library-flow-tests PRIVATE -Wall -Wextra)
+add_test(NAME neon-racer-playable-library-flow-tests COMMAND neon-racer-playable-library-flow-tests)
+
 add_executable(neon-racer-race-pause-flow-tests tests/unit/test_race_pause_flow.cpp src/app/race_pause_flow.cpp)
 target_compile_options(neon-racer-race-pause-flow-tests PRIVATE -Wall -Wextra)
 add_test(NAME neon-racer-race-pause-flow-tests COMMAND neon-racer-race-pause-flow-tests)
+
+add_executable(neon-racer-race-results-flow-tests tests/unit/test_race_results_flow.cpp src/app/race_results_flow.cpp)
+target_compile_options(neon-racer-race-results-flow-tests PRIVATE -Wall -Wextra)
+add_test(NAME neon-racer-race-results-flow-tests COMMAND neon-racer-race-results-flow-tests)
 
 add_executable(neon-racer-piece-catalog-tests tests/unit/test_piece_catalog.cpp src/editor/piece_catalog.cpp)
 target_include_directories(neon-racer-piece-catalog-tests PRIVATE
