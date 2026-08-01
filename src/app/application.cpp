@@ -310,48 +310,44 @@ void RacerApplication::UpdateActivePlayableGhost() {
 
     VerifiedGhostData ghost;
     if (!timeTrial_.ExportVerifiedGhost(ghost)) {
-        raceResultsMenu_.Close();
-        playableLibrary_.Open();
-        playableLibrary_.ReportMessage("The completed ghost race no longer has a verified replay.");
+        ShowPlayableLibraryMessage("The completed ghost race no longer has a verified replay.");
         return;
     }
 
     std::string error;
     PlayableTrack current;
     if (!PlayableTrackIO::Load(activePlayablePath_, current, error)) {
-        raceResultsMenu_.Close();
-        playableLibrary_.Open();
-        playableLibrary_.ReportMessage("Could not update the saved ghost: " + error);
+        ShowPlayableLibraryMessage("Could not update the saved ghost: " + error);
         return;
     }
     if (current.layoutFingerprint != playableTrack_.layoutFingerprint ||
         current.metadata.name != playableTrack_.metadata.name) {
-        raceResultsMenu_.Close();
-        playableLibrary_.Open();
-        playableLibrary_.ReportMessage("The saved package changed while this ghost race was running.");
+        ShowPlayableLibraryMessage("The saved package changed while this ghost race was running.");
         return;
     }
     if (current.metadata.playableExportVersion == std::numeric_limits<std::uint32_t>::max()) {
-        raceResultsMenu_.Close();
-        playableLibrary_.Open();
-        playableLibrary_.ReportMessage("Playable export version has reached its maximum value.");
+        ShowPlayableLibraryMessage("Playable export version has reached its maximum value.");
         return;
     }
 
     current.verificationGhost = ghost;
     ++current.metadata.playableExportVersion;
     if (!PlayableTrackIO::Save(current, activePlayablePath_, error)) {
-        raceResultsMenu_.Close();
-        playableLibrary_.Open();
-        playableLibrary_.ReportMessage("Could not update the saved ghost: " + error);
+        ShowPlayableLibraryMessage("Could not update the saved ghost: " + error);
         return;
     }
 
     playableTrack_ = current;
+    ShowPlayableLibraryMessage("Updated " + current.metadata.name + " to playable version " +
+                               std::to_string(current.metadata.playableExportVersion) + ".");
+}
+
+void RacerApplication::ShowPlayableLibraryMessage(const std::string& message) {
+    racePauseMenu_.Close();
     raceResultsMenu_.Close();
+    state_ = raceReturnState_;
     playableLibrary_.Open();
-    playableLibrary_.ReportMessage("Updated " + current.metadata.name + " to playable version " +
-                                   std::to_string(current.metadata.playableExportVersion) + ".");
+    playableLibrary_.ReportMessage(message);
 }
 
 void RacerApplication::ReturnFromRace() {
