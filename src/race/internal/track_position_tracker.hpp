@@ -19,9 +19,15 @@ public:
         float halfWidth;
     };
 
+    struct RecoveryPose {
+        RaceVector3 position;
+        float headingRadians;
+    };
+
     struct Transition {
         std::uint32_t toPieceId;
         Gate gate;
+        RecoveryPose recoveryPose;
     };
 
     TrackPositionTracker();
@@ -36,6 +42,7 @@ public:
     bool HasReturnedToStart() const;
     std::uint32_t CurrentPieceId() const;
     float CurrentProgress() const;
+    const RecoveryPose& CurrentRecoveryPose() const;
 
 private:
     typedef std::map<std::uint32_t, std::vector<Transition> > TransitionGraph;
@@ -45,6 +52,8 @@ private:
     const Track* track_;
     TransitionGraph transitions_;
     Gate finishGate_;
+    RecoveryPose startRecoveryPose_;
+    RecoveryPose recoveryPose_;
     std::uint32_t startPieceId_;
     std::uint32_t currentPieceId_;
     float currentProgress_;
