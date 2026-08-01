@@ -127,7 +127,7 @@ void RacerApplication::UpdateEditor() {
 
 void RacerApplication::UpdateRace(float frameTime) {
     RaceInput input = ReadRaylibRaceInput();
-    const bool pauseRequested = input.pausePressed || IsKeyPressed(KEY_ESCAPE) || GamepadBackPressed();
+    const bool pauseRequested = input.pausePressed || IsKeyPressed(KEY_ESCAPE);
     if (pauseRequested) {
         if (!timeTrial_.IsPaused()) timeTrial_.TogglePause();
         racePauseMenu_.Open(raceReturnState_ == AppState::MainMenu);
@@ -148,6 +148,7 @@ void RacerApplication::UpdateRacePauseMenu() {
         racePauseMenu_.Close();
     } else if (action == RacePauseAction::Recover) {
         timeTrial_.Recover();
+        if (!timeTrial_.IsPaused()) timeTrial_.TogglePause();
         timeTrialRenderer_.Update(timeTrial_);
     } else if (action == RacePauseAction::Restart) {
         timeTrial_.Reset();
