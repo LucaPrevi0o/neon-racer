@@ -30,11 +30,12 @@ public:
     bool IsOnTrack() const;
     SurfaceMaterial CurrentSurfaceMaterial() const;
     bool HasVerifiedGhost() const;
+    bool LastCompletedRunImprovedGhost() const;
     RaceCar GhostCar() const;
     const VerificationState& Verification() const;
 
     // Transfers a replay only when it is verified for the active, unchanged
-    // layout.  Imported replay data must carry the active layout fingerprint;
+    // layout. Imported replay data must carry the active layout fingerprint;
     // verification state is then derived from this TimeTrial's Track.
     bool ExportVerifiedGhost(VerifiedGhostData& output) const;
     bool ImportVerifiedGhost(const VerifiedGhostData& input);
@@ -62,6 +63,7 @@ private:
     bool paused_;
     bool finished_;
     bool ready_;
+    bool lastCompletedRunImprovedGhost_;
     GhostReplay ghostReplay_;
     VerificationState verification_;
     const char* statusMessage_;
