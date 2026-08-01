@@ -1,5 +1,6 @@
 #include "neon_racer/editor/editor.hpp"
 
+#include "editor_connector_guides.hpp"
 #include "render/track_renderer.hpp"
 #include "ui/neon.hpp"
 
@@ -38,9 +39,28 @@ void DrawConnectorGuide(const TrackConnector& connector, Color color) {
     DrawSphere(tip, 0.09f, color);
 }
 
+void DrawConnectorGuides(const std::vector<TrackConnector>& connectors, Color color) {
+    for (std::vector<TrackConnector>::const_iterator connector = connectors.begin();
+         connector != connectors.end(); ++connector) {
+        DrawConnectorGuide(*connector, color);
+    }
+}
+
+void DrawConnectorMarkers(const std::vector<TrackConnector>& connectors, Color color) {
+    for (std::vector<TrackConnector>::const_iterator connector = connectors.begin();
+         connector != connectors.end(); ++connector) {
+        DrawSphere(Vector3{static_cast<float>(connector->position.x),
+                           static_cast<float>(connector->position.y) + 0.42f,
+                           static_cast<float>(connector->position.z)},
+                   0.22f, color);
+    }
+}
+
 void DrawPieceConnectorGuides(const TrackPiece& piece) {
-    DrawConnectorGuide(piece.EntryConnector(), Neon::Cyan);
-    DrawConnectorGuide(piece.ExitConnector(), Neon::Pink);
+    const EditorPresentation::ConnectorGuideSet guides =
+        EditorPresentation::ConnectorGuidesFor(piece);
+    DrawConnectorGuides(guides.entries, Neon::Cyan);
+    DrawConnectorGuides(guides.exits, Neon::Pink);
 }
 
 } // namespace
@@ -91,13 +111,11 @@ void TrackEditor::DrawTrack3D() const {
     DrawPieceCells(candidate, selectedPieceId_, overlaps ? 0.28f : 0.52f);
     DrawPieceConnectorGuides(candidate);
 
-    const TrackConnector entry = candidate.EntryConnector();
-    const TrackConnector exit = candidate.ExitConnector();
+    const EditorPresentation::ConnectorGuideSet candidateGuides =
+        EditorPresentation::ConnectorGuidesFor(candidate);
     const Color connectorColor = overlaps ? Neon::Orange : Neon::Green;
-    DrawSphere(Vector3{static_cast<float>(entry.position.x), static_cast<float>(entry.position.y) + 0.42f,
-                       static_cast<float>(entry.position.z)}, 0.22f, connectorColor);
-    DrawSphere(Vector3{static_cast<float>(exit.position.x), static_cast<float>(exit.position.y) + 0.42f,
-                       static_cast<float>(exit.position.z)}, 0.22f, connectorColor);
+    DrawConnectorMarkers(candidateGuides.entries, connectorColor);
+    DrawConnectorMarkers(candidateGuides.exits, connectorColor);
 
     if (trackingGraphVisible_) DrawTrackingGraph3D();
 }
