@@ -8,7 +8,7 @@
 #include <raylib.h>
 
 RaceInput ReadRaylibRaceInput() {
-    RaceInput input = {0.0f, 0.0f, 0.0f, 0.0f, false, false};
+    RaceInput input = {0.0f, 0.0f, 0.0f, 0.0f, false, false, false};
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) input.steering -= 1.0f;
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) input.steering += 1.0f;
     if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) input.accelerate = 1.0f;
@@ -17,7 +17,13 @@ RaceInput ReadRaylibRaceInput() {
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) input.brake = RacePhysics::kDigitalBrakeAxis;
     if (IsKeyDown(KEY_X)) input.reverse = 1.0f;
     input.pausePressed = IsKeyPressed(KEY_P) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
-    input.resetPressed = IsKeyPressed(KEY_R) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_LEFT);
+
+    const bool resetKeyPressed = IsKeyPressed(KEY_R);
+    const bool restartModifier = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    input.resetPressed = (resetKeyPressed && restartModifier) ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_LEFT);
+    input.recoverPressed = (resetKeyPressed && !restartModifier) ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP);
 
     if (!IsGamepadAvailable(0)) return input;
     const float stick = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
