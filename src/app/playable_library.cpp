@@ -5,8 +5,6 @@
 
 #include <raylib.h>
 
-#include <algorithm>
-
 namespace {
 
 Rectangle PanelBounds() { return Rectangle{302.0f, 76.0f, 676.0f, 568.0f}; }
@@ -16,8 +14,6 @@ Rectangle SaveButtonBounds() { return Rectangle{542.0f, 540.0f, 190.0f, 34.0f}; 
 Rectangle CancelButtonBounds() { return Rectangle{746.0f, 540.0f, 190.0f, 34.0f}; }
 Rectangle PreviousPageButtonBounds() { return Rectangle{342.0f, 522.0f, 150.0f, 30.0f}; }
 Rectangle NextPageButtonBounds() { return Rectangle{788.0f, 522.0f, 150.0f, 30.0f}; }
-
-const std::size_t kPlayablePageSize = 10u;
 
 Rectangle FieldBounds(int field) {
     return Rectangle{390.0f, 208.0f + static_cast<float>(field) * 82.0f, 500.0f, 34.0f};
@@ -33,10 +29,18 @@ const char* FieldLabel(int field) {
 
 int FieldLimit(int field) { return field == 2 ? 160 : 48; }
 
+bool GamepadBackPressed() {
+    return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
+}
+
+bool GamepadConfirmPressed() {
+    return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+}
+
 } // namespace
 
 PlayableLibrary::PlayableLibrary()
-    : mode_(Mode::Closed), activeField_(0), firstVisibleIndex_(0), exportRequested_(false) {
+    : mode_(Mode::Closed), activeField_(0), libraryFlow_(), exportRequested_(false) {
 }
 
 bool PlayableLibrary::IsOpen() const { return mode_ != Mode::Closed; }
@@ -44,7 +48,6 @@ bool PlayableLibrary::IsOpen() const { return mode_ != Mode::Closed; }
 void PlayableLibrary::Open() {
     mode_ = Mode::Library;
     pendingLaunchPath_.clear();
-    firstVisibleIndex_ = 0;
     exportRequested_ = false;
     Refresh();
 }
@@ -72,8 +75,51 @@ void PlayableLibrary::Update() {
     if (mode_ == Mode::Closed) return;
 
     if (mode_ == Mode::Library) {
-        if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return;
+        if (IsKeyPressed(KEY_ESCAPE) || GamepadBackPressed()) {
+            Close();
+            return;
+        }
+
+        if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_F5) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
+            Refresh();
+            return;
+        }
+
+        const bool previousPressed = IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP);
+        const bool nextPressed = IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN);
+        const bool previousPagePressed = IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_PAGE_UP) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT);
+        const bool nextPagePressed = IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_PAGE_DOWN) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT);
+        const bool navigationPressed = previousPressed || nextPressed || previousPagePressed || nextPagePressed;
+
+        if (previousPressed) libraryFlow_.SelectPrevious();
+        if (nextPressed) libraryFlow_.SelectNext();
+        if (previousPagePressed) libraryFlow_.PreviousPage();
+        if (nextPagePressed) libraryFlow_.NextPage();
+
+        if ((IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || GamepadConfirmPressed()) &&
+            libraryFlow_.HasSelection()) {
+            pendingLaunchPath_ = playableFiles_[libraryFlow_.SelectedIndex()].path;
+            return;
+        }
+
         const Vector2 mouse = GetMousePosition();
+        bool hasHoveredRow = false;
+        std::size_t hoveredRow = 0u;
+        for (std::size_t index = 0; index < libraryFlow_.VisibleCount(); ++index) {
+            if (CheckCollisionPointRec(mouse, PlayableRowBounds(index))) {
+                hasHoveredRow = true;
+                hoveredRow = index;
+                break;
+            }
+        }
+        if (hasHoveredRow && !navigationPressed) libraryFlow_.SelectVisible(hoveredRow);
+
+        if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return;
         if (CheckCollisionPointRec(mouse, CloseButtonBounds())) {
             Close();
             return;
@@ -82,23 +128,23 @@ void PlayableLibrary::Update() {
             Refresh();
             return;
         }
-        if (CheckCollisionPointRec(mouse, PreviousPageButtonBounds()) && firstVisibleIndex_ >= kPlayablePageSize) {
-            firstVisibleIndex_ -= kPlayablePageSize;
+        if (CheckCollisionPointRec(mouse, PreviousPageButtonBounds())) {
+            libraryFlow_.PreviousPage();
             return;
         }
-        if (CheckCollisionPointRec(mouse, NextPageButtonBounds()) &&
-            firstVisibleIndex_ + kPlayablePageSize < playableFiles_.size()) {
-            firstVisibleIndex_ += kPlayablePageSize;
+        if (CheckCollisionPointRec(mouse, NextPageButtonBounds())) {
+            libraryFlow_.NextPage();
             return;
         }
-        const std::size_t visibleCount = firstVisibleIndex_ < playableFiles_.size()
-            ? std::min(kPlayablePageSize, playableFiles_.size() - firstVisibleIndex_) : 0u;
-        for (std::size_t index = 0; index < visibleCount; ++index) {
-            if (CheckCollisionPointRec(mouse, PlayableRowBounds(index))) {
-                pendingLaunchPath_ = playableFiles_[firstVisibleIndex_ + index].path;
-                return;
-            }
+        if (hasHoveredRow) {
+            libraryFlow_.SelectVisible(hoveredRow);
+            pendingLaunchPath_ = playableFiles_[libraryFlow_.SelectedIndex()].path;
         }
+        return;
+    }
+
+    if (IsKeyPressed(KEY_ESCAPE) || GamepadBackPressed()) {
+        Close();
         return;
     }
 
@@ -108,8 +154,14 @@ void PlayableLibrary::Update() {
         character = GetCharPressed();
     }
     if (IsKeyPressed(KEY_BACKSPACE)) RemoveCharacter();
-    if (IsKeyPressed(KEY_TAB)) activeField_ = (activeField_ + 1) % 3;
-    if (IsKeyPressed(KEY_ENTER)) {
+    if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_DOWN) ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+        activeField_ = (activeField_ + 1) % 3;
+    }
+    if (IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+        activeField_ = (activeField_ + 2) % 3;
+    }
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || GamepadConfirmPressed()) {
         exportRequested_ = true;
         return;
     }
@@ -155,24 +207,29 @@ void PlayableLibrary::Draw() const {
         if (playableFiles_.empty()) {
             DrawText("No saved playable time trials yet.", 342, 210, 17, Fade(RAYWHITE, 0.65f));
         }
-        const std::size_t visibleCount = firstVisibleIndex_ < playableFiles_.size()
-            ? std::min(kPlayablePageSize, playableFiles_.size() - firstVisibleIndex_) : 0u;
-        for (std::size_t index = 0; index < visibleCount; ++index) {
+
+        const std::size_t firstVisibleIndex = libraryFlow_.FirstVisibleIndex();
+        for (std::size_t index = 0; index < libraryFlow_.VisibleCount(); ++index) {
+            const std::size_t absoluteIndex = firstVisibleIndex + index;
             const Rectangle row = PlayableRowBounds(index);
-            const Neon::ButtonState rowState = Neon::GetButtonState(row);
+            const bool selected = libraryFlow_.HasSelection() && libraryFlow_.SelectedIndex() == absoluteIndex;
+            const Neon::ButtonState rowState = Neon::GetButtonState(row, true, selected);
             const bool rowHighlighted = Neon::IsButtonHighlighted(rowState);
             Neon::DrawButton(row, Neon::Green, rowState);
-            DrawText(playableFiles_[firstVisibleIndex_ + index].displayName.c_str(), static_cast<int>(row.x) + 12,
+            DrawText(playableFiles_[absoluteIndex].displayName.c_str(), static_cast<int>(row.x) + 12,
                      static_cast<int>(row.y) + 5, 16, rowHighlighted ? RAYWHITE : Neon::Green);
             DrawText("RACE", static_cast<int>(row.x + row.width) - 56, static_cast<int>(row.y) + 5, 15,
                      rowHighlighted ? Neon::Yellow : Fade(Neon::Yellow, 0.82f));
         }
-        const std::size_t pageNumber = playableFiles_.empty() ? 0u : firstVisibleIndex_ / kPlayablePageSize + 1u;
-        const std::size_t pageCount = (playableFiles_.size() + kPlayablePageSize - 1u) / kPlayablePageSize;
+
+        const std::size_t pageNumber = playableFiles_.empty()
+            ? 0u : libraryFlow_.FirstVisibleIndex() / PlayableLibraryFlow::kPageSize + 1u;
+        const std::size_t pageCount =
+            (playableFiles_.size() + PlayableLibraryFlow::kPageSize - 1u) / PlayableLibraryFlow::kPageSize;
         const Rectangle previous = PreviousPageButtonBounds();
         const Rectangle next = NextPageButtonBounds();
-        const bool hasPreviousPage = firstVisibleIndex_ >= kPlayablePageSize;
-        const bool hasNextPage = firstVisibleIndex_ + kPlayablePageSize < playableFiles_.size();
+        const bool hasPreviousPage = libraryFlow_.HasPreviousPage();
+        const bool hasNextPage = libraryFlow_.HasNextPage();
         const Neon::ButtonState previousState = Neon::GetButtonState(previous, hasPreviousPage);
         const Neon::ButtonState nextState = Neon::GetButtonState(next, hasNextPage);
         Neon::DrawButton(previous, Neon::Cyan, previousState);
@@ -183,7 +240,9 @@ void PlayableLibrary::Draw() const {
                  hasNextPage ? (Neon::IsButtonHighlighted(nextState) ? RAYWHITE : Neon::Cyan) : Fade(RAYWHITE, 0.32f));
         DrawText(TextFormat("PAGE %i / %i", static_cast<int>(pageNumber), static_cast<int>(pageCount)), 602, 531, 14,
                  Neon::Yellow);
-        DrawText(message_.c_str(), 342, 590, 14, Neon::Yellow);
+        DrawText(message_.c_str(), 342, 578, 14, Neon::Yellow);
+        DrawText("Up/Down: select  Left/Right: page  Enter/A: race  R/X: refresh  Esc/B: close",
+                 342, 606, 12, Fade(RAYWHITE, 0.66f));
         return;
     }
 
@@ -209,7 +268,7 @@ void PlayableLibrary::Draw() const {
     Neon::DrawButton(cancel, Neon::Pink, cancelState);
     DrawText("CANCEL", static_cast<int>(cancel.x) + 65, static_cast<int>(cancel.y) + 9, 15,
              Neon::IsButtonHighlighted(cancelState) ? RAYWHITE : Neon::Pink);
-    DrawText("Tab: next field  |  Enter: save  |  Backspace: edit", 390, 496, 14, Neon::Yellow);
+    DrawText("Tab/Up/Down: field  |  Enter/A: save  |  Esc/B: cancel", 390, 496, 14, Neon::Yellow);
     DrawText(message_.c_str(), 390, 600, 14, Neon::Yellow);
 }
 
@@ -237,14 +296,15 @@ void PlayableLibrary::FinishExport(const std::string& message) {
 bool PlayableLibrary::Refresh() {
     std::string error;
     if (!PlayableTrackIO::ListCustomPlayableTracks(playableFiles_, error)) {
+        libraryFlow_.Reset(0u);
         message_ = error;
         return false;
     }
-    firstVisibleIndex_ = 0;
+    libraryFlow_.Reset(playableFiles_.size());
     if (playableFiles_.empty()) {
         message_ = "No saved playable time trials yet.";
     } else {
-        message_ = "Click a package to start its verified time trial.";
+        message_ = "Select a package and confirm to start its verified time trial.";
     }
     return true;
 }
