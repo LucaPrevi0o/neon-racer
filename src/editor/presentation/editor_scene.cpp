@@ -98,4 +98,6 @@ void TrackEditor::DrawTrack3D() const {
                        static_cast<float>(entry.position.z)}, 0.22f, connectorColor);
     DrawSphere(Vector3{static_cast<float>(exit.position.x), static_cast<float>(exit.position.y) + 0.42f,
                        static_cast<float>(exit.position.z)}, 0.22f, connectorColor);
+
+    if (trackingGraphVisible_) DrawTrackingGraph3D();
 }
