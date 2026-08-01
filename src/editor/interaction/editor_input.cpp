@@ -89,6 +89,7 @@ void TrackEditor::Update(Camera3D& camera) {
         const EditorPieceCatalog::Item* item = EditorPieceCatalog::FindShortcut(static_cast<int>(index) + 1);
         if (item != 0) SelectPreviewType(item->type);
     }
+    preview_ = EditorPieceCatalog::RetargetPreview(preview_, preview_.type);
 
     const float wheel = GetMouseWheelMove();
     const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
@@ -137,6 +138,7 @@ void TrackEditor::Update(Camera3D& camera) {
         CheckCollisionPointRec(mouse, StartFinishButtonBounds());
     if (piecePaletteClicked) {
         SelectPreviewType(paletteSelection);
+        preview_ = EditorPieceCatalog::RetargetPreview(preview_, preview_.type);
     } else if (clearTrackClicked) {
         ClearTrack();
     } else if (startFinishClicked) {
