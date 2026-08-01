@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+const std::size_t PlayableLibraryFlow::kPageSize;
+
 PlayableLibraryFlow::PlayableLibraryFlow()
     : itemCount_(0u), selectedIndex_(0u), firstVisibleIndex_(0u) {
 }
