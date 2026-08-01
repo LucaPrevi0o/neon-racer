@@ -53,11 +53,54 @@ void TestThumbnailPiecesAreValidAndRepresentBranches() {
     }
 }
 
+void TestLoadedHalfTurnCannotPoisonLaterPreviews() {
+    Track loadedLayout;
+    const std::uint32_t halfTurnId = loadedLayout.AddCurve(GridPosition{0, 0, 0}, Heading::East,
+                                                            CurveTurn::Right, 4, 5, 5, 0,
+                                                            SurfaceMaterial::Regular, 180);
+    const TrackPiece* loadedHalfTurn = loadedLayout.GetPiece(halfTurnId);
+    Expect(loadedHalfTurn != 0 && loadedHalfTurn->length == 0 && loadedHalfTurn->curveDegrees == 180,
+           "loaded-curve setup uses the domain representation that has no straight length");
+    if (loadedHalfTurn == 0) return;
+
+    TrackPiece staleStraight = *loadedHalfTurn;
+    staleStraight.type = TrackPieceType::Straight;
+    staleStraight.entryPosition = GridPosition{100, 0, 100};
+    Track standalone;
+    Expect(standalone.Add(staleStraight) == 0,
+           "blindly changing a loaded curve type leaves an invalid zero-length straight");
+
+    const TrackPiece repairedStraight =
+        EditorPieceCatalog::RetargetPreview(staleStraight, TrackPieceType::Straight);
+    Expect(repairedStraight.type == TrackPieceType::Straight && repairedStraight.length == 4 &&
+               repairedStraight.entryPosition == staleStraight.entryPosition &&
+               repairedStraight.entryHeading == staleStraight.entryHeading &&
+               repairedStraight.width == staleStraight.width && repairedStraight.exitWidth == staleStraight.exitWidth,
+           "retargeting repairs incompatible fields while preserving common placement data");
+    Expect(!loadedLayout.HasOverlappingGeometry(repairedStraight) && loadedLayout.Add(repairedStraight) != 0,
+           "a repaired far-away preview remains placeable after a loaded 180-degree turn");
+
+    TrackPiece tunedHalfTurn = *loadedHalfTurn;
+    tunedHalfTurn.bankAngleDegrees = 25;
+    const TrackPiece unchanged = EditorPieceCatalog::RetargetPreview(tunedHalfTurn, TrackPieceType::Curve);
+    Expect(unchanged.curveDegrees == 180 && unchanged.bankAngleDegrees == 25 && unchanged.length == 0,
+           "a valid same-type half-turn keeps its tuned curve fields unchanged");
+
+    TrackPiece staleBranch = *loadedHalfTurn;
+    staleBranch.type = TrackPieceType::Branch;
+    staleBranch.elevationDelta = 3;
+    const TrackPiece repairedBranch = EditorPieceCatalog::RetargetPreview(staleBranch, TrackPieceType::Branch);
+    Expect(repairedBranch.length == 4 && repairedBranch.lateralOffset == 3 &&
+               repairedBranch.elevationDelta == 0 && repairedBranch.exitWidth == repairedBranch.width,
+           "retargeting resets branch-only invariants instead of reporting a false overlap");
+}
+
 } // namespace
 
 int main() {
     TestCatalogIdentityAndShortcutMapping();
     TestThumbnailPiecesAreValidAndRepresentBranches();
+    TestLoadedHalfTurnCannotPoisonLaterPreviews();
     if (failures == 0) std::cout << "Neon Racer piece-catalog tests passed.\n";
     return failures == 0 ? 0 : 1;
 }
