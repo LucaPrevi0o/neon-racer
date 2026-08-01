@@ -118,13 +118,18 @@ session; it is undoable and never deletes saved drafts.
 | Brake | `S` or Down | Left trigger or brake face button |
 | Reverse | `X` | Reverse face button |
 | Steer | `A`/`D` or Left/Right | Left stick |
-| Restart the complete three-lap run | `R` | — |
-| Pause | `P` | — |
+| Recover to the last confirmed checkpoint | `R` | Upper face button |
+| Restart the complete three-lap run | `Shift+R` | Middle-left button |
+| Pause | `P` | Middle-right button |
 | Return to the launching screen | `Tab` | — |
 | Open playable export after verification | `E` | — |
 
-A reset restarts all three laps. Ghosts are visual, non-colliding replays and do
-not affect track or vehicle physics.
+Recovery returns the car to a safe pose just inside the last track piece reached
+through a valid checkpoint portal. It preserves the current lap, all recorded
+times, and the confirmed graph state. Wrong-way and unrelated portal crossings
+cannot move the recovery checkpoint. A complete restart resets all three laps.
+Ghosts are visual, non-colliding replays and do not affect track or vehicle
+physics.
 
 ## Storage and compatibility
 
@@ -155,7 +160,7 @@ rules, and atomic-write behavior.
 | `src/editor` | Mutable editor interaction and presentation |
 | `src/persistence` | Draft/package serialization, storage paths, and the shared layout codec |
 | `src/playable` | Frozen package contracts and export policy |
-| `src/race` | Vehicle dynamics, ghost replay, and time-trial orchestration |
+| `src/race` | Vehicle dynamics, ghost replay, checkpoint recovery, and time-trial orchestration |
 | `src/render` | Track, vehicle, and race presentation |
 | `src/track` | Track model, geometry, validation, progress graphs, surface queries, and fingerprints |
 | `src/ui` | Shared neon presentation primitives |
