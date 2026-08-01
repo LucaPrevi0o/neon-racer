@@ -50,14 +50,20 @@ void TestForwardGraphUsesExitPortals() {
         const TrackProgressTransition* transition = FindTransition(
             graph, connection->exit.pieceId, connection->entry.pieceId);
         const TrackPiece* fromPiece = track.GetPiece(connection->exit.pieceId);
+        const TrackPiece* toPiece = track.GetPiece(connection->entry.pieceId);
         const std::vector<TrackConnector> exits = fromPiece != 0 ? fromPiece->ExitConnectors() :
             std::vector<TrackConnector>();
-        const bool validIndex = connection->exit.connectorIndex < exits.size();
-        Expect(transition != 0 && validIndex &&
+        const std::vector<TrackConnector> entries = toPiece != 0 ? toPiece->EntryConnectors() :
+            std::vector<TrackConnector>();
+        const bool validPortal = connection->exit.connectorIndex < exits.size();
+        const bool validArrival = connection->entry.connectorIndex < entries.size();
+        Expect(transition != 0 && validPortal && validArrival &&
                    transition->portal.connector.position == exits[connection->exit.connectorIndex].position &&
                    transition->portal.connector.width == exits[connection->exit.connectorIndex].width &&
-                   transition->portal.crossingHeading == exits[connection->exit.connectorIndex].heading,
-               "forward transition exposes its exact outgoing connector as the crossing portal");
+                   transition->portal.crossingHeading == exits[connection->exit.connectorIndex].heading &&
+                   transition->arrivalConnector.position == entries[connection->entry.connectorIndex].position &&
+                   transition->arrivalConnector.width == entries[connection->entry.connectorIndex].width,
+               "forward transition preserves its exact outgoing portal and destination entry connector");
     }
 }
 
@@ -76,15 +82,21 @@ void TestReverseGraphUsesEntryPortals() {
         const TrackProgressTransition* transition = FindTransition(
             graph, connection->entry.pieceId, connection->exit.pieceId);
         const TrackPiece* fromPiece = track.GetPiece(connection->entry.pieceId);
+        const TrackPiece* toPiece = track.GetPiece(connection->exit.pieceId);
         const std::vector<TrackConnector> entries = fromPiece != 0 ? fromPiece->EntryConnectors() :
             std::vector<TrackConnector>();
-        const bool validIndex = connection->entry.connectorIndex < entries.size();
-        Expect(transition != 0 && validIndex &&
+        const std::vector<TrackConnector> exits = toPiece != 0 ? toPiece->ExitConnectors() :
+            std::vector<TrackConnector>();
+        const bool validPortal = connection->entry.connectorIndex < entries.size();
+        const bool validArrival = connection->exit.connectorIndex < exits.size();
+        Expect(transition != 0 && validPortal && validArrival &&
                    transition->portal.connector.position == entries[connection->entry.connectorIndex].position &&
                    transition->portal.connector.width == entries[connection->entry.connectorIndex].width &&
                    transition->portal.crossingHeading ==
-                       OppositeHeading(entries[connection->entry.connectorIndex].heading),
-               "reverse transition exposes the current piece entry with reversed crossing direction");
+                       OppositeHeading(entries[connection->entry.connectorIndex].heading) &&
+                   transition->arrivalConnector.position == exits[connection->exit.connectorIndex].position &&
+                   transition->arrivalConnector.width == exits[connection->exit.connectorIndex].width,
+               "reverse transition preserves its reversed portal and destination exit connector");
     }
 }
 
