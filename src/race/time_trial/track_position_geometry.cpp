@@ -15,6 +15,7 @@ const float kGateLateralMargin = 0.75f;
 const float kGateVerticalTolerance = 2.5f;
 const float kMinimumForwardMovement = 0.0001f;
 const float kProjectionTieTolerance = 0.0025f;
+const float kArrivalMatchTolerance = 0.0025f;
 const float kRecoveryInset = 0.75f;
 
 RaceVector3 HeadingVector(Heading heading) {
@@ -48,7 +49,8 @@ float Length(RaceVector3 vector) {
 }
 
 float DistanceSquared(RaceVector3 first, RaceVector3 second) {
-    return Dot(Subtract(first, second), Subtract(first, second));
+    const RaceVector3 difference = Subtract(first, second);
+    return Dot(difference, difference);
 }
 
 RaceVector3 Point(const TrackPathPoint& point) {
@@ -157,7 +159,7 @@ TrackPositionTracker::RecoveryPose RecoveryPoseFor(const Track& track,
     const bool forwardRace = track.SelectedRaceDirection() == RaceDirection::Forward;
     const RaceVector3 arrival = ConnectorPoint(transition.arrivalConnector);
     const std::vector<TrackPiece> arms = TrackRoadGeometry::PhysicalRoadArms(*destination);
-    std::vector<TrackPathPoint> bestPath;
+    std::vector<std::vector<TrackPathPoint> > matchingPaths;
     float bestDistanceSquared = std::numeric_limits<float>::max();
 
     for (std::vector<TrackPiece>::const_iterator arm = arms.begin(); arm != arms.end(); ++arm) {
@@ -165,22 +167,37 @@ TrackPositionTracker::RecoveryPose RecoveryPoseFor(const Track& track,
         if (path.size() < 2) continue;
         const RaceVector3 endpoint = forwardRace ? Point(path.front()) : Point(path.back());
         const float distanceSquared = DistanceSquared(endpoint, arrival);
-        if (distanceSquared < bestDistanceSquared) {
+        if (distanceSquared + kArrivalMatchTolerance < bestDistanceSquared) {
             bestDistanceSquared = distanceSquared;
-            bestPath = path;
+            matchingPaths.clear();
+            matchingPaths.push_back(path);
+        } else if (std::fabs(distanceSquared - bestDistanceSquared) <= kArrivalMatchTolerance) {
+            matchingPaths.push_back(path);
         }
     }
 
-    const float totalLength = PathLength(bestPath);
-    if (totalLength <= 0.0001f) return fallback;
-    const float inset = std::min(kRecoveryInset, totalLength * 0.25f);
-    RaceVector3 position;
-    RaceVector3 tangent;
-    if (!SamplePathFromArrival(bestPath, forwardRace, inset, position, tangent)) return fallback;
+    RaceVector3 averagePosition = RaceVector3{0.0f, 0.0f, 0.0f};
+    RaceVector3 averageTangent = RaceVector3{0.0f, 0.0f, 0.0f};
+    std::size_t sampleCount = 0;
+    for (std::vector<std::vector<TrackPathPoint> >::const_iterator path = matchingPaths.begin();
+         path != matchingPaths.end(); ++path) {
+        const float totalLength = PathLength(*path);
+        if (totalLength <= 0.0001f) continue;
+        const float inset = std::min(kRecoveryInset, totalLength * 0.25f);
+        RaceVector3 position;
+        RaceVector3 tangent;
+        if (!SamplePathFromArrival(*path, forwardRace, inset, position, tangent)) continue;
+        averagePosition = Add(averagePosition, position);
+        averageTangent = Add(averageTangent, tangent);
+        ++sampleCount;
+    }
+    if (sampleCount == 0) return fallback;
 
+    averagePosition = Scale(averagePosition, 1.0f / static_cast<float>(sampleCount));
+    averageTangent = Scale(averageTangent, 1.0f / static_cast<float>(sampleCount));
     return TrackPositionTracker::RecoveryPose{
-        position,
-        HeadingRadians(tangent, transition.portal.crossingHeading),
+        averagePosition,
+        HeadingRadians(averageTangent, transition.portal.crossingHeading),
     };
 }
 
