@@ -52,6 +52,7 @@ The track module owns:
 - overlap detection;
 - surface and guardrail queries;
 - connector graph construction;
+- the selected-direction progress graph and portal description;
 - race-readiness validation;
 - the sample circuit;
 - durable layout fingerprints.
@@ -68,6 +69,7 @@ Key implementation ownership:
 | `track_overlap.cpp` | Physical overlap checks |
 | `track_surface_query.cpp` | Road contact and guardrail queries |
 | `track_graph.cpp` | Indexed connector matching |
+| `track_progress_graph.*` | Directed piece transitions, crossing headings, and finish portal shared by race and editor |
 | `track_validation.cpp` | Race-readiness policy |
 | `track_fingerprint.cpp` | Durable persisted-layout identity |
 
@@ -83,9 +85,10 @@ the public track API. Its cross-module declarations live under
 | Path | Responsibility |
 | --- | --- |
 | `core/editor.cpp` | Editor state construction, preview snapshots, cache coordination, and public access |
-| `interaction/editor_input.cpp` | Raylib input polling, modal routing, selection, and camera bindings |
+| `interaction/editor_input.cpp` | Raylib input polling, modal routing, selection, graph-overlay toggle, and camera bindings |
 | `model/editor_preview.cpp` | Preview type conversion, dimensions, and property editing |
-| `presentation/editor_scene.cpp` | In-world road, connector, validation, and preview drawing |
+| `presentation/editor_scene.cpp` | In-world road, connector, validation, preview, and overlay composition |
+| `presentation/editor_tracking_graph.cpp` | Checkpoint nodes, directed edges, transition portals, and finish-portal visualization |
 | `presentation/editor_panel.cpp` | Main editor panel and property inspector drawing |
 | `persistence/editor_library_ui.cpp` | Draft-library input and modal presentation |
 | `editor_commands.cpp` | Placement, transform, duplicate, delete, clear, and start/finish commands |
@@ -156,7 +159,7 @@ verification lifecycle.
 | `vehicle_dynamics.*` | Suspension/contact, steering, traction, braking, drag, guide contact, and guardrail response |
 | `ghost_replay.*` | Sample capture, fastest-run replacement, validation, interpolation, and playback |
 | `internal/track_position_tracker.hpp` | Private confirmed-piece, connector-gate, and normalized-progress contract |
-| `time_trial/track_position_tracker.cpp` | Directed connector crossings, branch selection, finish handling, and centerline projection |
+| `time_trial/track_position_tracker.cpp` | Gate-crossing state, branch selection, finish handling, and centerline projection over the shared progress graph |
 | `time_trial.cpp` | Fixed-step scheduling, movement-segment handoff, laps, resets, layout invalidation, verification, and status messages |
 
 `VehicleDynamics` depends on the narrow `VehicleSurfaceQuery` interface rather
@@ -164,6 +167,10 @@ than presentation or editor state. `TimeTrial` records the car position before
 and after each fixed physics step and passes that movement segment to
 `TrackPositionTracker`. The tracker does not use nearest-surface piece identity
 as topological truth.
+
+`TrackPositionTracker` and the editor overlay both consume
+`BuildTrackProgressGraph()`. Direction reversal, branch connector indices, and
+portal planes therefore have one Raylib-free source of truth.
 
 `TimeTrial` receives one input snapshot per application frame and reuses its held
 axes for every fixed simulation step.
@@ -202,12 +209,15 @@ state. A race remembers whether it originated from the main menu or editor so
 Editor input
   → TrackEditor mutates or previews Track
   → Track validates geometry and graph state
+  → G optionally requests the shared directed progress graph visualization
   → Tab requests a frozen in-memory preview
   → TimeTrial consumes the frozen layout through surface queries
   → Render reads TimeTrial and Track state
 ```
 
-The preview is transient. It does not create a `.nrplay` package.
+The graph overlay is presentation-only and hidden by default. It visualizes the
+same directed transition and portal snapshot later consumed by the race. The
+preview is transient and does not create a `.nrplay` package.
 
 ### Lap completion
 
@@ -255,8 +265,8 @@ A failed load leaves the caller's current editor or race state unchanged.
 
 The build mirrors the module boundaries:
 
-- `neon_racer_domain` owns Raylib-free track code, the draft layout codec, and
-  the shared atomic-file primitive.
+- `neon_racer_domain` owns Raylib-free track code, including the shared progress
+  graph, the draft layout codec, and the shared atomic-file primitive.
 - `neon_racer_vehicle_dynamics` builds simulation on the domain.
 - `neon_racer_time_trial` adds connector-gated track position and time-trial
   orchestration.
