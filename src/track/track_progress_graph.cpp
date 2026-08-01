@@ -37,18 +37,24 @@ TrackProgressGraph BuildTrackProgressGraph(const Track& track) {
         const std::uint32_t fromPieceId = forward ? connection->exit.pieceId : connection->entry.pieceId;
         const std::uint32_t toPieceId = forward ? connection->entry.pieceId : connection->exit.pieceId;
         const TrackPiece* fromPiece = track.GetPiece(fromPieceId);
-        if (fromPiece == 0) continue;
+        const TrackPiece* toPiece = track.GetPiece(toPieceId);
+        if (fromPiece == 0 || toPiece == 0) continue;
 
         const std::vector<TrackConnector> portals = forward ? fromPiece->ExitConnectors() :
             fromPiece->EntryConnectors();
+        const std::vector<TrackConnector> arrivals = forward ? toPiece->EntryConnectors() :
+            toPiece->ExitConnectors();
         const std::size_t portalIndex = forward ? connection->exit.connectorIndex :
             connection->entry.connectorIndex;
-        if (portalIndex >= portals.size()) continue;
+        const std::size_t arrivalIndex = forward ? connection->entry.connectorIndex :
+            connection->exit.connectorIndex;
+        if (portalIndex >= portals.size() || arrivalIndex >= arrivals.size()) continue;
 
         graph.transitions.push_back(TrackProgressTransition{
             fromPieceId,
             toPieceId,
             PortalFor(portals[portalIndex], graph.direction),
+            arrivals[arrivalIndex],
         });
     }
 
