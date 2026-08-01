@@ -13,6 +13,7 @@ RAYLIB_LIBS := $(if $(strip $(RAYLIB_LIBS)),$(RAYLIB_LIBS),-lraylib)
 BUILD_DIR := build
 APP := $(BUILD_DIR)/neon-racer
 TRACK_TEST := $(BUILD_DIR)/tests/track_tests
+TRACK_PROGRESS_GRAPH_TEST := $(BUILD_DIR)/tests/track_progress_graph_tests
 RACE_PHYSICS_TEST := $(BUILD_DIR)/tests/race_physics_tests
 VEHICLE_DYNAMICS_TEST := $(BUILD_DIR)/tests/vehicle_dynamics_tests
 GHOST_REPLAY_TEST := $(BUILD_DIR)/tests/ghost_replay_tests
@@ -52,6 +53,7 @@ EDITOR_SOURCES := src/editor/core/editor.cpp \
 	src/editor/model/editor_preview.cpp \
 	src/editor/presentation/editor_scene.cpp \
 	src/editor/presentation/editor_panel.cpp \
+	src/editor/presentation/editor_tracking_graph.cpp \
 	src/editor/persistence/editor_library_ui.cpp \
 	src/editor/editor_camera.cpp \
 	src/editor/editor_commands.cpp \
@@ -77,6 +79,7 @@ APP_SOURCES := src/app/main.cpp \
 	src/render/time_trial_renderer.cpp \
 	src/render/track_renderer.cpp \
 	src/track/track_graph.cpp \
+	src/track/track_progress_graph.cpp \
 	src/track/track_rules.cpp \
 	src/track/track_road_geometry.cpp \
 	src/track/track_surface_geometry.cpp \
@@ -108,12 +111,16 @@ RACE_TRACK_SOURCES := src/track/track_layout.cpp \
 	src/track/track_piece_geometry.cpp \
 	src/track/track_overlap.cpp \
 	src/track/track_graph.cpp \
+	src/track/track_progress_graph.cpp \
 	src/track/track_rules.cpp \
 	src/track/track_road_geometry.cpp \
 	src/track/track_surface_geometry.cpp \
 	src/track/track_surface_query.cpp \
 	src/track/track_validation.cpp \
 	src/track/track_fingerprint.cpp
+
+TRACK_PROGRESS_GRAPH_TEST_SOURCES := tests/unit/test_track_progress_graph.cpp \
+	$(RACE_TRACK_SOURCES)
 
 VEHICLE_DYNAMICS_TEST_SOURCES := tests/unit/test_vehicle_dynamics.cpp \
 	$(RACE_VEHICLE_SOURCES) \
@@ -173,6 +180,10 @@ $(TRACK_TEST): $(TRACK_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(TRACK_TEST_SOURCES)
 
+$(TRACK_PROGRESS_GRAPH_TEST): $(TRACK_PROGRESS_GRAPH_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(TRACK_PROGRESS_GRAPH_TEST_SOURCES)
+
 $(RACE_PHYSICS_TEST): $(RACE_PHYSICS_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(RACE_PHYSICS_TEST_SOURCES)
@@ -209,8 +220,9 @@ $(REPOSITORY_HARDENING_TEST): $(REPOSITORY_HARDENING_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(REPOSITORY_HARDENING_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(TRACK_POSITION_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST) $(PIECE_CATALOG_TEST) $(REPOSITORY_HARDENING_TEST)
+test racer-test: $(TRACK_TEST) $(TRACK_PROGRESS_GRAPH_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(TRACK_POSITION_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST) $(PIECE_CATALOG_TEST) $(REPOSITORY_HARDENING_TEST)
 	./$(TRACK_TEST)
+	./$(TRACK_PROGRESS_GRAPH_TEST)
 	./$(RACE_PHYSICS_TEST)
 	./$(VEHICLE_DYNAMICS_TEST)
 	./$(GHOST_REPLAY_TEST)
