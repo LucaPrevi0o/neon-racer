@@ -184,7 +184,7 @@ document for each topic.
 - [`docs/architecture.md`](docs/architecture.md): dependency boundaries,
   ownership, and runtime flows.
 - [`docs/development.md`](docs/development.md): contributor workflow, test
-  expectations, and release publishing.
+  expectations, smoke checks, and release publishing.
 - [`docs/design-specification.md`](docs/design-specification.md): product
   direction and design invariants.
 - [`docs/track-format.md`](docs/track-format.md): editable draft format.
