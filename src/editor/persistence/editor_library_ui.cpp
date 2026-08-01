@@ -49,8 +49,9 @@ bool TrackEditor::UpdateTrackLibraryInput() {
         RefreshDraftList();
         return true;
     }
-    for (std::size_t index = 0; index < savedDrafts_.size() && index < 12; ++index) {
-        const Rectangle row{840.0f, 192.0f + static_cast<float>(index) * 27.0f, 375.0f, 23.0f};
+    const float rowStart = currentDraftName_.empty() ? 192.0f : 222.0f;
+    for (std::size_t index = 0; index < savedDrafts_.size() && index < 11; ++index) {
+        const Rectangle row{840.0f, rowStart + static_cast<float>(index) * 27.0f, 375.0f, 23.0f};
         if (CheckCollisionPointRec(mouse, row)) {
             LoadDraft(savedDrafts_[index]);
             return true;
