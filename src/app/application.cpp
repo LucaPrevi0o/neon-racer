@@ -148,8 +148,9 @@ void RacerApplication::UpdateRacePauseMenu() {
         racePauseMenu_.Close();
     } else if (action == RacePauseAction::Recover) {
         timeTrial_.Recover();
-        if (!timeTrial_.IsPaused()) timeTrial_.TogglePause();
+        if (timeTrial_.IsPaused()) timeTrial_.TogglePause();
         timeTrialRenderer_.Update(timeTrial_);
+        racePauseMenu_.Close();
     } else if (action == RacePauseAction::Restart) {
         timeTrial_.Reset();
         timeTrialRenderer_.Update(timeTrial_);
