@@ -22,6 +22,7 @@ TRACK_POSITION_TEST := $(BUILD_DIR)/tests/track_position_tests
 CHECKPOINT_RECOVERY_TEST := $(BUILD_DIR)/tests/checkpoint_recovery_tests
 PLAYABLE_IO_TEST := $(BUILD_DIR)/tests/playable_io_tests
 MAIN_MENU_FLOW_TEST := $(BUILD_DIR)/tests/main_menu_flow_tests
+RACE_PAUSE_FLOW_TEST := $(BUILD_DIR)/tests/race_pause_flow_tests
 PIECE_CATALOG_TEST := $(BUILD_DIR)/tests/piece_catalog_tests
 EDITOR_CONNECTOR_GUIDE_TEST := $(BUILD_DIR)/tests/editor_connector_guide_tests
 REPOSITORY_HARDENING_TEST := $(BUILD_DIR)/tests/repository_hardening_tests
@@ -71,6 +72,8 @@ APP_SOURCES := src/app/main.cpp \
 	src/app/main_menu.cpp \
 	src/app/main_menu_flow.cpp \
 	src/app/playable_library.cpp \
+	src/app/race_pause_menu.cpp \
+	src/app/race_pause_flow.cpp \
 	src/app/raylib_race_input.cpp \
 	$(EDITOR_SOURCES) \
 	$(DRAFT_PERSISTENCE_SOURCES) \
@@ -154,6 +157,9 @@ PLAYABLE_IO_TEST_SOURCES := tests/unit/test_playable_io.cpp \
 MAIN_MENU_FLOW_TEST_SOURCES := tests/unit/test_main_menu_flow.cpp \
 	src/app/main_menu_flow.cpp
 
+RACE_PAUSE_FLOW_TEST_SOURCES := tests/unit/test_race_pause_flow.cpp \
+	src/app/race_pause_flow.cpp
+
 PIECE_CATALOG_TEST_SOURCES := tests/unit/test_piece_catalog.cpp \
 	src/editor/piece_catalog.cpp \
 	$(RACE_TRACK_SOURCES)
@@ -226,6 +232,10 @@ $(MAIN_MENU_FLOW_TEST): $(MAIN_MENU_FLOW_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(MAIN_MENU_FLOW_TEST_SOURCES)
 
+$(RACE_PAUSE_FLOW_TEST): $(RACE_PAUSE_FLOW_TEST_SOURCES)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(RACE_PAUSE_FLOW_TEST_SOURCES)
+
 $(PIECE_CATALOG_TEST): $(PIECE_CATALOG_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(PIECE_CATALOG_TEST_SOURCES)
@@ -238,7 +248,7 @@ $(REPOSITORY_HARDENING_TEST): $(REPOSITORY_HARDENING_TEST_SOURCES)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(PROJECT_CXXFLAGS) -o $@ $(REPOSITORY_HARDENING_TEST_SOURCES)
 
-test racer-test: $(TRACK_TEST) $(TRACK_PROGRESS_GRAPH_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(TRACK_POSITION_TEST) $(CHECKPOINT_RECOVERY_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST) $(PIECE_CATALOG_TEST) $(EDITOR_CONNECTOR_GUIDE_TEST) $(REPOSITORY_HARDENING_TEST)
+test racer-test: $(TRACK_TEST) $(TRACK_PROGRESS_GRAPH_TEST) $(RACE_PHYSICS_TEST) $(VEHICLE_DYNAMICS_TEST) $(GHOST_REPLAY_TEST) $(TIME_TRIAL_TEST) $(TRACK_POSITION_TEST) $(CHECKPOINT_RECOVERY_TEST) $(PLAYABLE_IO_TEST) $(MAIN_MENU_FLOW_TEST) $(RACE_PAUSE_FLOW_TEST) $(PIECE_CATALOG_TEST) $(EDITOR_CONNECTOR_GUIDE_TEST) $(REPOSITORY_HARDENING_TEST)
 	./$(TRACK_TEST)
 	./$(TRACK_PROGRESS_GRAPH_TEST)
 	./$(RACE_PHYSICS_TEST)
@@ -249,6 +259,7 @@ test racer-test: $(TRACK_TEST) $(TRACK_PROGRESS_GRAPH_TEST) $(RACE_PHYSICS_TEST)
 	./$(CHECKPOINT_RECOVERY_TEST)
 	./$(PLAYABLE_IO_TEST)
 	./$(MAIN_MENU_FLOW_TEST)
+	./$(RACE_PAUSE_FLOW_TEST)
 	./$(PIECE_CATALOG_TEST)
 	./$(EDITOR_CONNECTOR_GUIDE_TEST)
 	./$(REPOSITORY_HARDENING_TEST)
