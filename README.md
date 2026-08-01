@@ -126,11 +126,12 @@ session; it is undoable and never deletes saved drafts.
 | Quick-return to the launching screen | `Tab` | Use the pause menu |
 | Open playable export after verification | `E` | — |
 
-The pause menu provides **Resume**, **Recover to checkpoint**, **Restart run**,
+The pause menu provides **Resume**, **Return to checkpoint**, **Restart run**,
 a contextual **Return to editor/main menu**, and **Quit**. Restart, return, and
-quit require a second confirmation; recovery is immediate and leaves the
-modal race screen frozen until the player resumes. Start or B resumes from the
-pause menu, while B remains available as the digital brake during active play.
+quit require a second confirmation. Returning to the checkpoint is immediate:
+it restores the car to the last confirmed recovery pose, closes the pause menu,
+and resumes the race. Start or B resumes from the pause menu, while B remains
+available as the digital brake during active play.
 
 Recovery returns the car to a safe pose just inside the last track piece reached
 through a valid checkpoint portal. It preserves the current lap, all recorded
@@ -164,7 +165,7 @@ rules, and atomic-write behavior.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/app` | Window lifecycle, startup flow, application state, libraries, pause navigation, and export UI |
+| `src/app` | Window lifecycle, startup flow, application state, libraries, and export UI |
 | `src/editor` | Mutable editor interaction and presentation |
 | `src/persistence` | Draft/package serialization, storage paths, and the shared layout codec |
 | `src/playable` | Frozen package contracts and export policy |
