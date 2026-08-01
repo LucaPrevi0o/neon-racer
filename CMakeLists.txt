@@ -157,6 +157,12 @@ target_compile_options(neon-racer-piece-catalog-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-piece-catalog-tests PRIVATE neon_racer_domain)
 add_test(NAME neon-racer-piece-catalog-tests COMMAND neon-racer-piece-catalog-tests)
 
+add_executable(neon-racer-editor-connector-guide-tests tests/unit/test_editor_connector_guides.cpp)
+target_include_directories(neon-racer-editor-connector-guide-tests PRIVATE ${NEON_RACER_SOURCE_DIR})
+target_compile_options(neon-racer-editor-connector-guide-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-editor-connector-guide-tests PRIVATE neon_racer_domain)
+add_test(NAME neon-racer-editor-connector-guide-tests COMMAND neon-racer-editor-connector-guide-tests)
+
 add_executable(neon-racer-repository-hardening-tests tests/unit/test_repository_hardening.cpp)
 target_compile_options(neon-racer-repository-hardening-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-repository-hardening-tests PRIVATE neon_racer_domain)
