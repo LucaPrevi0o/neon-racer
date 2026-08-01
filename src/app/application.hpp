@@ -6,6 +6,7 @@
 #include "main_menu.hpp"
 #include "playable_library.hpp"
 #include "race_pause_menu.hpp"
+#include "race_results_menu.hpp"
 #include "../race/time_trial.hpp"
 #include "../render/time_trial_renderer.hpp"
 #include "../playable/playable_export.hpp"
@@ -32,6 +33,7 @@ private:
     void UpdateEditor();
     void UpdateRace(float frameTime);
     void UpdateRacePauseMenu();
+    void UpdateRaceResultsMenu();
     void UpdatePlayableLibrary();
     void StartNewEditorSession();
     void LaunchPlayableTrack(const std::string& path);
@@ -44,12 +46,13 @@ private:
 
     AppState state_;
     // A playable package can be launched from either the menu or editor.
-    // The race pause menu and Tab return to this source screen.
+    // Race menus and Tab return to this source screen.
     AppState raceReturnState_;
     bool quitRequested_;
     Camera3D editorCamera_;
     MainMenu mainMenu_;
     RacePauseMenu racePauseMenu_;
+    RaceResultsMenu raceResultsMenu_;
     TrackEditor editor_;
     PlayableTrack playableTrack_;
     TimeTrial timeTrial_;
