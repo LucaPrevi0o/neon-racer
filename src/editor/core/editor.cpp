@@ -22,6 +22,7 @@ TrackEditor::TrackEditor()
       message_("Start with an empty track: place a component or load a draft."),
       libraryOpen_(false),
       helpPanelExpanded_(true),
+      trackingGraphVisible_(false),
       piecePalette_(),
       namingDraft_(false),
       draftName_("untitled"),
