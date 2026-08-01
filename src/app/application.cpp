@@ -6,11 +6,21 @@
 #include "../render/race_scene.hpp"
 #include "../ui/neon.hpp"
 
+namespace {
+
+bool GamepadBackPressed() {
+    return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
+}
+
+} // namespace
+
 RacerApplication::RacerApplication()
     : state_(AppState::MainMenu),
       raceReturnState_(AppState::MainMenu),
+      quitRequested_(false),
       editorCamera_{},
       mainMenu_(),
+      racePauseMenu_(),
       editor_() {
     ResetEditorCamera();
 }
@@ -24,12 +34,23 @@ void RacerApplication::ResetEditorCamera() {
 }
 
 void RacerApplication::Update(float frameTime) {
+    if (quitRequested_) return;
+
     if (playableLibrary_.IsOpen()) {
         UpdatePlayableLibrary();
         return;
     }
 
+    if (racePauseMenu_.IsOpen()) {
+        UpdateRacePauseMenu();
+        return;
+    }
+
     if (state_ == AppState::MainMenu) {
+        if (IsKeyPressed(KEY_ESCAPE) || GamepadBackPressed()) {
+            quitRequested_ = true;
+            return;
+        }
         UpdateMainMenu();
         return;
     }
@@ -41,6 +62,11 @@ void RacerApplication::Update(float frameTime) {
     }
     if (state_ == AppState::Race && timeTrial_.IsFinished() && timeTrial_.HasVerifiedGhost() && IsKeyPressed(KEY_E)) {
         playableLibrary_.BeginExport(playableTrack_.metadata);
+        return;
+    }
+
+    if (state_ == AppState::Editor && IsKeyPressed(KEY_ESCAPE)) {
+        quitRequested_ = true;
         return;
     }
 
@@ -56,7 +82,7 @@ void RacerApplication::Update(float frameTime) {
         raceReturnState_ = AppState::Editor;
         state_ = AppState::Race;
     } else if (state_ == AppState::Race && IsKeyPressed(KEY_TAB)) {
-        state_ = raceReturnState_;
+        ReturnFromRace();
         return;
     }
 
@@ -78,9 +104,12 @@ void RacerApplication::Draw() const {
         DrawRace();
     }
 
-    if (state_ != AppState::MainMenu) DrawStateHint();
+    if (!racePauseMenu_.IsOpen() && state_ != AppState::MainMenu) DrawStateHint();
     playableLibrary_.Draw();
+    racePauseMenu_.Draw();
 }
+
+bool RacerApplication::QuitRequested() const { return quitRequested_; }
 
 void RacerApplication::UpdateMainMenu() {
     mainMenu_.Update();
@@ -97,8 +126,38 @@ void RacerApplication::UpdateEditor() {
 }
 
 void RacerApplication::UpdateRace(float frameTime) {
-    timeTrial_.Update(frameTime, ReadRaylibRaceInput());
+    RaceInput input = ReadRaylibRaceInput();
+    const bool pauseRequested = input.pausePressed || IsKeyPressed(KEY_ESCAPE) || GamepadBackPressed();
+    if (pauseRequested) {
+        if (!timeTrial_.IsPaused()) timeTrial_.TogglePause();
+        racePauseMenu_.Open(raceReturnState_ == AppState::MainMenu);
+        return;
+    }
+
+    timeTrial_.Update(frameTime, input);
     timeTrialRenderer_.Update(timeTrial_);
+}
+
+void RacerApplication::UpdateRacePauseMenu() {
+    racePauseMenu_.Update();
+    const RacePauseAction action = racePauseMenu_.ConsumeAction();
+    if (action == RacePauseAction::None) return;
+
+    if (action == RacePauseAction::Resume) {
+        if (timeTrial_.IsPaused()) timeTrial_.TogglePause();
+        racePauseMenu_.Close();
+    } else if (action == RacePauseAction::Recover) {
+        timeTrial_.Recover();
+        timeTrialRenderer_.Update(timeTrial_);
+    } else if (action == RacePauseAction::Restart) {
+        timeTrial_.Reset();
+        timeTrialRenderer_.Update(timeTrial_);
+        racePauseMenu_.Close();
+    } else if (action == RacePauseAction::Return) {
+        ReturnFromRace();
+    } else if (action == RacePauseAction::Quit) {
+        quitRequested_ = true;
+    }
 }
 
 void RacerApplication::UpdatePlayableLibrary() {
@@ -149,6 +208,7 @@ void RacerApplication::StartNewEditorSession() {
     playableTrack_ = PlayableTrack();
     timeTrial_ = TimeTrial();
     timeTrialRenderer_ = TimeTrialRenderer();
+    racePauseMenu_.Close();
     state_ = AppState::Editor;
 }
 
@@ -179,6 +239,12 @@ void RacerApplication::ExportVerifiedPlayable(TrackMetadata metadata) {
                                   std::to_string(metadata.playableExportVersion) + ".");
 }
 
+void RacerApplication::ReturnFromRace() {
+    if (timeTrial_.IsPaused()) timeTrial_.TogglePause();
+    racePauseMenu_.Close();
+    state_ = raceReturnState_;
+}
+
 void RacerApplication::DrawMainMenu() const {
     mainMenu_.Draw();
 }
@@ -200,14 +266,16 @@ void RacerApplication::DrawRace() const {
 
 void RacerApplication::DrawStateHint() const {
     const char* hint = 0;
+    float width = 570.0f;
     if (state_ == AppState::Editor) {
         hint = "TAB: race preview    Ctrl+P/F6: playable library    ESC: quit";
     } else if (state_ == AppState::Race) {
+        width = 930.0f;
         hint = raceReturnState_ == AppState::MainMenu
-            ? "TAB: return to menu    ESC: quit"
-            : "TAB: return to editor    ESC: quit";
+            ? "P/START/ESC: pause    R/Y: recover    Shift+R/SELECT: restart    TAB: quick return to menu"
+            : "P/START/ESC: pause    R/Y: recover    Shift+R/SELECT: restart    TAB: quick return to editor";
     }
     if (hint == 0) return;
-    Neon::DrawOverlayPanel(Rectangle{28.0f, static_cast<float>(AppSettings::kWindowHeight - 58), 570.0f, 34.0f}, 0.72f);
+    Neon::DrawOverlayPanel(Rectangle{28.0f, static_cast<float>(AppSettings::kWindowHeight - 58), width, 34.0f}, 0.72f);
     DrawText(hint, 42, AppSettings::kWindowHeight - 49, 17, Neon::Yellow);
 }
