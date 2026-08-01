@@ -68,10 +68,12 @@ void TimeTrial::Start(const Track& track) {
 
 void TimeTrial::Update(float frameTime, const RaceInput& input) {
     if (!ready_) return;
-    // Preserve the existing ordering when both actions arrive together: reset
-    // follows pause and therefore resumes the time trial before simulation.
+    // Preserve the existing ordering when multiple actions arrive together:
+    // restart and recovery follow pause, while a full restart wins if both
+    // reset actions are present in the same device snapshot.
     if (input.pausePressed) TogglePause();
     if (input.resetPressed) Reset();
+    else if (input.recoverPressed) Recover();
     if (paused_ || finished_) return;
 
     accumulator_ += std::fmin(frameTime, kMaxFrameTime);
@@ -94,6 +96,16 @@ void TimeTrial::Reset() {
     finished_ = false;
     statusMessage_ = "Time trial in progress.";
     ResetCarToStart();
+}
+
+void TimeTrial::Recover() {
+    if (!ready_ || finished_) return;
+    const TrackPositionTracker::RecoveryPose& recovery = trackPosition_.CurrentRecoveryPose();
+    accumulator_ = 0.0f;
+    vehicle_.ResetPose(recovery.position, recovery.headingRadians);
+    paused_ = false;
+    SynchronizeStartProjection();
+    statusMessage_ = "Recovered to the last confirmed checkpoint.";
 }
 
 void TimeTrial::TogglePause() {
@@ -204,7 +216,7 @@ void TimeTrial::CompleteLap() {
             verification_.verifiedLayoutFingerprint = TrackFingerprint::Calculate(*track_);
         }
         statusMessage_ = ghostReplay_.HasVerified()
-            ? "Three laps complete. Ghost verified. Press R to race it."
+            ? "Three laps complete. Ghost verified. Press Shift+R to race it."
             : "Three laps complete, but this run could not be verified for replay.";
         return;
     }
@@ -214,7 +226,21 @@ void TimeTrial::CompleteLap() {
 
 void TimeTrial::ResetCarToStart() {
     vehicle_.ResetPose(StartPosition(), StartHeading());
-    previousStartProjection_ = 0.0f;
+    SynchronizeStartProjection();
+}
+
+void TimeTrial::SynchronizeStartProjection() {
+    const TrackPiece* startPiece = track_ != 0 ? track_->GetPiece(track_->StartFinishPieceId()) : 0;
+    if (startPiece == 0) {
+        previousStartProjection_ = 0.0f;
+        return;
+    }
+    const TrackConnector start = startPiece->EntryConnector();
+    const RaceVector3 startDirection = Forward(StartHeading());
+    const RaceVector3 position = vehicle_.Car().position;
+    previousStartProjection_ =
+        (position.x - static_cast<float>(start.position.x)) * startDirection.x +
+        (position.z - static_cast<float>(start.position.z)) * startDirection.z;
 }
 
 RaceVector3 TimeTrial::StartPosition() const {
