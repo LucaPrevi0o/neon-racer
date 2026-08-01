@@ -11,4 +11,5 @@ struct RaceInput {
     float reverse;
     bool pausePressed;
     bool resetPressed;
+    bool recoverPressed;
 };
