@@ -161,7 +161,7 @@ void PlayableLibrary::Update() {
     if (IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
         activeField_ = (activeField_ + 2) % 3;
     }
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || GamepadConfirmPressed()) {
+    if (IsKeyPressed(KEY_ENTER) || GamepadConfirmPressed()) {
         exportRequested_ = true;
         return;
     }
