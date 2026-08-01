@@ -3,6 +3,7 @@
 #include "track_position_tracker.hpp"
 
 class Track;
+struct TrackPiece;
 struct TrackProgressPortal;
 struct TrackProgressTransition;
 
