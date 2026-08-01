@@ -50,7 +50,8 @@ a verified three-lap run enables export of a frozen playable package containing
 the exact raced layout, metadata, and its verification ghost.
 
 `Tab` returns a race to the screen that launched it: the editor or the main
-menu.
+menu. The race pause menu offers the same contextual return action with
+keyboard, mouse, or gamepad navigation.
 
 ## Controls
 
@@ -58,10 +59,11 @@ menu.
 
 | Action | Controls |
 | --- | --- |
-| Navigate a menu | Up/Down or `W`/`S`; hover with the mouse |
-| Confirm | Enter, Space, or left-click |
-| Return between editor/menu and race | `Tab` |
-| Quit | `Esc` |
+| Navigate the main or pause menu | Up/Down, `W`/`S`, or gamepad D-pad; hover with the mouse |
+| Confirm a main or pause action | Enter, Space, gamepad A, or left-click |
+| Cancel a confirmation / go back | `Esc` or gamepad B |
+| Return between editor/menu and race | `Tab`, or the contextual pause-menu action |
+| Quit from the main menu | `Esc` or gamepad B |
 
 ### Track editor
 
@@ -120,9 +122,14 @@ session; it is undoable and never deletes saved drafts.
 | Steer | `A`/`D` or Left/Right | Left stick |
 | Recover to the last confirmed checkpoint | `R` | Upper face button |
 | Restart the complete three-lap run | `Shift+R` | Middle-left button |
-| Pause | `P` | Middle-right button |
-| Return to the launching screen | `Tab` | — |
+| Open / close the pause menu | `P` or `Esc` | Start or B |
+| Quick-return to the launching screen | `Tab` | Use the pause menu |
 | Open playable export after verification | `E` | — |
+
+The pause menu provides **Resume**, **Recover to checkpoint**, **Restart run**,
+a contextual **Return to editor/main menu**, and **Quit**. Restart, return, and
+quit require a second confirmation; recovery is immediate and leaves the
+modal race screen frozen until the player resumes.
 
 Recovery returns the car to a safe pose just inside the last track piece reached
 through a valid checkpoint portal. It preserves the current lap, all recorded
@@ -156,7 +163,7 @@ rules, and atomic-write behavior.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/app` | Window lifecycle, startup flow, application state, libraries, and export UI |
+| `src/app` | Window lifecycle, startup flow, application state, libraries, pause navigation, and export UI |
 | `src/editor` | Mutable editor interaction and presentation |
 | `src/persistence` | Draft/package serialization, storage paths, and the shared layout codec |
 | `src/playable` | Frozen package contracts and export policy |
