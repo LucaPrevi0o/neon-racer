@@ -82,9 +82,14 @@ void TestRecoveryChoosesTheConfirmedBranchArm() {
 
     TrackPositionTracker rightTracker;
     rightTracker.Configure(track);
-    Expect(CrossTransition(rightTracker, graph, start, branch) &&
-               CrossTransition(rightTracker, graph, branch, rightArm),
-           "right-arm recovery test crosses real directed checkpoint portals");
+    Expect(CrossTransition(rightTracker, graph, start, branch),
+           "branch recovery test enters the branch through a real checkpoint portal");
+    const TrackPositionTracker::RecoveryPose shared = rightTracker.CurrentRecoveryPose();
+    Expect(rightTracker.CurrentPieceId() == branch && shared.position.x > 4.0f &&
+               shared.position.x < 5.0f && NearlyEqual(shared.position.z, 0.0f),
+           "recovery stays centered while the branch exit has not been selected");
+    Expect(CrossTransition(rightTracker, graph, branch, rightArm),
+           "right-arm recovery test crosses the selected branch portal");
     const TrackPositionTracker::RecoveryPose right = rightTracker.CurrentRecoveryPose();
     Expect(rightTracker.CurrentPieceId() == rightArm && right.position.x > 10.0f &&
                right.position.x < 11.0f && NearlyEqual(right.position.z, 3.0f) &&
