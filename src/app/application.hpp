@@ -46,6 +46,7 @@ private:
     void LaunchPlayableTrack(const std::string& path);
     void ExportVerifiedPlayable(TrackMetadata metadata);
     void UpdateActivePlayableGhost();
+    void ShowPlayableLibraryMessage(const std::string& message);
     void ReturnFromRace();
     void DrawMainMenu() const;
     void DrawEditor() const;
