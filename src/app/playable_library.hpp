@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "playable_library_flow.hpp"
 #include "neon_racer/persistence/playable_track_io.hpp"
 #include "../track/track_contracts.hpp"
 
@@ -42,7 +43,7 @@ private:
     TrackMetadata exportMetadata_;
     int activeField_;
     std::vector<PlayableTrackIO::PlayableTrackFile> playableFiles_;
-    std::size_t firstVisibleIndex_;
+    PlayableLibraryFlow libraryFlow_;
     std::string pendingLaunchPath_;
     bool exportRequested_;
     std::string message_;
