@@ -1,5 +1,7 @@
 #include "piece_catalog.hpp"
 
+#include <algorithm>
+
 namespace {
 
 const EditorPieceCatalog::Item kItems[] = {
@@ -43,6 +45,34 @@ TrackPiece Thumbnail(TrackPieceType type) {
         ? TrackLimits::DefaultTwistRadiusForRoadWidth(5, 5) : 4;
     return TrackPiece{0, type, GridPosition{0, 0, 0}, Heading::East, 5, 5, length,
                       CurveTurn::Right, radius, 90, 0, 0, armSpread, SurfaceMaterial::Regular};
+}
+
+TrackPiece RetargetPreview(const TrackPiece& preview, TrackPieceType type) {
+    if (preview.type == type) return preview;
+
+    TrackPiece retargeted = Thumbnail(type);
+    retargeted.id = preview.id;
+    retargeted.entryPosition = preview.entryPosition;
+    retargeted.entryHeading = preview.entryHeading;
+    retargeted.width = preview.width;
+    retargeted.exitWidth = preview.exitWidth;
+    retargeted.material = preview.material;
+
+    if (type == TrackPieceType::Branch || type == TrackPieceType::Merge) {
+        retargeted.exitWidth = retargeted.width;
+        retargeted.elevationDelta = 0;
+    } else {
+        retargeted.elevationDelta = preview.elevationDelta;
+    }
+
+    if (type == TrackPieceType::Twist) {
+        retargeted.length = std::max(TrackLimits::kDefaultTwistLength,
+                                     TrackLimits::MinimumTwistLengthForRoadWidth(retargeted.width,
+                                                                                 retargeted.exitWidth));
+        retargeted.curveRadius =
+            TrackLimits::DefaultTwistRadiusForRoadWidth(retargeted.width, retargeted.exitWidth);
+    }
+    return retargeted;
 }
 
 } // namespace EditorPieceCatalog
