@@ -9,7 +9,8 @@ class RaceResultsMenu {
 public:
     RaceResultsMenu();
 
-    void Open(bool returnsToMainMenu, bool canSavePlayable, float totalTime, float bestLapTime);
+    void Open(bool returnsToMainMenu, bool canSaveReplay, bool updatesExistingGhost,
+              float totalTime, float bestLapTime);
     void Close();
     bool IsOpen() const;
     void Update();
@@ -20,6 +21,7 @@ private:
     RaceResultsFlow flow_;
     bool open_;
     bool returnsToMainMenu_;
+    bool updatesExistingGhost_;
     float totalTime_;
     float bestLapTime_;
 };
