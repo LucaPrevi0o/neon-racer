@@ -1,6 +1,8 @@
+#include "../../src/app/app_settings.hpp"
 #include "../../src/app/main_menu_flow.hpp"
 
 #include <iostream>
+#include <string>
 
 namespace {
 
@@ -10,6 +12,11 @@ void Expect(bool condition, const char* message) {
     if (condition) return;
     std::cerr << "FAILED: " << message << "\n";
     ++failures;
+}
+
+void TestReleaseIdentity() {
+    Expect(std::string(AppSettings::kVersion) == "v0.2.2-alpha.3.1",
+           "the application exposes the alpha.3.1 release identity");
 }
 
 void TestDefaultSelectionAndNavigation() {
@@ -52,6 +59,7 @@ void TestActionsAreMappedAndConsumedOnce() {
 } // namespace
 
 int main() {
+    TestReleaseIdentity();
     TestDefaultSelectionAndNavigation();
     TestActionsAreMappedAndConsumedOnce();
     if (failures == 0) std::cout << "Neon Racer main-menu flow tests passed.\n";
