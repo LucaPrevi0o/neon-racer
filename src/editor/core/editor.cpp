@@ -1,5 +1,7 @@
 #include "neon_racer/editor/editor.hpp"
 
+#include "neon_racer/editor/piece_catalog.hpp"
+
 namespace {
 
 bool SamePieceShape(const TrackPiece& first, const TrackPiece& second) {
@@ -40,7 +42,7 @@ void TrackEditor::BeginNewTrack() {
 const Track& TrackEditor::GetTrack() const { return track_; }
 
 TrackPiece TrackEditor::BuildPreview() const {
-    TrackPiece candidate = preview_;
+    TrackPiece candidate = EditorPieceCatalog::RetargetPreview(preview_, preview_.type);
     candidate.id = selectedPieceId_;
     return candidate;
 }
