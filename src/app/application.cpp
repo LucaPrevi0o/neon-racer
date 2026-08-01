@@ -6,6 +6,8 @@
 #include "../render/race_scene.hpp"
 #include "../ui/neon.hpp"
 
+#include <limits>
+
 namespace {
 
 bool GamepadBackPressed() {
@@ -17,6 +19,8 @@ bool GamepadBackPressed() {
 RacerApplication::RacerApplication()
     : state_(AppState::MainMenu),
       raceReturnState_(AppState::MainMenu),
+      raceSessionKind_(RaceSessionKind::EditorTimeTrial),
+      activePlayablePath_(),
       quitRequested_(false),
       editorCamera_{},
       mainMenu_(),
@@ -82,6 +86,8 @@ void RacerApplication::Update(float frameTime) {
             timeTrial_.Start(editor_.GetTrack());
         }
         raceReturnState_ = AppState::Editor;
+        raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
+        activePlayablePath_.clear();
         racePauseMenu_.Close();
         raceResultsMenu_.Close();
         timeTrialRenderer_.SnapTo(timeTrial_);
@@ -150,8 +156,13 @@ void RacerApplication::UpdateRace(float frameTime) {
     }
 
     if (timeTrial_.IsFinished()) {
+        const bool ghostRace = raceSessionKind_ == RaceSessionKind::GhostRace;
+        const bool canSaveReplay = ghostRace
+            ? timeTrial_.LastCompletedRunImprovedGhost()
+            : timeTrial_.HasVerifiedGhost();
         raceResultsMenu_.Open(raceReturnState_ == AppState::MainMenu,
-                              timeTrial_.HasVerifiedGhost(),
+                              canSaveReplay,
+                              ghostRace,
                               timeTrial_.TotalTime(),
                               timeTrial_.BestLapTime());
     }
@@ -191,7 +202,11 @@ void RacerApplication::UpdateRaceResultsMenu() {
         timeTrialRenderer_.SnapTo(timeTrial_);
         raceResultsMenu_.Close();
     } else if (action == RaceResultsAction::SavePlayable) {
-        playableLibrary_.BeginExport(playableTrack_.metadata);
+        if (raceSessionKind_ == RaceSessionKind::GhostRace) {
+            UpdateActivePlayableGhost();
+        } else {
+            playableLibrary_.BeginExport(playableTrack_.metadata);
+        }
     } else if (action == RaceResultsAction::Return) {
         ReturnFromRace();
     } else if (action == RaceResultsAction::Quit) {
@@ -237,6 +252,8 @@ void RacerApplication::LaunchPlayableTrack(const std::string& path) {
     // export flow. Preserve that race's original source instead of creating a
     // Race -> Race return loop when another package is launched there.
     raceReturnState_ = state_ == AppState::Race ? raceReturnState_ : state_;
+    raceSessionKind_ = RaceSessionKind::GhostRace;
+    activePlayablePath_ = path;
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     timeTrialRenderer_.SnapTo(timeTrial_);
@@ -250,6 +267,8 @@ void RacerApplication::StartNewEditorSession() {
     playableTrack_ = PlayableTrack();
     timeTrial_ = TimeTrial();
     timeTrialRenderer_ = TimeTrialRenderer();
+    raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
+    activePlayablePath_.clear();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     state_ = AppState::Editor;
@@ -271,8 +290,9 @@ void RacerApplication::ExportVerifiedPlayable(TrackMetadata metadata) {
     metadata.playableExportVersion = nextVersion;
 
     PlayableTrack exported;
+    const std::string path = PlayableTrackIO::CustomPlayablePath(metadata.name);
     if (!PlayableExport::BuildVerified(playableTrack_.layout, metadata, ghost, timeTrial_.Verification(), exported, error) ||
-        !PlayableTrackIO::Save(exported, PlayableTrackIO::CustomPlayablePath(metadata.name), error)) {
+        !PlayableTrackIO::Save(exported, path, error)) {
         playableLibrary_.ReportMessage(error);
         return;
     }
@@ -280,6 +300,58 @@ void RacerApplication::ExportVerifiedPlayable(TrackMetadata metadata) {
     playableTrack_ = exported;
     playableLibrary_.FinishExport("Saved " + metadata.name + " as playable version " +
                                   std::to_string(metadata.playableExportVersion) + ".");
+}
+
+void RacerApplication::UpdateActivePlayableGhost() {
+    if (raceSessionKind_ != RaceSessionKind::GhostRace || activePlayablePath_.empty() ||
+        !timeTrial_.LastCompletedRunImprovedGhost()) {
+        return;
+    }
+
+    VerifiedGhostData ghost;
+    if (!timeTrial_.ExportVerifiedGhost(ghost)) {
+        raceResultsMenu_.Close();
+        playableLibrary_.Open();
+        playableLibrary_.ReportMessage("The completed ghost race no longer has a verified replay.");
+        return;
+    }
+
+    std::string error;
+    PlayableTrack current;
+    if (!PlayableTrackIO::Load(activePlayablePath_, current, error)) {
+        raceResultsMenu_.Close();
+        playableLibrary_.Open();
+        playableLibrary_.ReportMessage("Could not update the saved ghost: " + error);
+        return;
+    }
+    if (current.layoutFingerprint != playableTrack_.layoutFingerprint ||
+        current.metadata.name != playableTrack_.metadata.name) {
+        raceResultsMenu_.Close();
+        playableLibrary_.Open();
+        playableLibrary_.ReportMessage("The saved package changed while this ghost race was running.");
+        return;
+    }
+    if (current.metadata.playableExportVersion == std::numeric_limits<std::uint32_t>::max()) {
+        raceResultsMenu_.Close();
+        playableLibrary_.Open();
+        playableLibrary_.ReportMessage("Playable export version has reached its maximum value.");
+        return;
+    }
+
+    current.verificationGhost = ghost;
+    ++current.metadata.playableExportVersion;
+    if (!PlayableTrackIO::Save(current, activePlayablePath_, error)) {
+        raceResultsMenu_.Close();
+        playableLibrary_.Open();
+        playableLibrary_.ReportMessage("Could not update the saved ghost: " + error);
+        return;
+    }
+
+    playableTrack_ = current;
+    raceResultsMenu_.Close();
+    playableLibrary_.Open();
+    playableLibrary_.ReportMessage("Updated " + current.metadata.name + " to playable version " +
+                                   std::to_string(current.metadata.playableExportVersion) + ".");
 }
 
 void RacerApplication::ReturnFromRace() {
