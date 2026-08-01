@@ -143,7 +143,11 @@ void RacerApplication::UpdateRace(float frameTime) {
     }
 
     timeTrial_.Update(frameTime, input);
-    timeTrialRenderer_.Update(timeTrial_);
+    if (input.resetPressed || input.recoverPressed) {
+        timeTrialRenderer_.SnapTo(timeTrial_);
+    } else {
+        timeTrialRenderer_.Update(timeTrial_);
+    }
 
     if (timeTrial_.IsFinished()) {
         raceResultsMenu_.Open(raceReturnState_ == AppState::MainMenu,
