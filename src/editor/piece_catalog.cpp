@@ -15,6 +15,11 @@ const EditorPieceCatalog::Item kItems[] = {
 
 const std::size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);
 
+bool IsStandaloneValid(const TrackPiece& piece) {
+    Track track;
+    return track.Add(piece) != 0;
+}
+
 } // namespace
 
 namespace EditorPieceCatalog {
@@ -48,7 +53,7 @@ TrackPiece Thumbnail(TrackPieceType type) {
 }
 
 TrackPiece RetargetPreview(const TrackPiece& preview, TrackPieceType type) {
-    if (preview.type == type) return preview;
+    if (preview.type == type && IsStandaloneValid(preview)) return preview;
 
     TrackPiece retargeted = Thumbnail(type);
     retargeted.id = preview.id;
