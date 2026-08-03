@@ -1,7 +1,9 @@
 #include "../../src/track/track_progress_graph.hpp"
+#include "../../src/track/track_sector_layout.hpp"
 
 #include <cstdint>
 #include <iostream>
+#include <set>
 #include <vector>
 
 namespace {
@@ -34,6 +36,37 @@ const TrackProgressTransition* FindTransition(const TrackProgressGraph& graph,
         }
     }
     return 0;
+}
+
+std::size_t TransitionIndex(const TrackSectorRouteVariant& route, std::uint32_t transitionId) {
+    for (std::size_t index = 0; index < route.transitionIds.size(); ++index) {
+        if (route.transitionIds[index] == transitionId) return index;
+    }
+    return route.transitionIds.size();
+}
+
+Track CreateBranchCircuit() {
+    Track track;
+    const std::uint32_t start = track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4, 3);
+    const std::uint32_t branch = track.AddBranch(GridPosition{4, 0, 0}, Heading::East, 8, 6, 3);
+    const std::uint32_t southArm = track.AddStraight(GridPosition{12, 0, 6}, Heading::East, 40, 3);
+    const std::uint32_t northArm = track.AddStraight(GridPosition{12, 0, -6}, Heading::East, 40, 3);
+    const std::uint32_t merge = track.AddMerge(GridPosition{52, 0, 0}, Heading::East, 8, 6, 3);
+    const std::uint32_t postMerge = track.AddStraight(GridPosition{60, 0, 0}, Heading::East, 4, 3);
+    const std::uint32_t firstTurn = track.AddCurve(GridPosition{64, 0, 0}, Heading::East,
+        CurveTurn::Right, 6, 3, -1, 0, SurfaceMaterial::Regular, 180);
+    const std::uint32_t returnStraight = track.AddStraight(GridPosition{64, 0, 12}, Heading::West, 64, 3);
+    const std::uint32_t finalTurn = track.AddCurve(GridPosition{0, 0, 12}, Heading::West,
+        CurveTurn::Right, 6, 3, -1, 0, SurfaceMaterial::Regular, 180);
+
+    Expect(start != 0 && branch != 0 && southArm != 0 && northArm != 0 && merge != 0 &&
+               postMerge != 0 && firstTurn != 0 && returnStraight != 0 && finalTurn != 0,
+           "branch-sector fixture places every component without overlap");
+    Expect(track.SetStartFinish(start, RaceDirection::Forward),
+           "branch-sector fixture selects its start/finish straight");
+    Expect(track.Validate().raceReady,
+           "branch-sector fixture forms one complete race-ready network");
+    return track;
 }
 
 void TestForwardGraphUsesExitPortals() {
@@ -100,6 +133,18 @@ void TestReverseGraphUsesEntryPortals() {
     }
 }
 
+void TestTransitionIdentitiesAreUnique() {
+    const TrackProgressGraph graph = BuildTrackProgressGraph(Track::CreateSampleCircuit());
+    std::set<std::uint32_t> identities;
+    for (std::vector<TrackProgressTransition>::const_iterator transition = graph.transitions.begin();
+         transition != graph.transitions.end(); ++transition) {
+        Expect(transition->id != 0u, "every progress transition receives a non-zero identity");
+        identities.insert(transition->id);
+    }
+    Expect(identities.size() == graph.transitions.size(),
+           "progress transition identities are unique within one graph snapshot");
+}
+
 void TestFinishPortalMatchesTrackerSemantics() {
     Track forwardTrack = Track::CreateSampleCircuit();
     const TrackProgressGraph forwardGraph = BuildTrackProgressGraph(forwardTrack);
@@ -144,14 +189,79 @@ void TestDraftWithoutStartStillHasGraphConnections() {
            "an incomplete draft can visualize connections without inventing a finish portal");
 }
 
+void TestSampleCircuitProducesOrderedSectors() {
+    const Track track = Track::CreateSampleCircuit();
+    const TrackSectorLayout sectors = BuildTrackSectorLayout(track);
+    Expect(sectors.IsReady() && sectors.boundaries.size() == 2u &&
+               sectors.routeVariants.size() == 1u,
+           "the sample circuit produces one route and two intermediate sector boundaries");
+
+    if (!sectors.routeVariants.empty()) {
+        const TrackSectorRouteVariant& route = sectors.routeVariants.front();
+        const std::size_t first = TransitionIndex(route, route.firstBoundaryTransitionId);
+        const std::size_t second = TransitionIndex(route, route.secondBoundaryTransitionId);
+        Expect(route.length > 0.0f && first < second && second + 1u < route.transitionIds.size(),
+               "sample-circuit sector gates are distinct, ordered, and leave a final sector before the finish");
+    }
+}
+
+void TestBranchCircuitProducesEquivalentBoundaryGates() {
+    const Track track = CreateBranchCircuit();
+    const TrackSectorLayout sectors = BuildTrackSectorLayout(track);
+    Expect(sectors.IsReady() && sectors.routeVariants.size() == 2u,
+           "a branch and merge produce one sector route variant per connected arm");
+    Expect(sectors.boundaries.size() == 2u &&
+               sectors.boundaries[0].alternativeGates.size() == 2u,
+           "a logical sector boundary exposes both equivalent physical branch gates");
+
+    std::set<std::uint32_t> firstBoundaryIds;
+    for (std::vector<TrackSectorRouteVariant>::const_iterator route = sectors.routeVariants.begin();
+         route != sectors.routeVariants.end(); ++route) {
+        firstBoundaryIds.insert(route->firstBoundaryTransitionId);
+        const std::size_t first = TransitionIndex(*route, route->firstBoundaryTransitionId);
+        const std::size_t second = TransitionIndex(*route, route->secondBoundaryTransitionId);
+        Expect(first < second && second + 1u < route->transitionIds.size(),
+               "each branch route crosses its two timing boundaries in sector order");
+    }
+    Expect(firstBoundaryIds.size() == 2u,
+           "the two branch routes select different exact gates for their shared first boundary");
+}
+
+void TestReverseBranchCircuitProducesSectors() {
+    Track track = CreateBranchCircuit();
+    Expect(track.SetStartFinish(track.StartFinishPieceId(), RaceDirection::Reverse),
+           "reverse-sector fixture changes race direction");
+    const TrackSectorLayout sectors = BuildTrackSectorLayout(track);
+    Expect(sectors.IsReady() && sectors.routeVariants.size() == 2u,
+           "automatic sectors preserve both branch alternatives in reverse race direction");
+}
+
+void TestSectorLayoutReportsUnavailableTracks() {
+    Track missingStart;
+    missingStart.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
+    Expect(BuildTrackSectorLayout(missingStart).status == TrackSectorLayoutStatus::MissingStartFinish,
+           "sector generation reports a missing start/finish line explicitly");
+
+    Track incomplete;
+    const std::uint32_t start = incomplete.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
+    incomplete.SetStartFinish(start, RaceDirection::Forward);
+    Expect(BuildTrackSectorLayout(incomplete).status == TrackSectorLayoutStatus::TrackNotRaceReady,
+           "sector generation rejects an incomplete network before enumerating routes");
+}
+
 } // namespace
 
 int main() {
     TestForwardGraphUsesExitPortals();
     TestReverseGraphUsesEntryPortals();
+    TestTransitionIdentitiesAreUnique();
     TestFinishPortalMatchesTrackerSemantics();
     TestBranchExposesBothOutgoingPortals();
     TestDraftWithoutStartStillHasGraphConnections();
-    if (failures == 0) std::cout << "Neon Racer track-progress graph tests passed.\n";
+    TestSampleCircuitProducesOrderedSectors();
+    TestBranchCircuitProducesEquivalentBoundaryGates();
+    TestReverseBranchCircuitProducesSectors();
+    TestSectorLayoutReportsUnavailableTracks();
+    if (failures == 0) std::cout << "Neon Racer track-progress and sector-layout tests passed.\n";
     return failures == 0 ? 0 : 1;
 }
