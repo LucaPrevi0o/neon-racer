@@ -140,6 +140,7 @@ void RacerApplication::UpdateEditorPauseMenu() {
         editorPauseMenu_.Close();
         editor_.OpenDraftLibrary();
     } else if (action == EditorPauseAction::QuitToMenu) {
+        editorSessionActive_ = false;
         ReturnHome();
     }
 }
