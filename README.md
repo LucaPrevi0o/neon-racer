@@ -38,22 +38,28 @@ outside the normal system paths.
 
 ## Game flow
 
-The main menu exposes two entry points:
+The main menu is the application Home screen and exposes two destinations:
 
 - **Play a complete track** opens the library of frozen `.nrplay` packages.
-- **Create a new track** starts an empty editor session without modifying saved
-  drafts.
+- **Open track editor** starts an empty editor session the first time it is
+  selected, then becomes **Return to track editor** while that in-memory
+  session remains active.
 
 The editor can save incomplete work as an editable `.draft`. A race-ready
-layout can be opened as an in-memory time-trial preview with `Tab`. Completing
-a verified three-lap run enables export of a frozen playable package containing
+layout can be opened as an in-memory local time trial with `F6`. Completing a
+verified three-lap run enables export of a frozen playable package containing
 the exact raced layout, metadata, and its verification ghost.
 
-`Tab` returns a race to the screen that launched it: the editor or the main
-menu. The race pause menu offers the same contextual return action with
-keyboard, mouse, or gamepad navigation. Completing lap three opens a results
-screen with the total time, best lap, race-again, playable-export, contextual
-return, and quit actions.
+`Tab` is the application-wide Home shortcut. It returns from the editor, an
+active race, pause/results screens, or an export flow to the main menu without
+discarding the current editor track. `Esc` also returns from the editor to Home,
+opens the pause menu during a race, and quits only when used from Home. Raylib's
+implicit Escape shutdown is disabled so every screen handles the key explicitly.
+
+The race pause and completed-results menus always return to Home. Confirmation
+buttons work with keyboard, gamepad, and mouse: destructive actions still
+require two activations, and keeping the pointer on the same button allows the
+second click to complete the confirmation.
 
 ## Controls
 
@@ -61,13 +67,14 @@ return, and quit actions.
 
 | Action | Controls |
 | --- | --- |
-| Navigate the main, pause, results, or playable-library menu | Up/Down, `W`/`S`, or gamepad D-pad; hover with the mouse |
+| Navigate the Home, pause, results, or playable-library menu | Up/Down, `W`/`S`, or gamepad D-pad; hover with the mouse |
 | Confirm a menu action | Enter, Space, gamepad A, or left-click |
+| Complete a destructive confirmation | Repeat Enter/Space, gamepad A, or left-click on the same action |
 | Cancel a confirmation / go back | `Esc` or gamepad B |
 | Page the playable library | Left/Right, Page Up/Page Down, or gamepad D-pad Left/Right |
 | Refresh the playable library | `R`, `F5`, or gamepad X |
-| Return between editor/menu and race | `Tab`, or the contextual pause/results action |
-| Quit from the main menu | `Esc` or gamepad B |
+| Return to the Home menu | `Tab`; `Esc` also returns from the editor |
+| Quit from the Home menu | `Esc` or gamepad B |
 
 ### Track editor
 
@@ -87,12 +94,17 @@ return, and quit actions.
 | Undo/redo | `Ctrl+Z` / `Ctrl+Y` |
 | Save a draft | `Ctrl+S` |
 | Open the draft library | `Ctrl+O` or `F5` |
-| Open the playable library | `Ctrl+P` or `F6` |
+| Start a local time trial | `F6` |
+| Return to Home | `Tab` or `Esc` |
 | Orbit the editor camera | Right-drag |
 | Pan the editor camera | `W`/`A`/`S`/`D` |
 | Move the editor camera vertically | `Q` / `E` |
 | Zoom | Shift + mouse wheel |
 | Reset the editor camera | Home |
+
+The playable-track library is opened from Home rather than directly from the
+editor. This keeps top-level navigation in one place while local editor trials
+remain available for verification and export.
 
 The bottom-right **Piece Library** expands on hover. Clicking one of its cards
 changes the selected component without placing it. Pointer actions over the
@@ -127,20 +139,19 @@ session; it is undoable and never deletes saved drafts.
 | Recover to the last confirmed checkpoint | `R` | Upper face button |
 | Restart the complete three-lap run | `Shift+R` | Middle-left button |
 | Open the pause menu | `P` or `Esc` | Start |
-| Quick-return to the launching screen | `Tab` | Use the pause menu |
+| Return directly to Home | `Tab` | Use the pause menu |
 
 The pause menu provides **Resume**, **Return to checkpoint**, **Restart run**,
-a contextual **Return to editor/main menu**, and **Quit**. Restart, return, and
-quit require a second confirmation. Returning to the checkpoint is immediate:
-it restores the car to the last confirmed recovery pose, closes the pause menu,
-resumes the race, and snaps the chase camera to the recovered car. Start or B
-resumes from the pause menu, while B remains available as the digital brake
-during active play.
+**Return to main menu**, and **Quit**. Restart, return, and quit require a second
+confirmation. Returning to the checkpoint is immediate: it restores the car to
+the last confirmed recovery pose, closes the pause menu, resumes the race, and
+snaps the chase camera to the recovered car. Start or B resumes from the pause
+menu, while B remains available as the digital brake during active play.
 
 The completed-race results menu provides **Race again**, **Save playable track**
-when the run is verified, a contextual **Return to editor/main menu**, and
-**Quit**. It shows the final three-lap total and best lap. Race again resets the
-attempt and snaps the camera to the start; return and quit require confirmation.
+or **Update saved ghost** when available, **Return to main menu**, and **Quit**.
+It shows the final three-lap total and best lap. Race again resets the attempt
+and snaps the camera to the start; return and quit require confirmation.
 
 Recovery returns the car to a safe pose just inside the last track piece reached
 through a valid checkpoint portal. It preserves the current lap, all recorded
@@ -174,7 +185,7 @@ rules, and atomic-write behavior.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/app` | Window lifecycle, startup flow, application state, libraries, and export UI |
+| `src/app` | Window lifecycle, Home flow, application state, libraries, and export UI |
 | `src/editor` | Mutable editor interaction and presentation |
 | `src/persistence` | Draft/package serialization, storage paths, and the shared layout codec |
 | `src/playable` | Frozen package contracts and export policy |
