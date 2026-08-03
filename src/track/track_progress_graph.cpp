@@ -55,6 +55,7 @@ TrackProgressGraph BuildTrackProgressGraph(const Track& track) {
             toPieceId,
             PortalFor(portals[portalIndex], graph.direction),
             arrivals[arrivalIndex],
+            static_cast<std::uint32_t>(graph.transitions.size() + 1u),
         });
     }
 
