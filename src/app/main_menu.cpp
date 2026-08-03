@@ -24,14 +24,15 @@ Color ChoiceColor(MainMenuChoice choice) {
     return choice == MainMenuChoice::PlayCompleteTrack ? Neon::Cyan : Neon::Green;
 }
 
-const char* ChoiceTitle(MainMenuChoice choice) {
-    return choice == MainMenuChoice::PlayCompleteTrack ? "PLAY A COMPLETE TRACK" : "CREATE A NEW TRACK";
+const char* ChoiceTitle(MainMenuChoice choice, bool hasEditorSession) {
+    if (choice == MainMenuChoice::PlayCompleteTrack) return "PLAY A COMPLETE TRACK";
+    return hasEditorSession ? "RETURN TO TRACK EDITOR" : "OPEN TRACK EDITOR";
 }
 
-const char* ChoiceDetail(MainMenuChoice choice) {
-    return choice == MainMenuChoice::PlayCompleteTrack
-        ? "Choose a saved verified time trial."
-        : "Start with an empty track editor.";
+const char* ChoiceDetail(MainMenuChoice choice, bool hasEditorSession) {
+    if (choice == MainMenuChoice::PlayCompleteTrack) return "Choose a saved verified time trial.";
+    return hasEditorSession ? "Resume the current editable track session."
+                            : "Start with an empty editable track.";
 }
 
 bool ChoiceAt(Vector2 point, MainMenuChoice& choice) {
@@ -39,24 +40,25 @@ bool ChoiceAt(Vector2 point, MainMenuChoice& choice) {
         choice = MainMenuChoice::PlayCompleteTrack;
         return true;
     }
-    if (CheckCollisionPointRec(point, OptionBounds(MainMenuChoice::CreateNewTrack))) {
-        choice = MainMenuChoice::CreateNewTrack;
+    if (CheckCollisionPointRec(point, OptionBounds(MainMenuChoice::OpenTrackEditor))) {
+        choice = MainMenuChoice::OpenTrackEditor;
         return true;
     }
     return false;
 }
 
-void DrawChoice(MainMenuChoice choice, bool selected) {
+void DrawChoice(MainMenuChoice choice, bool selected, bool hasEditorSession) {
     const Rectangle bounds = OptionBounds(choice);
     const Neon::ButtonState state = Neon::GetButtonState(bounds, true, selected);
     const bool highlighted = Neon::IsButtonHighlighted(state);
     const Color color = highlighted ? Neon::Yellow : ChoiceColor(choice);
     Neon::DrawButton(bounds, color, state);
 
-    DrawText(ChoiceTitle(choice), static_cast<int>(bounds.x) + 28, static_cast<int>(bounds.y) + 18,
-             24, color);
-    DrawText(ChoiceDetail(choice), static_cast<int>(bounds.x) + 29, static_cast<int>(bounds.y) + 51,
-             16, highlighted ? RAYWHITE : Fade(RAYWHITE, 0.72f));
+    DrawText(ChoiceTitle(choice, hasEditorSession), static_cast<int>(bounds.x) + 28,
+             static_cast<int>(bounds.y) + 18, 24, color);
+    DrawText(ChoiceDetail(choice, hasEditorSession), static_cast<int>(bounds.x) + 29,
+             static_cast<int>(bounds.y) + 51, 16,
+             highlighted ? RAYWHITE : Fade(RAYWHITE, 0.72f));
 }
 
 void DrawGuideStep(int number, int y, Color accent, const char* title, const char* detail) {
@@ -74,7 +76,8 @@ void DrawHowToPlay() {
     const Rectangle bounds{kGuideX, kGuideY, kGuideWidth, kGuideHeight};
     Neon::DrawOverlayPanel(bounds, 0.88f);
     DrawRectangleLinesEx(bounds, 1.5f, Fade(Neon::Cyan, 0.62f));
-    DrawText("HOW TO PLAY", static_cast<int>(kGuideX) + 20, static_cast<int>(kGuideY) + 18, 22, Neon::Cyan);
+    DrawText("HOW TO PLAY", static_cast<int>(kGuideX) + 20,
+             static_cast<int>(kGuideY) + 18, 22, Neon::Cyan);
     DrawText("From an empty grid to a finished lap.", static_cast<int>(kGuideX) + 20,
              static_cast<int>(kGuideY) + 47, 14, Fade(RAYWHITE, 0.70f));
     DrawLine(static_cast<int>(kGuideX) + 20, static_cast<int>(kGuideY) + 70,
@@ -88,7 +91,7 @@ void DrawHowToPlay() {
     DrawGuideStep(3, static_cast<int>(kGuideY) + 174, Neon::Cyan, "CONNECT",
                   "Match cyan IN to pink OUT, then close the loop.");
     DrawGuideStep(4, static_cast<int>(kGuideY) + 218, Neon::Green, "RACE",
-                  "Set start/finish on a straight, then press Tab.");
+                  "Set start/finish, then press F6 for a local trial.");
 
     DrawText("Camera: WASD/QE move  |  right-drag orbit  |  Shift+wheel zoom",
              static_cast<int>(kGuideX) + 20, static_cast<int>(kGuideY) + 270, 12,
@@ -98,7 +101,7 @@ void DrawHowToPlay() {
 } // namespace
 
 MainMenu::MainMenu()
-    : flow_(), hasHoveredChoice_(false), hoveredChoice_(MainMenuChoice::CreateNewTrack) {
+    : flow_(), hasHoveredChoice_(false), hoveredChoice_(MainMenuChoice::OpenTrackEditor) {
 }
 
 void MainMenu::Update() {
@@ -129,23 +132,25 @@ void MainMenu::Update() {
     }
 }
 
-void MainMenu::Draw() const {
+void MainMenu::Draw(bool hasEditorSession) const {
     Neon::DrawCenteredText("NEON RACER", AppSettings::kWindowWidth, 76, 46, Neon::Cyan);
     Neon::DrawCenteredText("BUILD | RACE | REPLAY", AppSettings::kWindowWidth, 136, 18,
                            Fade(RAYWHITE, 0.80f));
-    Neon::DrawCenteredText("CHOOSE YOUR STARTING POINT", AppSettings::kWindowWidth, 198, 16,
-                           Neon::Pink);
+    Neon::DrawCenteredText("HOME", AppSettings::kWindowWidth, 198, 16, Neon::Pink);
 
-    DrawText("START HERE", static_cast<int>(kOptionX), 242, 15, Neon::Pink);
+    DrawText("CHOOSE A DESTINATION", static_cast<int>(kOptionX), 242, 15, Neon::Pink);
 
     const MainMenuChoice selectedChoice = flow_.SelectedChoice();
-    DrawChoice(MainMenuChoice::PlayCompleteTrack, selectedChoice == MainMenuChoice::PlayCompleteTrack);
-    DrawChoice(MainMenuChoice::CreateNewTrack, selectedChoice == MainMenuChoice::CreateNewTrack);
+    DrawChoice(MainMenuChoice::PlayCompleteTrack,
+               selectedChoice == MainMenuChoice::PlayCompleteTrack, hasEditorSession);
+    DrawChoice(MainMenuChoice::OpenTrackEditor,
+               selectedChoice == MainMenuChoice::OpenTrackEditor, hasEditorSession);
     DrawHowToPlay();
 
     Neon::DrawCenteredText("Click / Enter / A: choose  |  W/S, Up/Down or D-pad: select",
                            AppSettings::kWindowWidth, 584, 15, Neon::Yellow);
-    Neon::DrawCenteredText("ESC / B: quit", AppSettings::kWindowWidth, 616, 14, Fade(RAYWHITE, 0.66f));
+    Neon::DrawCenteredText("ESC / B: quit", AppSettings::kWindowWidth, 616, 14,
+                           Fade(RAYWHITE, 0.66f));
     DrawText(AppSettings::kVersion, 20, AppSettings::kWindowHeight - 28, 12,
              Fade(RAYWHITE, 0.48f));
 }
