@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "neon_racer/editor/draft_library_flow.hpp"
 #include "neon_racer/editor/piece_palette.hpp"
 #include "track/track.hpp"
 
@@ -71,6 +72,7 @@ private:
     bool namingDraft_;
     std::string draftName_;
     std::string currentDraftName_;
+    DraftLibraryFlow draftLibraryFlow_;
     std::vector<std::string> savedDrafts_;
     mutable bool previewOverlapCacheValid_;
     mutable TrackPiece cachedPreview_;
