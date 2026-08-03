@@ -1,9 +1,11 @@
 #pragma once
 
 #include "internal/track_position_tracker.hpp"
+#include "timing_trace.hpp"
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 // Immutable timing state consumed by presentation code. Sector indices are
 // zero-based in the domain layer; TimeTrial exposes one-based convenience
@@ -57,12 +59,17 @@ struct SectorTimingUpdate {
           lapCompleted(false), completedLapTime(0.0f) {}
 };
 
-// Owns clocks and completed timing records, but not route topology. Exact split
-// events come from TrackPositionTracker so this component never guesses from
-// world-space proximity or rendering state.
+// Owns clocks, completed records, and in-memory timing references, but not
+// route topology. Exact split events and normalized progress come from
+// TrackPositionTracker so timing never guesses from world-space proximity.
 class SectorTiming {
 public:
-    SectorTiming() : lapCommitted_(false), snapshot_() {}
+    SectorTiming()
+        : lapCommitted_(false), snapshot_(), references_(),
+          currentLapTrace_(), currentSectorTrace_() {
+        currentLapTrace_.Begin();
+        currentSectorTrace_.Begin();
+    }
 
     void Configure(bool sectorsAvailable) {
         snapshot_.sectorsAvailable = sectorsAvailable;
@@ -73,6 +80,9 @@ public:
         const bool sectorsAvailable = snapshot_.sectorsAvailable;
         snapshot_ = RaceTimingSnapshot();
         snapshot_.sectorsAvailable = sectorsAvailable;
+        references_ = RaceTimingReferences();
+        currentLapTrace_.Begin();
+        currentSectorTrace_.Begin();
         lapCommitted_ = false;
     }
 
@@ -88,9 +98,13 @@ public:
             if (snapshot_.sectorsAvailable) snapshot_.currentSectorTime += deltaTime;
         }
 
+        CaptureProgress(progressUpdate.progress);
+
         if (snapshot_.sectorsAvailable && progressUpdate.sectorBoundaryCrossed) {
             float completedTime = 0.0f;
-            if (CommitSector(progressUpdate.completedSectorIndex, completedTime)) {
+            if (CommitSector(progressUpdate.completedSectorIndex,
+                             progressUpdate.progress.routeVariantId,
+                             completedTime)) {
                 update.sectorCompleted = true;
                 update.completedSectorIndex = progressUpdate.completedSectorIndex;
                 update.completedSectorTime = completedTime;
@@ -100,17 +114,22 @@ public:
         if (progressUpdate.lapCompleted) {
             if (snapshot_.sectorsAvailable && !snapshot_.currentLapSectorCompleted[2]) {
                 float completedTime = 0.0f;
-                if (CommitSector(2, completedTime)) {
+                if (CommitSector(2, progressUpdate.progress.routeVariantId,
+                                 completedTime)) {
                     update.sectorCompleted = true;
                     update.completedSectorIndex = 2;
                     update.completedSectorTime = completedTime;
                 }
             }
 
+            currentLapTrace_.Complete(snapshot_.currentLapTime,
+                                      progressUpdate.progress.routeVariantId);
             snapshot_.lastLapTime = snapshot_.currentLapTime;
-            if (snapshot_.bestLapTime == 0.0f ||
-                snapshot_.currentLapTime < snapshot_.bestLapTime) {
+            const bool improvedLap = snapshot_.bestLapTime == 0.0f ||
+                                     snapshot_.currentLapTime < snapshot_.bestLapTime;
+            if (improvedLap) {
                 snapshot_.bestLapTime = snapshot_.currentLapTime;
+                PromoteBestLap(progressUpdate.progress.routeVariantId);
             }
             ++snapshot_.completedLaps;
             lapCommitted_ = true;
@@ -127,13 +146,34 @@ public:
         snapshot_.currentLapTime = 0.0f;
         snapshot_.currentLapSectorTimes.fill(0.0f);
         snapshot_.currentLapSectorCompleted.fill(false);
+        currentLapTrace_.Begin();
+        currentSectorTrace_.Begin();
         lapCommitted_ = false;
     }
 
     const RaceTimingSnapshot& Snapshot() const { return snapshot_; }
+    const RaceTimingReferences& References() const { return references_; }
+    const TimingTrace& CurrentLapTrace() const { return currentLapTrace_; }
+    const TimingTrace& CurrentSectorTrace() const { return currentSectorTrace_; }
 
 private:
-    bool CommitSector(int sectorIndex, float& completedTime) {
+    void CaptureProgress(const TrackPositionTracker::ProgressSnapshot& progress) {
+        if (!progress.configured) return;
+        if (progress.hasLapProgress) {
+            currentLapTrace_.Append(progress.lapProgress,
+                                    snapshot_.currentLapTime,
+                                    progress.routeVariantId);
+        }
+        if (snapshot_.sectorsAvailable && progress.hasSectorProgress &&
+            progress.sectorIndex == snapshot_.currentSectorIndex) {
+            currentSectorTrace_.Append(progress.sectorProgress,
+                                       snapshot_.currentSectorTime,
+                                       progress.routeVariantId);
+        }
+    }
+
+    bool CommitSector(int sectorIndex, std::uint32_t routeVariantId,
+                      float& completedTime) {
         if (!snapshot_.sectorsAvailable || sectorIndex < 0 || sectorIndex > 2 ||
             sectorIndex != snapshot_.currentSectorIndex ||
             snapshot_.currentLapSectorCompleted[static_cast<std::size_t>(sectorIndex)]) {
@@ -141,11 +181,21 @@ private:
         }
 
         completedTime = snapshot_.currentSectorTime;
+        currentSectorTrace_.Complete(completedTime, routeVariantId);
         snapshot_.currentLapSectorTimes[static_cast<std::size_t>(sectorIndex)] = completedTime;
         snapshot_.currentLapSectorCompleted[static_cast<std::size_t>(sectorIndex)] = true;
         float& best = snapshot_.bestSectorTimes[static_cast<std::size_t>(sectorIndex)];
         const bool improvedBest = best == 0.0f || completedTime < best;
-        if (improvedBest) best = completedTime;
+        if (improvedBest) {
+            best = completedTime;
+            SectorTimingProfile& profile =
+                references_.bestSectors[static_cast<std::size_t>(sectorIndex)];
+            profile.valid = true;
+            profile.sectorIndex = sectorIndex;
+            profile.sectorTime = completedTime;
+            profile.routeVariantId = routeVariantId;
+            profile.trace = currentSectorTrace_;
+        }
 
         ++snapshot_.splitSequence;
         snapshot_.lastCompletedSectorIndex = sectorIndex;
@@ -153,10 +203,24 @@ private:
         snapshot_.lastCompletedSectorImprovedBest = improvedBest;
 
         snapshot_.currentSectorTime = 0.0f;
-        if (sectorIndex < 2) snapshot_.currentSectorIndex = sectorIndex + 1;
+        if (sectorIndex < 2) {
+            snapshot_.currentSectorIndex = sectorIndex + 1;
+            currentSectorTrace_.Begin(routeVariantId);
+        }
         return true;
+    }
+
+    void PromoteBestLap(std::uint32_t routeVariantId) {
+        references_.bestLap.valid = true;
+        references_.bestLap.lapTime = snapshot_.currentLapTime;
+        references_.bestLap.routeVariantId = routeVariantId;
+        references_.bestLap.sectorTimes = snapshot_.currentLapSectorTimes;
+        references_.bestLap.trace = currentLapTrace_;
     }
 
     bool lapCommitted_;
     RaceTimingSnapshot snapshot_;
+    RaceTimingReferences references_;
+    TimingTrace currentLapTrace_;
+    TimingTrace currentSectorTrace_;
 };
