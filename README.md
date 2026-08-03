@@ -41,25 +41,32 @@ outside the normal system paths.
 The main menu is the application Home screen and exposes two destinations:
 
 - **Play a complete track** opens the library of frozen `.nrplay` packages.
-- **Open track editor** starts an empty editor session the first time it is
-  selected, then becomes **Return to track editor** while that in-memory
-  session remains active.
+- **Open track editor** starts an empty editor session. It becomes **Return to
+  track editor** while an editor session remains active behind a local trial or
+  another temporary screen.
 
-The editor can save incomplete work as an editable `.draft`. A race-ready
-layout can be opened as an in-memory local time trial with `F6`. Completing a
-verified three-lap run enables export of a frozen playable package containing
-the exact raced layout, metadata, and its verification ghost.
+`Esc` is the standard contextual action key. In the editor it opens the editor
+action menu; during a race it pauses the run; from Home it quits the
+application. Raylib's implicit Escape shutdown is disabled so every screen owns
+its behavior explicitly.
 
-`Tab` is the application-wide Home shortcut. It returns from the editor, an
-active race, pause/results screens, or an export flow to the main menu without
-discarding the current editor track. `Esc` also returns from the editor to Home,
-opens the pause menu during a race, and quits only when used from Home. Raylib's
-implicit Escape shutdown is disabled so every screen handles the key explicitly.
+The editor action menu provides:
 
-The race pause and completed-results menus always return to Home. Confirmation
-buttons work with keyboard, gamepad, and mouse: destructive actions still
-require two activations, and keeping the pointer on the same button allows the
-second click to complete the confirmation.
+- **Start Trial**, enabled only for a race-ready track with a start/finish line;
+- **Save Draft**, which names a new editable draft or updates the current draft
+  in the latest format;
+- **Open Draft**, which opens the saved-draft library;
+- **Quit to Menu**, which ends the editor session and returns Home. A track that
+  has never been saved first presents an OK/Cancel discard warning.
+
+Completing a verified local three-lap trial enables export of a frozen playable
+package containing the exact raced layout, metadata, and its verification
+ghost. Saved playable packages remain accessible only from Home.
+
+The race pause and completed-results menus return to Home. Confirmation buttons
+work with keyboard, gamepad, and mouse: destructive actions still require two
+activations, and keeping the pointer on the same button allows the second click
+to complete the confirmation.
 
 ## Controls
 
@@ -67,19 +74,21 @@ second click to complete the confirmation.
 
 | Action | Controls |
 | --- | --- |
-| Navigate the Home, pause, results, or playable-library menu | Up/Down, `W`/`S`, or gamepad D-pad; hover with the mouse |
+| Navigate the Home, editor-action, pause, results, or playable-library menu | Up/Down, `W`/`S`, or gamepad D-pad; hover with the mouse |
 | Confirm a menu action | Enter, Space, gamepad A, or left-click |
 | Complete a destructive confirmation | Repeat Enter/Space, gamepad A, or left-click on the same action |
 | Cancel a confirmation / go back | `Esc` or gamepad B |
 | Page the playable library | Left/Right, Page Up/Page Down, or gamepad D-pad Left/Right |
 | Refresh the playable library | `R`, `F5`, or gamepad X |
-| Return to the Home menu | `Tab`; `Esc` also returns from the editor |
 | Quit from the Home menu | `Esc` or gamepad B |
 
 ### Track editor
 
 | Action | Controls |
 | --- | --- |
+| Open editor actions | `Esc` or gamepad Start |
+| Save a draft directly | `Ctrl+S` |
+| Open/close the draft library directly | `Ctrl+O` |
 | Position the placement preview | Move the mouse over the grid |
 | Place or apply the preview | Left-click |
 | Select a placed component | Shift + left-click |
@@ -92,19 +101,21 @@ second click to complete the confirmation.
 | Select an inspector property | Up/Down |
 | Adjust an inspector property | Left/Right |
 | Undo/redo | `Ctrl+Z` / `Ctrl+Y` |
-| Save a draft | `Ctrl+S` |
-| Open the draft library | `Ctrl+O` or `F5` |
-| Start a local time trial | `F6` |
-| Return to Home | `Tab` or `Esc` |
 | Orbit the editor camera | Right-drag |
 | Pan the editor camera | `W`/`A`/`S`/`D` |
 | Move the editor camera vertically | `Q` / `E` |
 | Zoom | Shift + mouse wheel |
 | Reset the editor camera | Home |
 
+**Start Trial** remains disabled until track validation reports a complete,
+race-ready layout. **Save Draft** reuses the same persistence path as
+`Ctrl+S`: the first save asks for a name, and later saves update the identified
+file. **Open Draft** reuses the `Ctrl+O` library. **Quit to Menu** deliberately
+ends the current editor session; saved files are never deleted.
+
 The playable-track library is opened from Home rather than directly from the
 editor. This keeps top-level navigation in one place while local editor trials
-remain available for verification and export.
+remain available through the editor action menu for verification and export.
 
 The bottom-right **Piece Library** expands on hover. Clicking one of its cards
 changes the selected component without placing it. Pointer actions over the
@@ -138,15 +149,15 @@ session; it is undoable and never deletes saved drafts.
 | Steer | `A`/`D` or Left/Right | Left stick |
 | Recover to the last confirmed checkpoint | `R` | Upper face button |
 | Restart the complete three-lap run | `Shift+R` | Middle-left button |
-| Open the pause menu | `P` or `Esc` | Start |
-| Return directly to Home | `Tab` | Use the pause menu |
+| Open the pause menu | `Esc` | Start |
 
 The pause menu provides **Resume**, **Return to checkpoint**, **Restart run**,
 **Return to main menu**, and **Quit**. Restart, return, and quit require a second
 confirmation. Returning to the checkpoint is immediate: it restores the car to
 the last confirmed recovery pose, closes the pause menu, resumes the race, and
-snaps the chase camera to the recovered car. Start or B resumes from the pause
-menu, while B remains available as the digital brake during active play.
+snaps the chase camera to the recovered car. Escape, Start, or B resumes from
+the pause menu, while B remains available as the digital brake during active
+play.
 
 The completed-race results menu provides **Race again**, **Save playable track**
 or **Update saved ghost** when available, **Return to main menu**, and **Quit**.
@@ -185,7 +196,7 @@ rules, and atomic-write behavior.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/app` | Window lifecycle, Home flow, application state, libraries, and export UI |
+| `src/app` | Window lifecycle, Home flow, application state, contextual menus, libraries, and export UI |
 | `src/editor` | Mutable editor interaction and presentation |
 | `src/persistence` | Draft/package serialization, storage paths, and the shared layout codec |
 | `src/playable` | Frozen package contracts and export policy |
