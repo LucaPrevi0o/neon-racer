@@ -16,7 +16,9 @@ RaceInput ReadRaylibRaceInput() {
     // full brake range for a real trigger below.
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) input.brake = RacePhysics::kDigitalBrakeAxis;
     if (IsKeyDown(KEY_X)) input.reverse = 1.0f;
-    input.pausePressed = IsKeyPressed(KEY_P) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+    // Start remains the gamepad equivalent of Escape. Keyboard pause handling
+    // is owned by RacerApplication so there is only one keyboard binding.
+    input.pausePressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
 
     const bool resetKeyPressed = IsKeyPressed(KEY_R);
     const bool restartModifier = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);

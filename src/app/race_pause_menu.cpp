@@ -107,7 +107,7 @@ void RacePauseMenu::Update() {
     if (previousPressed) flow_.SelectPrevious();
     if (nextPressed) flow_.SelectNext();
 
-    const bool backPressed = IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P) ||
+    const bool backPressed = IsKeyPressed(KEY_ESCAPE) ||
         IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) ||
         IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
     if (backPressed) {
@@ -159,7 +159,7 @@ void RacePauseMenu::Draw() const {
     } else {
         Neon::DrawCenteredText("Up/Down or D-pad: select   Enter/A: confirm", GetScreenWidth(), 520, 14,
                                Neon::Yellow);
-        Neon::DrawCenteredText("P / Esc / Start / B: resume", GetScreenWidth(), 544, 13,
+        Neon::DrawCenteredText("Esc / Start / B: resume", GetScreenWidth(), 544, 13,
                                Fade(RAYWHITE, 0.68f));
     }
 

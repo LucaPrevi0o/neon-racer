@@ -71,6 +71,28 @@ void TestDestructiveActionsRequireConfirmation() {
     }
 }
 
+void TestMouseHoverKeepsConfirmationArmed() {
+    RaceResultsFlow flow;
+    flow.Reset(true);
+    flow.Select(RaceResultsChoice::Return);
+    flow.ActivateSelectedChoice();
+    Expect(flow.IsConfirming(), "first mouse click arms return confirmation");
+
+    // The Raylib menu re-selects the hovered choice before every click. A
+    // same-choice selection must not discard the confirmation it just armed.
+    flow.Select(RaceResultsChoice::Return);
+    Expect(flow.IsConfirming(), "hovering the same button preserves confirmation");
+    flow.ActivateSelectedChoice();
+    Expect(flow.ConsumeAction() == RaceResultsAction::Return,
+           "the second mouse click completes the confirmed return action");
+
+    flow.Reset(true);
+    flow.Select(RaceResultsChoice::Quit);
+    flow.ActivateSelectedChoice();
+    flow.Select(RaceResultsChoice::Return);
+    Expect(!flow.IsConfirming(), "moving the pointer to another action cancels confirmation");
+}
+
 void TestBackSafelyReturns() {
     RaceResultsFlow flow;
     flow.Reset(true);
@@ -93,6 +115,7 @@ int main() {
     TestSaveChoiceIsSkippedWhenUnavailable();
     TestImmediateActionsAreConsumedOnce();
     TestDestructiveActionsRequireConfirmation();
+    TestMouseHoverKeepsConfirmationArmed();
     TestBackSafelyReturns();
     if (failures == 0) std::cout << "Neon Racer race-results flow tests passed.\n";
     return failures == 0 ? 0 : 1;

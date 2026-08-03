@@ -41,8 +41,11 @@ void RaceResultsFlow::SelectNext() { MoveSelection(1); }
 
 void RaceResultsFlow::Select(RaceResultsChoice choice) {
     if (!IsChoiceEnabled(choice)) return;
+    // Mouse hover re-selects the same choice every frame. Preserve an armed
+    // confirmation while the pointer remains on that button so the next click
+    // can complete it; moving to another choice still cancels confirmation.
+    if (choice != selectedChoice_) confirming_ = false;
     selectedChoice_ = choice;
-    confirming_ = false;
 }
 
 void RaceResultsFlow::ActivateSelectedChoice() {

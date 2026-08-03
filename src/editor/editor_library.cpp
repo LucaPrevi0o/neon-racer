@@ -16,6 +16,17 @@ void TrackEditor::SaveDraft() {
     SaveNamedDraft();
 }
 
+void TrackEditor::OpenDraftLibrary() {
+    libraryOpen_ = true;
+    namingDraft_ = false;
+    RefreshDraftList();
+}
+
+void TrackEditor::CloseDraftLibrary() {
+    libraryOpen_ = false;
+    namingDraft_ = false;
+}
+
 void TrackEditor::BeginSaveDraft() {
     libraryOpen_ = true;
     if (!currentDraftName_.empty()) {

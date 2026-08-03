@@ -2,14 +2,15 @@
 
 #include "main_menu_flow.hpp"
 
-// Raylib-facing startup-menu view. It gathers player input and presents the
-// current choice, but leaves application-state changes to RacerApplication.
+// Raylib-facing Home-menu view. It gathers player input and presents the
+// current choice, but leaves application-state changes and editor-session
+// lifetime to RacerApplication.
 class MainMenu {
 public:
     MainMenu();
 
     void Update();
-    void Draw() const;
+    void Draw(bool hasEditorSession) const;
     MainMenuAction ConsumeAction();
 
 private:

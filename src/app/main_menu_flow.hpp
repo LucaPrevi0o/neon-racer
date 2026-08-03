@@ -1,17 +1,17 @@
 #pragma once
 
-// Raylib-free state for the startup menu. The view maps keyboard and mouse
-// input to these operations, while RacerApplication owns the resulting screen
-// transition and any session or persistence work.
+// Raylib-free state for the Home menu. The view maps keyboard and mouse input
+// to these operations, while RacerApplication owns the resulting screen
+// transition and preserves any active editor session.
 enum class MainMenuChoice {
     PlayCompleteTrack,
-    CreateNewTrack,
+    OpenTrackEditor,
 };
 
 enum class MainMenuAction {
     None,
     OpenPlayableLibrary,
-    BeginNewTrack,
+    OpenTrackEditor,
 };
 
 class MainMenuFlow {
