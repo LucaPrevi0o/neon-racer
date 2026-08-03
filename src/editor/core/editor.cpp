@@ -38,11 +38,6 @@ void TrackEditor::BeginNewTrack() {
     SetMessage("New empty track ready. Saved drafts are unchanged.");
 }
 
-void TrackEditor::LeaveToHome() {
-    libraryOpen_ = false;
-    namingDraft_ = false;
-}
-
 const Track& TrackEditor::GetTrack() const { return track_; }
 
 TrackPiece TrackEditor::BuildPreview() const {
