@@ -39,6 +39,8 @@ void TrackEditor::BeginNewTrack() {
 }
 
 const Track& TrackEditor::GetTrack() const { return track_; }
+bool TrackEditor::IsRaceReady() const { return track_.Validate().raceReady; }
+bool TrackEditor::HasSavedDraft() const { return !currentDraftName_.empty(); }
 
 TrackPiece TrackEditor::BuildPreview() const {
     TrackPiece candidate = preview_;
