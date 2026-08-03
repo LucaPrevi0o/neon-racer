@@ -14,6 +14,10 @@ bool GamepadBackPressed() {
     return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
 }
 
+bool GamepadPausePressed() {
+    return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+}
+
 } // namespace
 
 RacerApplication::RacerApplication()
@@ -24,6 +28,7 @@ RacerApplication::RacerApplication()
       quitRequested_(false),
       editorCamera_{},
       mainMenu_(),
+      editorPauseMenu_(),
       racePauseMenu_(),
       raceResultsMenu_(),
       editor_() {
@@ -41,14 +46,6 @@ void RacerApplication::ResetEditorCamera() {
 void RacerApplication::Update(float frameTime) {
     if (quitRequested_) return;
 
-    // Tab is the application-wide Home action. Handle it before modal screens
-    // so a paused race, results menu, export flow, or editor library can all
-    // return to the same top-level destination without device-specific rules.
-    if (state_ != AppState::MainMenu && IsKeyPressed(KEY_TAB)) {
-        ReturnHome();
-        return;
-    }
-
     if (playableLibrary_.IsOpen()) {
         UpdatePlayableLibrary();
         return;
@@ -64,6 +61,11 @@ void RacerApplication::Update(float frameTime) {
         return;
     }
 
+    if (editorPauseMenu_.IsOpen()) {
+        UpdateEditorPauseMenu();
+        return;
+    }
+
     if (state_ == AppState::MainMenu) {
         if (IsKeyPressed(KEY_ESCAPE) || GamepadBackPressed()) {
             quitRequested_ = true;
@@ -74,17 +76,11 @@ void RacerApplication::Update(float frameTime) {
     }
 
     if (state_ == AppState::Editor) {
-        if (IsKeyPressed(KEY_ESCAPE)) {
-            ReturnHome();
+        if (IsKeyPressed(KEY_ESCAPE) || GamepadPausePressed()) {
+            editor_.CloseDraftLibrary();
+            editorPauseMenu_.Open(editor_.IsRaceReady(), editor_.HasSavedDraft());
             return;
         }
-        if (IsKeyPressed(KEY_F6)) {
-            StartEditorTimeTrial();
-            return;
-        }
-    }
-
-    if (state_ == AppState::Editor) {
         UpdateEditor();
     } else if (state_ == AppState::Race) {
         UpdateRace(frameTime);
@@ -102,12 +98,14 @@ void RacerApplication::Draw() const {
         DrawRace();
     }
 
-    if (!racePauseMenu_.IsOpen() && !raceResultsMenu_.IsOpen() && state_ != AppState::MainMenu) {
+    if (!editorPauseMenu_.IsOpen() && !racePauseMenu_.IsOpen() &&
+        !raceResultsMenu_.IsOpen() && state_ != AppState::MainMenu) {
         DrawStateHint();
     }
     raceResultsMenu_.Draw();
     playableLibrary_.Draw();
     racePauseMenu_.Draw();
+    editorPauseMenu_.Draw();
 }
 
 bool RacerApplication::QuitRequested() const { return quitRequested_; }
@@ -124,6 +122,26 @@ void RacerApplication::UpdateMainMenu() {
 
 void RacerApplication::UpdateEditor() {
     editor_.Update(editorCamera_);
+}
+
+void RacerApplication::UpdateEditorPauseMenu() {
+    editorPauseMenu_.Update();
+    const EditorPauseAction action = editorPauseMenu_.ConsumeAction();
+    if (action == EditorPauseAction::None) return;
+
+    if (action == EditorPauseAction::Resume) {
+        editorPauseMenu_.Close();
+    } else if (action == EditorPauseAction::StartTrial) {
+        StartEditorTimeTrial();
+    } else if (action == EditorPauseAction::SaveDraft) {
+        editorPauseMenu_.Close();
+        editor_.SaveDraft();
+    } else if (action == EditorPauseAction::OpenDraft) {
+        editorPauseMenu_.Close();
+        editor_.OpenDraftLibrary();
+    } else if (action == EditorPauseAction::QuitToMenu) {
+        ReturnHome();
+    }
 }
 
 void RacerApplication::UpdateRace(float frameTime) {
@@ -216,6 +234,7 @@ void RacerApplication::EnterTrackEditor() {
         StartNewEditorSession();
         return;
     }
+    editorPauseMenu_.Close();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     playableLibrary_.Close();
@@ -231,6 +250,7 @@ void RacerApplication::StartNewEditorSession() {
     raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
     activePlayablePath_.clear();
     editorSessionActive_ = true;
+    editorPauseMenu_.Close();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     playableLibrary_.Close();
@@ -238,16 +258,18 @@ void RacerApplication::StartNewEditorSession() {
 }
 
 void RacerApplication::StartEditorTimeTrial() {
+    PlayableTrack preview;
     std::string error;
-    if (PlayableExport::BuildPreview(editor_.GetTrack(), "Editor session", playableTrack_, error)) {
-        timeTrial_.Start(playableTrack_.layout);
-    } else {
-        // Start preserves its existing, clear validation feedback when an
-        // export cannot be made yet.
-        timeTrial_.Start(editor_.GetTrack());
+    if (!PlayableExport::BuildPreview(editor_.GetTrack(), "Editor session", preview, error)) {
+        editorPauseMenu_.Close();
+        return;
     }
+
+    playableTrack_ = preview;
+    timeTrial_.Start(playableTrack_.layout);
     raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
     activePlayablePath_.clear();
+    editorPauseMenu_.Close();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     timeTrialRenderer_.SnapTo(timeTrial_);
@@ -280,6 +302,7 @@ void RacerApplication::LaunchPlayableTrack(const std::string& path) {
     }
     raceSessionKind_ = RaceSessionKind::GhostRace;
     activePlayablePath_ = path;
+    editorPauseMenu_.Close();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     timeTrialRenderer_.SnapTo(timeTrial_);
@@ -357,6 +380,7 @@ void RacerApplication::UpdateActivePlayableGhost() {
 
 void RacerApplication::ShowPlayableLibraryMessage(const std::string& message) {
     if (timeTrial_.IsPaused()) timeTrial_.TogglePause();
+    editorPauseMenu_.Close();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     state_ = AppState::MainMenu;
@@ -366,6 +390,7 @@ void RacerApplication::ShowPlayableLibraryMessage(const std::string& message) {
 
 void RacerApplication::ReturnHome() {
     if (timeTrial_.IsPaused()) timeTrial_.TogglePause();
+    editorPauseMenu_.Close();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
     playableLibrary_.Close();
@@ -393,12 +418,12 @@ void RacerApplication::DrawRace() const {
 
 void RacerApplication::DrawStateHint() const {
     const char* hint = 0;
-    float width = 720.0f;
+    float width = 670.0f;
     if (state_ == AppState::Editor) {
-        hint = "F6: local time trial    Ctrl+O/F5: draft library    TAB/ESC: home";
+        hint = "ESC: editor actions    Ctrl+S: save draft    Ctrl+O: open draft";
     } else if (state_ == AppState::Race) {
-        width = 900.0f;
-        hint = "P/START/ESC: pause    R/Y: recover    Shift+R/SELECT: restart    TAB: home";
+        width = 790.0f;
+        hint = "ESC / START: pause    R/Y: recover    Shift+R/SELECT: restart";
     }
     if (hint == 0) return;
     Neon::DrawOverlayPanel(Rectangle{28.0f, static_cast<float>(AppSettings::kWindowHeight - 58), width, 34.0f}, 0.72f);
