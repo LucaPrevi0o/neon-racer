@@ -49,5 +49,10 @@ struct TrackSectorLayout {
     bool IsReady() const;
 };
 
+// Shared physical-length policy used by both automatic sector placement and
+// race progress snapshots. Keeping one calculation prevents timing progress
+// from drifting away from the boundaries selected by the track domain.
+float TrackRouteLengthForPiece(const TrackPiece& piece);
+
 TrackSectorLayout BuildTrackSectorLayout(const Track& track);
 const char* TrackSectorLayoutStatusMessage(TrackSectorLayoutStatus status);
