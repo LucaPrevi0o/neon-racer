@@ -39,10 +39,11 @@ bool ChoiceAt(Vector2 point, RaceResultsChoice& choice) {
     return false;
 }
 
-const char* ChoiceTitle(RaceResultsChoice choice, bool returnsToMainMenu) {
+const char* ChoiceTitle(RaceResultsChoice choice, bool returnsToMainMenu, bool updatesExistingGhost) {
     switch (choice) {
     case RaceResultsChoice::RaceAgain: return "RACE AGAIN";
-    case RaceResultsChoice::SavePlayable: return "SAVE PLAYABLE TRACK";
+    case RaceResultsChoice::SavePlayable:
+        return updatesExistingGhost ? "UPDATE SAVED GHOST" : "SAVE PLAYABLE TRACK";
     case RaceResultsChoice::Return: return returnsToMainMenu ? "RETURN TO MAIN MENU" : "RETURN TO EDITOR";
     case RaceResultsChoice::Quit: return "QUIT NEON RACER";
     }
@@ -72,14 +73,17 @@ const char* ConfirmationPrompt(RaceResultsChoice choice, bool returnsToMainMenu)
 } // namespace
 
 RaceResultsMenu::RaceResultsMenu()
-    : flow_(), open_(false), returnsToMainMenu_(true), totalTime_(0.0f), bestLapTime_(0.0f) {
+    : flow_(), open_(false), returnsToMainMenu_(true), updatesExistingGhost_(false),
+      totalTime_(0.0f), bestLapTime_(0.0f) {
 }
 
-void RaceResultsMenu::Open(bool returnsToMainMenu, bool canSavePlayable, float totalTime, float bestLapTime) {
+void RaceResultsMenu::Open(bool returnsToMainMenu, bool canSaveReplay, bool updatesExistingGhost,
+                           float totalTime, float bestLapTime) {
     returnsToMainMenu_ = returnsToMainMenu;
+    updatesExistingGhost_ = updatesExistingGhost;
     totalTime_ = totalTime;
     bestLapTime_ = bestLapTime;
-    flow_.Reset(canSavePlayable);
+    flow_.Reset(canSaveReplay);
     open_ = true;
 }
 
@@ -125,9 +129,12 @@ void RaceResultsMenu::Draw() const {
     Neon::DrawOverlayPanel(panel, 0.98f);
     DrawRectangleLinesEx(panel, 2.0f, Neon::Green);
 
-    Neon::DrawCenteredText("TIME TRIAL COMPLETE", GetScreenWidth(), 90, 32, Neon::Green);
-    Neon::DrawCenteredText("Three laps verified", GetScreenWidth(), 132, 15,
-                           Fade(RAYWHITE, 0.72f));
+    Neon::DrawCenteredText(updatesExistingGhost_ ? "GHOST RACE COMPLETE" : "TIME TRIAL COMPLETE",
+                           GetScreenWidth(), 90, 32, Neon::Green);
+    Neon::DrawCenteredText(updatesExistingGhost_
+                               ? "Beat the saved replay to replace it"
+                               : "Three laps verified",
+                           GetScreenWidth(), 132, 15, Fade(RAYWHITE, 0.72f));
 
     Neon::DrawOverlayPanel(Rectangle{454.0f, 174.0f, 372.0f, 116.0f}, 0.78f);
     DrawText("TOTAL", 484, 194, 17, Neon::Cyan);
@@ -145,7 +152,7 @@ void RaceResultsMenu::Draw() const {
         const Color accent = confirming ? Neon::Orange : ChoiceColor(choice);
         const Neon::ButtonState state = Neon::GetButtonState(bounds, enabled, selected);
         Neon::DrawButton(bounds, accent, state, choice == RaceResultsChoice::RaceAgain);
-        const char* title = ChoiceTitle(choice, returnsToMainMenu_);
+        const char* title = ChoiceTitle(choice, returnsToMainMenu_, updatesExistingGhost_);
         const int textWidth = MeasureText(title, 18);
         const Color textColor = enabled
             ? (Neon::IsButtonHighlighted(state) ? RAYWHITE : accent)
@@ -155,8 +162,10 @@ void RaceResultsMenu::Draw() const {
     }
 
     if (!flow_.CanSavePlayable()) {
-        Neon::DrawCenteredText("Playable export is unavailable for this result.", GetScreenWidth(), 602, 13,
-                               Fade(RAYWHITE, 0.52f));
+        Neon::DrawCenteredText(updatesExistingGhost_
+                                   ? "The saved ghost remains faster; no file will be changed."
+                                   : "Playable export is unavailable for this result.",
+                               GetScreenWidth(), 602, 13, Fade(RAYWHITE, 0.52f));
     }
 
     if (flow_.IsConfirming()) {

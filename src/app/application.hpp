@@ -2,6 +2,8 @@
 
 #include <raylib.h>
 
+#include <string>
+
 #include "neon_racer/editor/editor.hpp"
 #include "main_menu.hpp"
 #include "playable_library.hpp"
@@ -17,6 +19,11 @@ enum class AppState {
     MainMenu,
     Editor,
     Race,
+};
+
+enum class RaceSessionKind {
+    EditorTimeTrial,
+    GhostRace,
 };
 
 class RacerApplication {
@@ -38,6 +45,8 @@ private:
     void StartNewEditorSession();
     void LaunchPlayableTrack(const std::string& path);
     void ExportVerifiedPlayable(TrackMetadata metadata);
+    void UpdateActivePlayableGhost();
+    void ShowPlayableLibraryMessage(const std::string& message);
     void ReturnFromRace();
     void DrawMainMenu() const;
     void DrawEditor() const;
@@ -48,6 +57,8 @@ private:
     // A playable package can be launched from either the menu or editor.
     // Race menus and Tab return to this source screen.
     AppState raceReturnState_;
+    RaceSessionKind raceSessionKind_;
+    std::string activePlayablePath_;
     bool quitRequested_;
     Camera3D editorCamera_;
     MainMenu mainMenu_;

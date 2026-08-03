@@ -146,6 +146,11 @@ target_compile_options(neon-racer-playable-io-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-playable-io-tests PRIVATE neon_racer_playable neon_racer_time_trial)
 add_test(NAME neon-racer-playable-io-tests COMMAND neon-racer-playable-io-tests)
 
+add_executable(neon-racer-persistence-workflow-tests tests/unit/test_persistence_workflows.cpp)
+target_compile_options(neon-racer-persistence-workflow-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-persistence-workflow-tests PRIVATE neon_racer_playable)
+add_test(NAME neon-racer-persistence-workflow-tests COMMAND neon-racer-persistence-workflow-tests)
+
 add_executable(neon-racer-main-menu-flow-tests tests/unit/test_main_menu_flow.cpp src/app/main_menu_flow.cpp)
 target_compile_options(neon-racer-main-menu-flow-tests PRIVATE -Wall -Wextra)
 add_test(NAME neon-racer-main-menu-flow-tests COMMAND neon-racer-main-menu-flow-tests)

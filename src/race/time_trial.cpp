@@ -44,8 +44,8 @@ private:
 TimeTrial::TimeTrial()
     : track_(0), vehicle_(), trackPosition_(), accumulator_(0.0f), currentLapTime_(0.0f),
       bestLapTime_(0.0f), totalTime_(0.0f), previousStartProjection_(0.0f), completedLaps_(0),
-      paused_(false), finished_(false), ready_(false), ghostReplay_(), verification_(),
-      statusMessage_("Open a race-ready track in the editor.") {
+      paused_(false), finished_(false), ready_(false), lastCompletedRunImprovedGhost_(false),
+      ghostReplay_(), verification_(), statusMessage_("Open a race-ready track in the editor.") {
 }
 
 void TimeTrial::Start(const Track& track) {
@@ -91,9 +91,10 @@ void TimeTrial::Reset() {
     totalTime_ = 0.0f;
     ghostReplay_.ResetCandidate();
     completedLaps_ = 0;
-    trackPosition_.Reset();
     paused_ = false;
     finished_ = false;
+    lastCompletedRunImprovedGhost_ = false;
+    trackPosition_.Reset();
     statusMessage_ = "Time trial in progress.";
     ResetCarToStart();
 }
@@ -129,6 +130,7 @@ bool TimeTrial::HasVerifiedGhost() const {
            verification_.verifiedLayoutRevision == track_->LayoutRevision() &&
            verification_.verifiedLayoutFingerprint == TrackFingerprint::Calculate(*track_);
 }
+bool TimeTrial::LastCompletedRunImprovedGhost() const { return lastCompletedRunImprovedGhost_; }
 const VerificationState& TimeTrial::Verification() const { return verification_; }
 
 bool TimeTrial::ExportVerifiedGhost(VerifiedGhostData& output) const {
@@ -153,6 +155,7 @@ bool TimeTrial::ImportVerifiedGhost(const VerifiedGhostData& input) {
     verification_.isVerifiedForPlayableExport = verification_.hasSavedGhost;
     verification_.verifiedLayoutRevision = track_->LayoutRevision();
     verification_.verifiedLayoutFingerprint = input.layoutFingerprint;
+    lastCompletedRunImprovedGhost_ = false;
     return true;
 }
 
@@ -209,14 +212,17 @@ void TimeTrial::CompleteLap() {
     if (bestLapTime_ == 0.0f || currentLapTime_ < bestLapTime_) bestLapTime_ = currentLapTime_;
     if (completedLaps_ >= 3) {
         finished_ = true;
-        if (ghostReplay_.PromoteCandidateIfFaster(totalTime_)) {
+        lastCompletedRunImprovedGhost_ = ghostReplay_.PromoteCandidateIfFaster(totalTime_);
+        if (lastCompletedRunImprovedGhost_) {
             verification_.hasSavedGhost = ghostReplay_.HasVerified();
             verification_.isVerifiedForPlayableExport = verification_.hasSavedGhost;
             verification_.verifiedLayoutRevision = track_->LayoutRevision();
             verification_.verifiedLayoutFingerprint = TrackFingerprint::Calculate(*track_);
         }
         statusMessage_ = ghostReplay_.HasVerified()
-            ? "Three laps complete. Ghost verified. Press Shift+R to race it."
+            ? (lastCompletedRunImprovedGhost_
+                ? "Three laps complete. A new best ghost was verified."
+                : "Three laps complete. The saved ghost remains faster.")
             : "Three laps complete, but this run could not be verified for replay.";
         return;
     }
