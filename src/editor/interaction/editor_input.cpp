@@ -35,9 +35,8 @@ void TrackEditor::Update(Camera3D& camera) {
 
     if (libraryOpen_) {
         const Vector2 libraryMouse = GetMousePosition();
-        if ((control && IsKeyPressed(KEY_O)) || IsKeyPressed(KEY_F5)) {
-            libraryOpen_ = false;
-            namingDraft_ = false;
+        if (control && IsKeyPressed(KEY_O)) {
+            CloseDraftLibrary();
             piecePalette_.Update(libraryMouse, GetScreenWidth(), GetScreenHeight(), GetFrameTime(), false);
             return;
         }
@@ -48,17 +47,8 @@ void TrackEditor::Update(Camera3D& camera) {
 
     if (control && IsKeyPressed(KEY_Z)) Undo();
     if (control && IsKeyPressed(KEY_Y)) Redo();
-    if (control && IsKeyPressed(KEY_S)) BeginSaveDraft();
-    if (control && IsKeyPressed(KEY_O)) {
-        libraryOpen_ = true;
-        namingDraft_ = false;
-        RefreshDraftList();
-    }
-    if (IsKeyPressed(KEY_F5)) {
-        libraryOpen_ = !libraryOpen_;
-        namingDraft_ = false;
-        if (libraryOpen_) RefreshDraftList();
-    }
+    if (control && IsKeyPressed(KEY_S)) SaveDraft();
+    if (control && IsKeyPressed(KEY_O)) OpenDraftLibrary();
     if (IsKeyPressed(KEY_G)) {
         trackingGraphVisible_ = !trackingGraphVisible_;
         SetMessage(trackingGraphVisible_
