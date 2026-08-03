@@ -61,12 +61,12 @@ public:
         if (points_.empty()) Begin(routeVariantId);
 
         TimingTracePoint& last = points_.back();
-        if (progress + kProgressEpsilon < last.progress ||
-            elapsedTime + kTimeEpsilon < last.elapsedTime) {
+        if (progress + ProgressEpsilon() < last.progress ||
+            elapsedTime + TimeEpsilon() < last.elapsedTime) {
             return false;
         }
 
-        if (progress <= last.progress + kProgressEpsilon) {
+        if (progress <= last.progress + ProgressEpsilon()) {
             if (last.routeVariantId == 0u && routeVariantId != 0u) {
                 last.routeVariantId = routeVariantId;
             }
@@ -83,7 +83,7 @@ public:
         if (points_.empty()) Begin(routeVariantId);
 
         TimingTracePoint& last = points_.back();
-        if (last.progress >= 1.0f - kProgressEpsilon) {
+        if (last.progress >= 1.0f - ProgressEpsilon()) {
             last.progress = 1.0f;
             if (elapsedTime >= last.elapsedTime) last.elapsedTime = elapsedTime;
             if (last.routeVariantId == 0u && routeVariantId != 0u) {
@@ -96,8 +96,8 @@ public:
 
     bool IsComplete() const {
         return points_.size() >= 2u &&
-               points_.front().progress <= kProgressEpsilon &&
-               points_.back().progress >= 1.0f - kProgressEpsilon;
+               points_.front().progress <= ProgressEpsilon() &&
+               points_.back().progress >= 1.0f - ProgressEpsilon();
     }
 
     bool Empty() const { return points_.empty(); }
@@ -133,7 +133,7 @@ public:
             const TimingTracePoint& lower = points_[upperIndex - 1u];
             const TimingTracePoint& upper = points_[upperIndex];
             const float span = upper.progress - lower.progress;
-            const float amount = span > kProgressEpsilon
+            const float amount = span > ProgressEpsilon()
                 ? (progress - lower.progress) / span
                 : 0.0f;
             result.elapsedTime = lower.elapsedTime +
@@ -160,8 +160,8 @@ private:
         return storedRouteVariantId == requestedRouteVariantId;
     }
 
-    static constexpr float kProgressEpsilon = 0.0001f;
-    static constexpr float kTimeEpsilon = 0.0001f;
+    static float ProgressEpsilon() { return 0.0001f; }
+    static float TimeEpsilon() { return 0.0001f; }
 
     std::vector<TimingTracePoint> points_;
 };
