@@ -21,4 +21,9 @@ const Item* Find(TrackPieceType type);
 const Item* FindShortcut(int shortcut);
 TrackPiece Thumbnail(TrackPieceType type);
 
+// Changes a preview's component type while preserving common placement data
+// and replacing incompatible type-specific fields with valid catalogue
+// defaults. Selecting the existing type leaves every tuned field unchanged.
+TrackPiece RetargetPreview(const TrackPiece& preview, TrackPieceType type);
+
 } // namespace EditorPieceCatalog
