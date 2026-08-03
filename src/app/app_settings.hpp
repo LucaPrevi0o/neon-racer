@@ -5,5 +5,5 @@
 namespace AppSettings {
 const int kWindowWidth = 1280;
 const int kWindowHeight = 720;
-const char kVersion[] = "v0.2.2-alpha.5.3";
+const char kVersion[] = "v0.2.2-alpha.5.4";
 } // namespace AppSettings
