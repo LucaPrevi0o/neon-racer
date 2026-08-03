@@ -91,7 +91,7 @@ void DrawHowToPlay() {
     DrawGuideStep(3, static_cast<int>(kGuideY) + 174, Neon::Cyan, "CONNECT",
                   "Match cyan IN to pink OUT, then close the loop.");
     DrawGuideStep(4, static_cast<int>(kGuideY) + 218, Neon::Green, "RACE",
-                  "Set start/finish, then press F6 for a local trial.");
+                  "Set start/finish, press Esc, then choose Start Trial.");
 
     DrawText("Camera: WASD/QE move  |  right-drag orbit  |  Shift+wheel zoom",
              static_cast<int>(kGuideX) + 20, static_cast<int>(kGuideY) + 270, 12,
