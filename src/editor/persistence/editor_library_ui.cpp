@@ -111,7 +111,7 @@ void TrackEditor::DrawTrackLibrary() const {
                  Neon::IsButtonHighlighted(rowState) ? RAYWHITE : Neon::Cyan);
     }
     DrawText(currentDraftName_.empty()
-                 ? "Ctrl+S: name and save  |  Ctrl+O/F5: library"
-                 : "Ctrl+S: update current draft  |  Ctrl+O/F5: library",
+                 ? "Ctrl+S: name and save  |  Ctrl+O: close library"
+                 : "Ctrl+S: update current draft  |  Ctrl+O: close library",
              840, 540, 14, Neon::Yellow);
 }
