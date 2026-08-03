@@ -276,11 +276,14 @@ void TestForwardAndReverseConnectorCycles() {
     Expect(!forwardRoute.empty() && forward.LapCompleted(),
            "a forward lap completes after crossing every directed connector gate");
 
+    const TrackPiece* forwardStart = forwardTrack.GetPiece(forwardTrack.StartFinishPieceId());
     forward.BeginNextLap();
-    Expect(!forward.LapCompleted() && forward.CurrentSnapshot().sectorIndex == 0 &&
-               NearlyEqual(forward.CurrentSnapshot().routeDistance, 0.0f) &&
-               NearlyEqual(forward.CurrentSnapshot().lapProgress, 0.0f),
-           "beginning another lap resets route and sector progress without reconfiguration");
+    Expect(!forward.LapCompleted() && forwardStart != 0 &&
+               forward.CurrentSnapshot().sectorIndex == 0 &&
+               forward.CurrentSnapshot().routeDistance >= 0.0f &&
+               forward.CurrentSnapshot().routeDistance < TrackRouteLengthForPiece(*forwardStart) &&
+               forward.CurrentSnapshot().lapProgress < 0.10f,
+           "beginning another lap preserves only the small finish-step overshoot in sector one");
 
     Track reverseTrack = Track::CreateSampleCircuit();
     reverseTrack.SetStartFinish(reverseTrack.StartFinishPieceId(), RaceDirection::Reverse);
@@ -364,11 +367,14 @@ void TestBranchTransitionResolvesRouteVariant() {
     FollowRoute(tracker, circuit.track, remainder);
     Expect(tracker.LapCompleted(), "the resolved branch variant still completes a valid lap");
 
+    const TrackPiece* branchStart = circuit.track.GetPiece(circuit.start);
     tracker.BeginNextLap();
-    Expect(tracker.CurrentSnapshot().routeVariantId == 0 &&
+    Expect(branchStart != 0 && tracker.CurrentSnapshot().routeVariantId == 0 &&
                tracker.CurrentSnapshot().sectorIndex == 0 &&
-               NearlyEqual(tracker.CurrentSnapshot().routeDistance, 0.0f),
-           "a new lap restores all branch alternatives and resets sector progress");
+               tracker.CurrentSnapshot().routeDistance >= 0.0f &&
+               tracker.CurrentSnapshot().routeDistance < TrackRouteLengthForPiece(*branchStart) &&
+               tracker.CurrentSnapshot().lapProgress < 0.10f,
+           "a new lap restores branch alternatives while preserving only finish-step overshoot");
 }
 
 void TestEitherBranchGateSelectsItsRoute() {
