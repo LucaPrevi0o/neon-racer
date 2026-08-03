@@ -46,21 +46,32 @@ std::size_t TransitionIndex(const TrackSectorRouteVariant& route, std::uint32_t 
 }
 
 Track CreateBranchCircuit() {
+    // This follows the same proven branch/merge rectangle used by the position
+    // tracker tests. The long arm section deliberately places the one-third
+    // timing target before the merge, forcing one logical boundary to expose
+    // a distinct gate on each branch.
     Track track;
-    const std::uint32_t start = track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4, 3);
-    const std::uint32_t branch = track.AddBranch(GridPosition{4, 0, 0}, Heading::East, 8, 6, 3);
-    const std::uint32_t southArm = track.AddStraight(GridPosition{12, 0, 6}, Heading::East, 40, 3);
-    const std::uint32_t northArm = track.AddStraight(GridPosition{12, 0, -6}, Heading::East, 40, 3);
-    const std::uint32_t merge = track.AddMerge(GridPosition{52, 0, 0}, Heading::East, 8, 6, 3);
-    const std::uint32_t postMerge = track.AddStraight(GridPosition{60, 0, 0}, Heading::East, 4, 3);
-    const std::uint32_t firstTurn = track.AddCurve(GridPosition{64, 0, 0}, Heading::East,
-        CurveTurn::Right, 6, 3, -1, 0, SurfaceMaterial::Regular, 180);
-    const std::uint32_t returnStraight = track.AddStraight(GridPosition{64, 0, 12}, Heading::West, 64, 3);
-    const std::uint32_t finalTurn = track.AddCurve(GridPosition{0, 0, 12}, Heading::West,
-        CurveTurn::Right, 6, 3, -1, 0, SurfaceMaterial::Regular, 180);
+    const std::uint32_t start = track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
+    const std::uint32_t branch = track.AddBranch(GridPosition{4, 0, 0}, Heading::East, 6, 3);
+    const std::uint32_t southArm = track.AddStraight(GridPosition{10, 0, 3}, Heading::East, 40);
+    const std::uint32_t northArm = track.AddStraight(GridPosition{10, 0, -3}, Heading::East, 40);
+    const std::uint32_t merge = track.AddMerge(GridPosition{50, 0, 0}, Heading::East, 6, 3);
+    const std::uint32_t firstTurn = track.AddCurve(GridPosition{56, 0, 0}, Heading::East,
+                                                   CurveTurn::Right, 4);
+    const std::uint32_t southStraight = track.AddStraight(GridPosition{60, 0, 4}, Heading::South, 8);
+    const std::uint32_t secondTurn = track.AddCurve(GridPosition{60, 0, 12}, Heading::South,
+                                                    CurveTurn::Right, 4);
+    const std::uint32_t longReturn = track.AddStraight(GridPosition{56, 0, 16}, Heading::West, 50);
+    const std::uint32_t shortReturn = track.AddStraight(GridPosition{6, 0, 16}, Heading::West, 6);
+    const std::uint32_t thirdTurn = track.AddCurve(GridPosition{0, 0, 16}, Heading::West,
+                                                   CurveTurn::Right, 4);
+    const std::uint32_t northStraight = track.AddStraight(GridPosition{-4, 0, 12}, Heading::North, 8);
+    const std::uint32_t finalTurn = track.AddCurve(GridPosition{-4, 0, 4}, Heading::North,
+                                                   CurveTurn::Right, 4);
 
     Expect(start != 0 && branch != 0 && southArm != 0 && northArm != 0 && merge != 0 &&
-               postMerge != 0 && firstTurn != 0 && returnStraight != 0 && finalTurn != 0,
+               firstTurn != 0 && southStraight != 0 && secondTurn != 0 && longReturn != 0 &&
+               shortReturn != 0 && thirdTurn != 0 && northStraight != 0 && finalTurn != 0,
            "branch-sector fixture places every component without overlap");
     Expect(track.SetStartFinish(start, RaceDirection::Forward),
            "branch-sector fixture selects its start/finish straight");
