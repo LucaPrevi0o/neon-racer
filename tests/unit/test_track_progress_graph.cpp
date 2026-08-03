@@ -45,39 +45,36 @@ std::size_t TransitionIndex(const TrackSectorRouteVariant& route, std::uint32_t 
     return route.transitionIds.size();
 }
 
-Track CreateBranchCircuit() {
-    // This follows the same proven branch/merge rectangle used by the position
-    // tracker tests. The long arm section deliberately places the one-third
-    // timing target before the merge, forcing one logical boundary to expose
-    // a distinct gate on each branch.
+struct BranchedCircuit {
     Track track;
-    const std::uint32_t start = track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
-    const std::uint32_t branch = track.AddBranch(GridPosition{4, 0, 0}, Heading::East, 6, 3);
-    const std::uint32_t southArm = track.AddStraight(GridPosition{10, 0, 3}, Heading::East, 40);
-    const std::uint32_t northArm = track.AddStraight(GridPosition{10, 0, -3}, Heading::East, 40);
-    const std::uint32_t merge = track.AddMerge(GridPosition{50, 0, 0}, Heading::East, 6, 3);
-    const std::uint32_t firstTurn = track.AddCurve(GridPosition{56, 0, 0}, Heading::East,
-                                                   CurveTurn::Right, 4);
-    const std::uint32_t southStraight = track.AddStraight(GridPosition{60, 0, 4}, Heading::South, 8);
-    const std::uint32_t secondTurn = track.AddCurve(GridPosition{60, 0, 12}, Heading::South,
-                                                    CurveTurn::Right, 4);
-    const std::uint32_t longReturn = track.AddStraight(GridPosition{56, 0, 16}, Heading::West, 50);
-    const std::uint32_t shortReturn = track.AddStraight(GridPosition{6, 0, 16}, Heading::West, 6);
-    const std::uint32_t thirdTurn = track.AddCurve(GridPosition{0, 0, 16}, Heading::West,
-                                                   CurveTurn::Right, 4);
-    const std::uint32_t northStraight = track.AddStraight(GridPosition{-4, 0, 12}, Heading::North, 8);
-    const std::uint32_t finalTurn = track.AddCurve(GridPosition{-4, 0, 4}, Heading::North,
-                                                   CurveTurn::Right, 4);
+    std::uint32_t firstStraight;
+    std::uint32_t branch;
+    std::uint32_t rightArm;
+    std::uint32_t leftArm;
+    std::uint32_t merge;
+    std::uint32_t timingStart;
+};
 
-    Expect(start != 0 && branch != 0 && southArm != 0 && northArm != 0 && merge != 0 &&
-               firstTurn != 0 && southStraight != 0 && secondTurn != 0 && longReturn != 0 &&
-               shortReturn != 0 && thirdTurn != 0 && northStraight != 0 && finalTurn != 0,
-           "branch-sector fixture places every component without overlap");
-    Expect(track.SetStartFinish(start, RaceDirection::Forward),
-           "branch-sector fixture selects its start/finish straight");
-    Expect(track.Validate().raceReady,
-           "branch-sector fixture forms one complete race-ready network");
-    return track;
+BranchedCircuit CreateBranchedCircuit() {
+    // This is the same geometry already exercised by the position-tracker
+    // suite. Selecting the north return straight as the timing start rotates
+    // the lap so its one-third target falls at the two branch-arm portals.
+    BranchedCircuit circuit;
+    circuit.firstStraight = circuit.track.AddStraight(GridPosition{0, 0, 0}, Heading::East, 4);
+    circuit.branch = circuit.track.AddBranch(GridPosition{4, 0, 0}, Heading::East, 6, 3);
+    circuit.rightArm = circuit.track.AddStraight(GridPosition{10, 0, 3}, Heading::East, 10);
+    circuit.leftArm = circuit.track.AddStraight(GridPosition{10, 0, -3}, Heading::East, 10);
+    circuit.merge = circuit.track.AddMerge(GridPosition{20, 0, 0}, Heading::East, 6, 3);
+    circuit.track.AddCurve(GridPosition{26, 0, 0}, Heading::East, CurveTurn::Right, 4);
+    circuit.track.AddStraight(GridPosition{30, 0, 4}, Heading::South, 8);
+    circuit.track.AddCurve(GridPosition{30, 0, 12}, Heading::South, CurveTurn::Right, 4);
+    circuit.track.AddStraight(GridPosition{26, 0, 16}, Heading::West, 20);
+    circuit.track.AddStraight(GridPosition{6, 0, 16}, Heading::West, 6);
+    circuit.track.AddCurve(GridPosition{0, 0, 16}, Heading::West, CurveTurn::Right, 4);
+    circuit.timingStart = circuit.track.AddStraight(GridPosition{-4, 0, 12}, Heading::North, 8);
+    circuit.track.AddCurve(GridPosition{-4, 0, 4}, Heading::North, CurveTurn::Right, 4);
+    circuit.track.SetStartFinish(circuit.timingStart, RaceDirection::Forward);
+    return circuit;
 }
 
 void TestForwardGraphUsesExitPortals() {
@@ -216,33 +213,42 @@ void TestSampleCircuitProducesOrderedSectors() {
     }
 }
 
-void TestBranchCircuitProducesEquivalentBoundaryGates() {
-    const Track track = CreateBranchCircuit();
-    const TrackSectorLayout sectors = BuildTrackSectorLayout(track);
+void TestBranchCircuitProducesRouteVariantsAndAlternativeGates() {
+    const BranchedCircuit circuit = CreateBranchedCircuit();
+    Expect(circuit.firstStraight != 0 && circuit.branch != 0 && circuit.rightArm != 0 &&
+               circuit.leftArm != 0 && circuit.merge != 0 && circuit.timingStart != 0 &&
+               circuit.track.Validate().raceReady,
+           "branch-sector fixture is the repository's complete race-ready branch circuit");
+
+    const TrackSectorLayout sectors = BuildTrackSectorLayout(circuit.track);
     Expect(sectors.IsReady() && sectors.routeVariants.size() == 2u,
            "a branch and merge produce one sector route variant per connected arm");
     Expect(sectors.boundaries.size() == 2u &&
                sectors.boundaries[0].alternativeGates.size() == 2u,
-           "a logical sector boundary exposes both equivalent physical branch gates");
+           "the rotated lap exposes both branch-arm portals as one logical sector boundary");
 
     std::set<std::uint32_t> firstBoundaryIds;
+    std::set<std::vector<std::uint32_t> > routeSequences;
     for (std::vector<TrackSectorRouteVariant>::const_iterator route = sectors.routeVariants.begin();
          route != sectors.routeVariants.end(); ++route) {
         firstBoundaryIds.insert(route->firstBoundaryTransitionId);
+        routeSequences.insert(route->transitionIds);
         const std::size_t first = TransitionIndex(*route, route->firstBoundaryTransitionId);
         const std::size_t second = TransitionIndex(*route, route->secondBoundaryTransitionId);
         Expect(first < second && second + 1u < route->transitionIds.size(),
                "each branch route crosses its two timing boundaries in sector order");
     }
+    Expect(routeSequences.size() == 2u,
+           "the two route variants retain distinct directed transition sequences");
     Expect(firstBoundaryIds.size() == 2u,
-           "the two branch routes select different exact gates for their shared first boundary");
+           "the branch routes select different exact gates for their shared first boundary");
 }
 
 void TestReverseBranchCircuitProducesSectors() {
-    Track track = CreateBranchCircuit();
-    Expect(track.SetStartFinish(track.StartFinishPieceId(), RaceDirection::Reverse),
+    BranchedCircuit circuit = CreateBranchedCircuit();
+    Expect(circuit.track.SetStartFinish(circuit.timingStart, RaceDirection::Reverse),
            "reverse-sector fixture changes race direction");
-    const TrackSectorLayout sectors = BuildTrackSectorLayout(track);
+    const TrackSectorLayout sectors = BuildTrackSectorLayout(circuit.track);
     Expect(sectors.IsReady() && sectors.routeVariants.size() == 2u,
            "automatic sectors preserve both branch alternatives in reverse race direction");
 }
@@ -270,7 +276,7 @@ int main() {
     TestBranchExposesBothOutgoingPortals();
     TestDraftWithoutStartStillHasGraphConnections();
     TestSampleCircuitProducesOrderedSectors();
-    TestBranchCircuitProducesEquivalentBoundaryGates();
+    TestBranchCircuitProducesRouteVariantsAndAlternativeGates();
     TestReverseBranchCircuitProducesSectors();
     TestSectorLayoutReportsUnavailableTracks();
     if (failures == 0) std::cout << "Neon Racer track-progress and sector-layout tests passed.\n";
