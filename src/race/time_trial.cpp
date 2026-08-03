@@ -264,11 +264,15 @@ float TimeTrial::StartHeading() const {
 }
 
 const char* FormatRaceTime(float seconds) {
-    static char text[24];
-    const int wholeSeconds = static_cast<int>(seconds);
-    const int minutes = wholeSeconds / 60;
-    const int remainingSeconds = wholeSeconds % 60;
-    const int centiseconds = static_cast<int>((seconds - static_cast<float>(wholeSeconds)) * 100.0f);
-    std::snprintf(text, sizeof(text), "%02i:%02i.%02i", minutes, remainingSeconds, centiseconds);
-    return text;
+    static char text[4][24];
+    static unsigned int nextBuffer = 0u;
+    char* output = text[nextBuffer++ % 4u];
+
+    const float normalized = std::isfinite(seconds) && seconds > 0.0f ? seconds : 0.0f;
+    const int totalMilliseconds = static_cast<int>(normalized * 1000.0f + 0.5f);
+    const int minutes = totalMilliseconds / 60000;
+    const int remainingSeconds = (totalMilliseconds / 1000) % 60;
+    const int milliseconds = totalMilliseconds % 1000;
+    std::snprintf(output, 24u, "%02i:%02i.%03i", minutes, remainingSeconds, milliseconds);
+    return output;
 }
