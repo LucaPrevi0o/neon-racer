@@ -21,37 +21,37 @@ void TestReleaseIdentity() {
 
 void TestDefaultSelectionAndNavigation() {
     MainMenuFlow menu;
-    Expect(menu.SelectedChoice() == MainMenuChoice::CreateNewTrack,
-           "a first-run menu defaults to creating a new track");
+    Expect(menu.SelectedChoice() == MainMenuChoice::OpenTrackEditor,
+           "Home defaults to the track-editor destination");
 
     menu.SelectPrevious();
     Expect(menu.SelectedChoice() == MainMenuChoice::PlayCompleteTrack,
-           "previous selection wraps to the playable-track option");
+           "previous selection wraps to the playable-track destination");
 
     menu.SelectNext();
-    Expect(menu.SelectedChoice() == MainMenuChoice::CreateNewTrack,
-           "next selection wraps back to the new-track option");
+    Expect(menu.SelectedChoice() == MainMenuChoice::OpenTrackEditor,
+           "next selection wraps back to the editor destination");
 
     menu.Select(MainMenuChoice::PlayCompleteTrack);
     Expect(menu.SelectedChoice() == MainMenuChoice::PlayCompleteTrack,
-           "pointer selection can choose a menu card directly");
+           "pointer selection can choose a Home card directly");
 }
 
 void TestActionsAreMappedAndConsumedOnce() {
     MainMenuFlow menu;
     Expect(menu.ConsumeAction() == MainMenuAction::None,
-           "a menu does not produce an action before activation");
+           "Home does not produce an action before activation");
 
     menu.ActivateSelectedChoice();
-    Expect(menu.ConsumeAction() == MainMenuAction::BeginNewTrack,
-           "new-track selection requests a fresh editor session");
+    Expect(menu.ConsumeAction() == MainMenuAction::OpenTrackEditor,
+           "the editor destination requests entry without deciding session lifetime");
     Expect(menu.ConsumeAction() == MainMenuAction::None,
-           "a consumed new-track action is not repeated on the next frame");
+           "a consumed editor action is not repeated on the next frame");
 
     menu.Select(MainMenuChoice::PlayCompleteTrack);
     menu.ActivateSelectedChoice();
     Expect(menu.ConsumeAction() == MainMenuAction::OpenPlayableLibrary,
-           "play selection requests the saved playable-track library");
+           "the play destination requests the saved playable-track library");
     Expect(menu.ConsumeAction() == MainMenuAction::None,
            "a consumed library action is not repeated on the next frame");
 }
