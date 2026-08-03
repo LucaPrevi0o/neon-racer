@@ -5,6 +5,7 @@
 #include <string>
 
 #include "neon_racer/editor/editor.hpp"
+#include "editor_pause_menu.hpp"
 #include "main_menu.hpp"
 #include "playable_library.hpp"
 #include "race_pause_menu.hpp"
@@ -38,6 +39,7 @@ private:
     void ResetEditorCamera();
     void UpdateMainMenu();
     void UpdateEditor();
+    void UpdateEditorPauseMenu();
     void UpdateRace(float frameTime);
     void UpdateRacePauseMenu();
     void UpdateRaceResultsMenu();
@@ -62,6 +64,7 @@ private:
     bool quitRequested_;
     Camera3D editorCamera_;
     MainMenu mainMenu_;
+    EditorPauseMenu editorPauseMenu_;
     RacePauseMenu racePauseMenu_;
     RaceResultsMenu raceResultsMenu_;
     TrackEditor editor_;
