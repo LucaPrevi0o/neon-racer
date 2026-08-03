@@ -17,6 +17,10 @@ public:
     // defaults used at startup. Stored custom drafts are never changed.
     void BeginNewTrack();
 
+    // Preserves the editable track while closing transient modal state before
+    // the application shows its Home screen.
+    void LeaveToHome();
+
     void Update(Camera3D& camera);
     void DrawTrack3D() const;
     void DrawInterface() const;
