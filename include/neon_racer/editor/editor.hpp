@@ -23,6 +23,14 @@ public:
     void DrawInterface() const;
 
     const Track& GetTrack() const;
+    bool IsRaceReady() const;
+    bool HasSavedDraft() const;
+
+    // These operations are shared by direct shortcuts and the editor pause
+    // menu. Persistence and library state remain owned by TrackEditor.
+    void SaveDraft();
+    void OpenDraftLibrary();
+    void CloseDraftLibrary();
 
 private:
     TrackPiece BuildPreview() const;
@@ -49,7 +57,6 @@ private:
     bool UpdateTrackLibraryInput();
     void DrawTrackLibrary() const;
     void RefreshDraftList();
-    void SaveDraft();
     void BeginSaveDraft();
     void SaveNamedDraft();
     void LoadDraft(const std::string& name);
