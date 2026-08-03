@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 
 // Raylib-free pagination for the editor's saved-draft library. The editor view
@@ -9,23 +10,47 @@ class DraftLibraryFlow {
 public:
     static const std::size_t kPageSize = 9u;
 
-    DraftLibraryFlow();
+    DraftLibraryFlow() : itemCount_(0), firstVisibleIndex_(0) {}
 
     // Updates the available item count while keeping the current page when it
     // remains valid and clamping to the final page after deletions/refreshes.
-    void Reset(std::size_t itemCount);
+    void Reset(std::size_t itemCount) {
+        itemCount_ = itemCount;
+        if (itemCount_ == 0) {
+            firstVisibleIndex_ = 0;
+            return;
+        }
 
-    std::size_t ItemCount() const;
-    std::size_t FirstVisibleIndex() const;
-    std::size_t VisibleCount() const;
-    std::size_t CurrentPage() const;
-    std::size_t PageCount() const;
+        const std::size_t lastPageStart = ((itemCount_ - 1u) / kPageSize) * kPageSize;
+        if (firstVisibleIndex_ > lastPageStart) firstVisibleIndex_ = lastPageStart;
+    }
 
-    void PreviousPage();
-    void NextPage();
+    std::size_t ItemCount() const { return itemCount_; }
+    std::size_t FirstVisibleIndex() const { return firstVisibleIndex_; }
 
-    bool HasPreviousPage() const;
-    bool HasNextPage() const;
+    std::size_t VisibleCount() const {
+        if (firstVisibleIndex_ >= itemCount_) return 0;
+        return std::min(kPageSize, itemCount_ - firstVisibleIndex_);
+    }
+
+    std::size_t CurrentPage() const {
+        return itemCount_ == 0 ? 0 : firstVisibleIndex_ / kPageSize + 1u;
+    }
+
+    std::size_t PageCount() const {
+        return itemCount_ == 0 ? 0 : (itemCount_ + kPageSize - 1u) / kPageSize;
+    }
+
+    void PreviousPage() {
+        if (HasPreviousPage()) firstVisibleIndex_ -= kPageSize;
+    }
+
+    void NextPage() {
+        if (HasNextPage()) firstVisibleIndex_ += kPageSize;
+    }
+
+    bool HasPreviousPage() const { return firstVisibleIndex_ > 0; }
+    bool HasNextPage() const { return firstVisibleIndex_ + kPageSize < itemCount_; }
 
 private:
     std::size_t itemCount_;
