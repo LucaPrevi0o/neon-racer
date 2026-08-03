@@ -17,7 +17,7 @@ void Expect(bool condition, const char* message) {
 
 void TestReleaseIdentity() {
     Expect(std::string(AppSettings::kVersion) == "v0.2.2-alpha.5.1",
-           "the navigation branch preserves the alpha.5.1 release identity");
+           "the application exposes the alpha.5.1 release identity");
 }
 
 void TestDefaultSelectionAndNavigation() {
