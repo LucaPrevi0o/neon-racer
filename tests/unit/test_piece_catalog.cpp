@@ -55,19 +55,20 @@ void TestThumbnailPiecesAreValidAndRepresentBranches() {
 }
 
 void TestDraftLibraryPagination() {
+    const std::size_t pageSize = DraftLibraryFlow::PageSize();
     DraftLibraryFlow flow;
     Expect(flow.ItemCount() == 0 && flow.VisibleCount() == 0 &&
                flow.CurrentPage() == 0 && flow.PageCount() == 0,
            "an empty draft library exposes no pages");
 
-    flow.Reset(DraftLibraryFlow::kPageSize * 2u + 2u);
+    flow.Reset(pageSize * 2u + 2u);
     Expect(flow.CurrentPage() == 1 && flow.PageCount() == 3 &&
-               flow.VisibleCount() == DraftLibraryFlow::kPageSize &&
+               flow.VisibleCount() == pageSize &&
                !flow.HasPreviousPage() && flow.HasNextPage(),
            "a long draft list starts on the first complete page");
 
     flow.NextPage();
-    Expect(flow.FirstVisibleIndex() == DraftLibraryFlow::kPageSize &&
+    Expect(flow.FirstVisibleIndex() == pageSize &&
                flow.CurrentPage() == 2 && flow.HasPreviousPage() && flow.HasNextPage(),
            "next page advances by exactly one visible group");
 
@@ -76,9 +77,9 @@ void TestDraftLibraryPagination() {
                flow.HasPreviousPage() && !flow.HasNextPage(),
            "the final draft page exposes its remaining files");
 
-    flow.Reset(DraftLibraryFlow::kPageSize + 1u);
+    flow.Reset(pageSize + 1u);
     Expect(flow.CurrentPage() == 2 &&
-               flow.FirstVisibleIndex() == DraftLibraryFlow::kPageSize &&
+               flow.FirstVisibleIndex() == pageSize &&
                flow.VisibleCount() == 1,
            "refreshing after deletions clamps pagination to the new final page");
 
