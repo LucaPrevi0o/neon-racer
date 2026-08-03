@@ -1,3 +1,4 @@
+#include "neon_racer/editor/draft_library_flow.hpp"
 #include "neon_racer/editor/piece_catalog.hpp"
 #include "track/track_road_geometry.hpp"
 
@@ -53,11 +54,49 @@ void TestThumbnailPiecesAreValidAndRepresentBranches() {
     }
 }
 
+void TestDraftLibraryPagination() {
+    const std::size_t pageSize = DraftLibraryFlow::PageSize();
+    DraftLibraryFlow flow;
+    Expect(flow.ItemCount() == 0 && flow.VisibleCount() == 0 &&
+               flow.CurrentPage() == 0 && flow.PageCount() == 0,
+           "an empty draft library exposes no pages");
+
+    flow.Reset(pageSize * 2u + 2u);
+    Expect(flow.CurrentPage() == 1 && flow.PageCount() == 3 &&
+               flow.VisibleCount() == pageSize &&
+               !flow.HasPreviousPage() && flow.HasNextPage(),
+           "a long draft list starts on the first complete page");
+
+    flow.NextPage();
+    Expect(flow.FirstVisibleIndex() == pageSize &&
+               flow.CurrentPage() == 2 && flow.HasPreviousPage() && flow.HasNextPage(),
+           "next page advances by exactly one visible group");
+
+    flow.NextPage();
+    Expect(flow.CurrentPage() == 3 && flow.VisibleCount() == 2 &&
+               flow.HasPreviousPage() && !flow.HasNextPage(),
+           "the final draft page exposes its remaining files");
+
+    flow.Reset(pageSize + 1u);
+    Expect(flow.CurrentPage() == 2 &&
+               flow.FirstVisibleIndex() == pageSize &&
+               flow.VisibleCount() == 1,
+           "refreshing after deletions clamps pagination to the new final page");
+
+    flow.PreviousPage();
+    Expect(flow.CurrentPage() == 1,
+           "previous page returns to the first group");
+    flow.Reset(0);
+    Expect(flow.CurrentPage() == 0 && flow.FirstVisibleIndex() == 0,
+           "removing all drafts resets pagination completely");
+}
+
 } // namespace
 
 int main() {
     TestCatalogIdentityAndShortcutMapping();
     TestThumbnailPiecesAreValidAndRepresentBranches();
-    if (failures == 0) std::cout << "Neon Racer piece-catalog tests passed.\n";
+    TestDraftLibraryPagination();
+    if (failures == 0) std::cout << "Neon Racer editor catalogue tests passed.\n";
     return failures == 0 ? 0 : 1;
 }
