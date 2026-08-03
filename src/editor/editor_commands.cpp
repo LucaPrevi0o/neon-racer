@@ -16,7 +16,9 @@ void TrackEditor::PlacePreview() {
     if (track_.HasOverlappingGeometry(candidate)) { SetMessage("Placement blocked: track geometry overlaps."); return; }
     SaveUndoState();
     if (track_.Add(candidate) == 0) { undoStates_.pop_back(); SetMessage("Placement blocked: invalid component parameters."); return; }
-    selectedPieceId_ = 0; preview_.id = 0;
+    preview_ = candidate;
+    selectedPieceId_ = 0;
+    preview_.id = 0;
     SetMessage("Component placed. Connect all entry and exit markers for a valid circuit.");
 }
 
@@ -26,7 +28,10 @@ void TrackEditor::TransformSelected() {
     if (track_.HasOverlappingGeometry(replacement)) { SetMessage("Transform blocked: track geometry overlaps."); return; }
     SaveUndoState();
     if (!track_.ReplacePiece(replacement)) { undoStates_.pop_back(); SetMessage("Transform blocked: invalid component."); return; }
-    selectedPieceId_ = 0; preview_.id = 0; SetMessage("Component transformed and deselected.");
+    preview_ = replacement;
+    selectedPieceId_ = 0;
+    preview_.id = 0;
+    SetMessage("Component transformed and deselected.");
 }
 
 void TrackEditor::DuplicateSelected() {
