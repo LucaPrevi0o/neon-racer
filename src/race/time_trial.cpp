@@ -42,10 +42,10 @@ private:
 } // namespace
 
 TimeTrial::TimeTrial()
-    : track_(0), vehicle_(), trackPosition_(), accumulator_(0.0f), currentLapTime_(0.0f),
-      bestLapTime_(0.0f), totalTime_(0.0f), previousStartProjection_(0.0f), completedLaps_(0),
-      paused_(false), finished_(false), ready_(false), lastCompletedRunImprovedGhost_(false),
-      ghostReplay_(), verification_(), statusMessage_("Open a race-ready track in the editor.") {
+    : track_(0), vehicle_(), trackPosition_(), timing_(), accumulator_(0.0f),
+      previousStartProjection_(0.0f), paused_(false), finished_(false), ready_(false),
+      lastCompletedRunImprovedGhost_(false), ghostReplay_(), verification_(),
+      statusMessage_("Open a race-ready track in the editor.") {
 }
 
 void TimeTrial::Start(const Track& track) {
@@ -59,6 +59,7 @@ void TimeTrial::Start(const Track& track) {
     track_ = &track;
     trackPosition_.Configure(track);
     ready_ = track.Validate().raceReady;
+    timing_.Configure(ready_ && trackPosition_.CurrentSnapshot().sectorsReady);
     if (!ready_) {
         statusMessage_ = "Track is not race-ready. Complete and validate it in the editor.";
         return;
@@ -86,11 +87,8 @@ void TimeTrial::Update(float frameTime, const RaceInput& input) {
 void TimeTrial::Reset() {
     if (!ready_) return;
     accumulator_ = 0.0f;
-    currentLapTime_ = 0.0f;
-    bestLapTime_ = 0.0f;
-    totalTime_ = 0.0f;
+    timing_.ResetAttempt();
     ghostReplay_.ResetCandidate();
-    completedLaps_ = 0;
     paused_ = false;
     finished_ = false;
     lastCompletedRunImprovedGhost_ = false;
@@ -118,10 +116,16 @@ void TimeTrial::TogglePause() {
 bool TimeTrial::IsReady() const { return ready_; }
 bool TimeTrial::IsPaused() const { return paused_; }
 bool TimeTrial::IsFinished() const { return finished_; }
-int TimeTrial::CurrentLap() const { return finished_ ? 3 : completedLaps_ + 1; }
-float TimeTrial::CurrentLapTime() const { return currentLapTime_; }
-float TimeTrial::BestLapTime() const { return bestLapTime_; }
-float TimeTrial::TotalTime() const { return totalTime_; }
+int TimeTrial::CurrentLap() const {
+    return finished_ ? 3 : timing_.Snapshot().completedLaps + 1;
+}
+int TimeTrial::CurrentSector() const { return timing_.Snapshot().currentSectorIndex + 1; }
+float TimeTrial::CurrentSectorTime() const { return timing_.Snapshot().currentSectorTime; }
+float TimeTrial::CurrentLapTime() const { return timing_.Snapshot().currentLapTime; }
+float TimeTrial::LastLapTime() const { return timing_.Snapshot().lastLapTime; }
+float TimeTrial::BestLapTime() const { return timing_.Snapshot().bestLapTime; }
+float TimeTrial::TotalTime() const { return timing_.Snapshot().totalTime; }
+const RaceTimingSnapshot& TimeTrial::Timing() const { return timing_.Snapshot(); }
 const RaceCar& TimeTrial::Car() const { return vehicle_.Car(); }
 bool TimeTrial::IsOnTrack() const { return vehicle_.IsOnTrack(); }
 SurfaceMaterial TimeTrial::CurrentSurfaceMaterial() const { return vehicle_.CurrentSurfaceMaterial(); }
@@ -164,7 +168,7 @@ std::uint64_t TimeTrial::ActiveLayoutFingerprint() const {
 }
 
 RaceCar TimeTrial::GhostCar() const {
-    return HasVerifiedGhost() ? ghostReplay_.SampleAt(totalTime_, vehicle_.Car()) : vehicle_.Car();
+    return HasVerifiedGhost() ? ghostReplay_.SampleAt(TotalTime(), vehicle_.Car()) : vehicle_.Car();
 }
 
 const char* TimeTrial::StatusMessage() const { return statusMessage_; }
@@ -180,11 +184,10 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     }
 
     const RaceCar& car = vehicle_.Car();
-    trackPosition_.Update(previousPosition, car.position);
-    ghostReplay_.Capture(car, totalTime_);
-
-    currentLapTime_ += deltaTime;
-    totalTime_ += deltaTime;
+    const TrackPositionTracker::UpdateResult progressUpdate =
+        trackPosition_.Update(previousPosition, car.position);
+    ghostReplay_.Capture(car, TotalTime());
+    const SectorTimingUpdate timingUpdate = timing_.Advance(deltaTime, progressUpdate);
 
     const TrackPiece* startPiece = track_->GetPiece(track_->StartFinishPieceId());
     if (startPiece == 0) return;
@@ -198,7 +201,7 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
     const bool crossedStart = previousStartProjection_ < 0.0f && projection >= 0.0f && lateral < 2.0f &&
         directionSpeed > 1.0f;
 
-    if (trackPosition_.LapCompleted()) {
+    if (timingUpdate.lapCompleted) {
         CompleteLap();
     } else if (crossedStart && trackPosition_.HasDepartedStart() && !trackPosition_.HasReturnedToStart()) {
         statusMessage_ = "Lap not counted: complete the connected route in the selected direction.";
@@ -207,12 +210,10 @@ void TimeTrial::FixedUpdate(float deltaTime, const RaceInput& input) {
 }
 
 void TimeTrial::CompleteLap() {
-    ++completedLaps_;
     trackPosition_.BeginNextLap();
-    if (bestLapTime_ == 0.0f || currentLapTime_ < bestLapTime_) bestLapTime_ = currentLapTime_;
-    if (completedLaps_ >= 3) {
+    if (timing_.Snapshot().completedLaps >= 3) {
         finished_ = true;
-        lastCompletedRunImprovedGhost_ = ghostReplay_.PromoteCandidateIfFaster(totalTime_);
+        lastCompletedRunImprovedGhost_ = ghostReplay_.PromoteCandidateIfFaster(TotalTime());
         if (lastCompletedRunImprovedGhost_) {
             verification_.hasSavedGhost = ghostReplay_.HasVerified();
             verification_.isVerifiedForPlayableExport = verification_.hasSavedGhost;
@@ -226,7 +227,7 @@ void TimeTrial::CompleteLap() {
             : "Three laps complete, but this run could not be verified for replay.";
         return;
     }
-    currentLapTime_ = 0.0f;
+    timing_.BeginNextLap();
     statusMessage_ = "Lap complete.";
 }
 
