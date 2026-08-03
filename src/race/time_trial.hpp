@@ -4,11 +4,13 @@
 #include "internal/track_position_tracker.hpp"
 #include "race_contracts.hpp"
 #include "race_input.hpp"
+#include "sector_timing.hpp"
 #include "vehicle_dynamics.hpp"
 #include "../track/track.hpp"
 
 // Coordinates a complete three-lap attempt around the reusable simulation
-// components without owning device polling, vehicle dynamics, or replay math.
+// components without owning device polling, vehicle dynamics, replay math, or
+// presentation policy.
 class TimeTrial {
 public:
     TimeTrial();
@@ -23,9 +25,13 @@ public:
     bool IsPaused() const;
     bool IsFinished() const;
     int CurrentLap() const;
+    int CurrentSector() const;
+    float CurrentSectorTime() const;
     float CurrentLapTime() const;
+    float LastLapTime() const;
     float BestLapTime() const;
     float TotalTime() const;
+    const RaceTimingSnapshot& Timing() const;
     const RaceCar& Car() const;
     bool IsOnTrack() const;
     SurfaceMaterial CurrentSurfaceMaterial() const;
@@ -54,12 +60,9 @@ private:
     const Track* track_;
     VehicleDynamics vehicle_;
     TrackPositionTracker trackPosition_;
+    SectorTiming timing_;
     float accumulator_;
-    float currentLapTime_;
-    float bestLapTime_;
-    float totalTime_;
     float previousStartProjection_;
-    int completedLaps_;
     bool paused_;
     bool finished_;
     bool ready_;
