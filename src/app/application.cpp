@@ -18,9 +18,9 @@ bool GamepadBackPressed() {
 
 RacerApplication::RacerApplication()
     : state_(AppState::MainMenu),
-      raceReturnState_(AppState::MainMenu),
       raceSessionKind_(RaceSessionKind::EditorTimeTrial),
       activePlayablePath_(),
+      editorSessionActive_(false),
       quitRequested_(false),
       editorCamera_{},
       mainMenu_(),
@@ -40,6 +40,14 @@ void RacerApplication::ResetEditorCamera() {
 
 void RacerApplication::Update(float frameTime) {
     if (quitRequested_) return;
+
+    // Tab is the application-wide Home action. Handle it before modal screens
+    // so a paused race, results menu, export flow, or editor library can all
+    // return to the same top-level destination without device-specific rules.
+    if (state_ != AppState::MainMenu && IsKeyPressed(KEY_TAB)) {
+        ReturnHome();
+        return;
+    }
 
     if (playableLibrary_.IsOpen()) {
         UpdatePlayableLibrary();
@@ -65,36 +73,15 @@ void RacerApplication::Update(float frameTime) {
         return;
     }
 
-    const bool control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-    if (state_ == AppState::Editor && ((control && IsKeyPressed(KEY_P)) || IsKeyPressed(KEY_F6))) {
-        playableLibrary_.Open();
-        return;
-    }
-
-    if (state_ == AppState::Editor && IsKeyPressed(KEY_ESCAPE)) {
-        quitRequested_ = true;
-        return;
-    }
-
-    if (state_ == AppState::Editor && IsKeyPressed(KEY_TAB)) {
-        std::string error;
-        if (PlayableExport::BuildPreview(editor_.GetTrack(), "Editor session", playableTrack_, error)) {
-            timeTrial_.Start(playableTrack_.layout);
-        } else {
-            // Start preserves its existing, clear validation feedback when an
-            // export cannot be made yet.
-            timeTrial_.Start(editor_.GetTrack());
+    if (state_ == AppState::Editor) {
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            ReturnHome();
+            return;
         }
-        raceReturnState_ = AppState::Editor;
-        raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
-        activePlayablePath_.clear();
-        racePauseMenu_.Close();
-        raceResultsMenu_.Close();
-        timeTrialRenderer_.SnapTo(timeTrial_);
-        state_ = AppState::Race;
-    } else if (state_ == AppState::Race && IsKeyPressed(KEY_TAB)) {
-        ReturnFromRace();
-        return;
+        if (IsKeyPressed(KEY_F6)) {
+            StartEditorTimeTrial();
+            return;
+        }
     }
 
     if (state_ == AppState::Editor) {
@@ -130,8 +117,8 @@ void RacerApplication::UpdateMainMenu() {
     const MainMenuAction action = mainMenu_.ConsumeAction();
     if (action == MainMenuAction::OpenPlayableLibrary) {
         playableLibrary_.Open();
-    } else if (action == MainMenuAction::BeginNewTrack) {
-        StartNewEditorSession();
+    } else if (action == MainMenuAction::OpenTrackEditor) {
+        EnterTrackEditor();
     }
 }
 
@@ -144,7 +131,7 @@ void RacerApplication::UpdateRace(float frameTime) {
     const bool pauseRequested = input.pausePressed || IsKeyPressed(KEY_ESCAPE);
     if (pauseRequested) {
         if (!timeTrial_.IsPaused()) timeTrial_.TogglePause();
-        racePauseMenu_.Open(raceReturnState_ == AppState::MainMenu);
+        racePauseMenu_.Open(true);
         return;
     }
 
@@ -160,7 +147,7 @@ void RacerApplication::UpdateRace(float frameTime) {
         const bool canSaveReplay = ghostRace
             ? timeTrial_.LastCompletedRunImprovedGhost()
             : timeTrial_.HasVerifiedGhost();
-        raceResultsMenu_.Open(raceReturnState_ == AppState::MainMenu,
+        raceResultsMenu_.Open(true,
                               canSaveReplay,
                               ghostRace,
                               timeTrial_.TotalTime(),
@@ -186,7 +173,7 @@ void RacerApplication::UpdateRacePauseMenu() {
         timeTrialRenderer_.SnapTo(timeTrial_);
         racePauseMenu_.Close();
     } else if (action == RacePauseAction::Return) {
-        ReturnFromRace();
+        ReturnHome();
     } else if (action == RacePauseAction::Quit) {
         quitRequested_ = true;
     }
@@ -208,7 +195,7 @@ void RacerApplication::UpdateRaceResultsMenu() {
             playableLibrary_.BeginExport(playableTrack_.metadata);
         }
     } else if (action == RaceResultsAction::Return) {
-        ReturnFromRace();
+        ReturnHome();
     } else if (action == RaceResultsAction::Quit) {
         quitRequested_ = true;
     }
@@ -222,6 +209,49 @@ void RacerApplication::UpdatePlayableLibrary() {
 
     TrackMetadata metadata;
     if (playableLibrary_.ConsumeExportRequest(metadata)) ExportVerifiedPlayable(metadata);
+}
+
+void RacerApplication::EnterTrackEditor() {
+    if (!editorSessionActive_) {
+        StartNewEditorSession();
+        return;
+    }
+    racePauseMenu_.Close();
+    raceResultsMenu_.Close();
+    playableLibrary_.Close();
+    state_ = AppState::Editor;
+}
+
+void RacerApplication::StartNewEditorSession() {
+    editor_.BeginNewTrack();
+    ResetEditorCamera();
+    playableTrack_ = PlayableTrack();
+    timeTrial_ = TimeTrial();
+    timeTrialRenderer_ = TimeTrialRenderer();
+    raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
+    activePlayablePath_.clear();
+    editorSessionActive_ = true;
+    racePauseMenu_.Close();
+    raceResultsMenu_.Close();
+    playableLibrary_.Close();
+    state_ = AppState::Editor;
+}
+
+void RacerApplication::StartEditorTimeTrial() {
+    std::string error;
+    if (PlayableExport::BuildPreview(editor_.GetTrack(), "Editor session", playableTrack_, error)) {
+        timeTrial_.Start(playableTrack_.layout);
+    } else {
+        // Start preserves its existing, clear validation feedback when an
+        // export cannot be made yet.
+        timeTrial_.Start(editor_.GetTrack());
+    }
+    raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
+    activePlayablePath_.clear();
+    racePauseMenu_.Close();
+    raceResultsMenu_.Close();
+    timeTrialRenderer_.SnapTo(timeTrial_);
+    state_ = AppState::Race;
 }
 
 void RacerApplication::LaunchPlayableTrack(const std::string& path) {
@@ -248,10 +278,6 @@ void RacerApplication::LaunchPlayableTrack(const std::string& path) {
         playableLibrary_.ReportMessage("Could not activate the playable package ghost.");
         return;
     }
-    // The package list can also be opened from a completed race's results or
-    // export flow. Preserve that race's original source instead of creating a
-    // Race -> Race return loop when another package is launched there.
-    raceReturnState_ = state_ == AppState::Race ? raceReturnState_ : state_;
     raceSessionKind_ = RaceSessionKind::GhostRace;
     activePlayablePath_ = path;
     racePauseMenu_.Close();
@@ -259,19 +285,6 @@ void RacerApplication::LaunchPlayableTrack(const std::string& path) {
     timeTrialRenderer_.SnapTo(timeTrial_);
     state_ = AppState::Race;
     playableLibrary_.Close();
-}
-
-void RacerApplication::StartNewEditorSession() {
-    editor_.BeginNewTrack();
-    ResetEditorCamera();
-    playableTrack_ = PlayableTrack();
-    timeTrial_ = TimeTrial();
-    timeTrialRenderer_ = TimeTrialRenderer();
-    raceSessionKind_ = RaceSessionKind::EditorTimeTrial;
-    activePlayablePath_.clear();
-    racePauseMenu_.Close();
-    raceResultsMenu_.Close();
-    state_ = AppState::Editor;
 }
 
 void RacerApplication::ExportVerifiedPlayable(TrackMetadata metadata) {
@@ -343,22 +356,24 @@ void RacerApplication::UpdateActivePlayableGhost() {
 }
 
 void RacerApplication::ShowPlayableLibraryMessage(const std::string& message) {
+    if (timeTrial_.IsPaused()) timeTrial_.TogglePause();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
-    state_ = raceReturnState_;
+    state_ = AppState::MainMenu;
     playableLibrary_.Open();
     playableLibrary_.ReportMessage(message);
 }
 
-void RacerApplication::ReturnFromRace() {
+void RacerApplication::ReturnHome() {
     if (timeTrial_.IsPaused()) timeTrial_.TogglePause();
     racePauseMenu_.Close();
     raceResultsMenu_.Close();
-    state_ = raceReturnState_;
+    playableLibrary_.Close();
+    state_ = AppState::MainMenu;
 }
 
 void RacerApplication::DrawMainMenu() const {
-    mainMenu_.Draw();
+    mainMenu_.Draw(editorSessionActive_);
 }
 
 void RacerApplication::DrawEditor() const {
@@ -378,14 +393,12 @@ void RacerApplication::DrawRace() const {
 
 void RacerApplication::DrawStateHint() const {
     const char* hint = 0;
-    float width = 570.0f;
+    float width = 720.0f;
     if (state_ == AppState::Editor) {
-        hint = "TAB: race preview    Ctrl+P/F6: playable library    ESC: quit";
+        hint = "F6: local time trial    Ctrl+O/F5: draft library    TAB/ESC: home";
     } else if (state_ == AppState::Race) {
-        width = 930.0f;
-        hint = raceReturnState_ == AppState::MainMenu
-            ? "P/START/ESC: pause    R/Y: recover    Shift+R/SELECT: restart    TAB: quick return to menu"
-            : "P/START/ESC: pause    R/Y: recover    Shift+R/SELECT: restart    TAB: quick return to editor";
+        width = 900.0f;
+        hint = "P/START/ESC: pause    R/Y: recover    Shift+R/SELECT: restart    TAB: home";
     }
     if (hint == 0) return;
     Neon::DrawOverlayPanel(Rectangle{28.0f, static_cast<float>(AppSettings::kWindowHeight - 58), width, 34.0f}, 0.72f);
