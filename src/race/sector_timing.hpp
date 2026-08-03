@@ -21,11 +21,21 @@ struct RaceTimingSnapshot {
     std::array<float, 3> bestSectorTimes;
     std::array<bool, 3> currentLapSectorCompleted;
 
+    // Monotonic split event data. Presentation can remember splitSequence and
+    // react exactly once even when Sector 3 and BeginNextLap occur in the same
+    // fixed update.
+    unsigned int splitSequence;
+    int lastCompletedSectorIndex;
+    float lastCompletedSectorTime;
+    bool lastCompletedSectorImprovedBest;
+
     RaceTimingSnapshot()
         : sectorsAvailable(false), completedLaps(0), currentSectorIndex(0),
           currentSectorTime(0.0f), currentLapTime(0.0f), lastLapTime(0.0f),
           bestLapTime(0.0f), totalTime(0.0f), currentLapSectorTimes(),
-          bestSectorTimes(), currentLapSectorCompleted() {
+          bestSectorTimes(), currentLapSectorCompleted(), splitSequence(0u),
+          lastCompletedSectorIndex(-1), lastCompletedSectorTime(0.0f),
+          lastCompletedSectorImprovedBest(false) {
         currentLapSectorTimes.fill(0.0f);
         bestSectorTimes.fill(0.0f);
         currentLapSectorCompleted.fill(false);
@@ -33,7 +43,7 @@ struct RaceTimingSnapshot {
 };
 
 // Transient result from one fixed timing step. The immutable snapshot retains
-// the authoritative values; this event lets TimeTrial and the future HUD react
+// the authoritative values; this event lets TimeTrial and presentation react
 // exactly once when a split or lap is committed.
 struct SectorTimingUpdate {
     bool sectorCompleted;
@@ -134,7 +144,13 @@ private:
         snapshot_.currentLapSectorTimes[static_cast<std::size_t>(sectorIndex)] = completedTime;
         snapshot_.currentLapSectorCompleted[static_cast<std::size_t>(sectorIndex)] = true;
         float& best = snapshot_.bestSectorTimes[static_cast<std::size_t>(sectorIndex)];
-        if (best == 0.0f || completedTime < best) best = completedTime;
+        const bool improvedBest = best == 0.0f || completedTime < best;
+        if (improvedBest) best = completedTime;
+
+        ++snapshot_.splitSequence;
+        snapshot_.lastCompletedSectorIndex = sectorIndex;
+        snapshot_.lastCompletedSectorTime = completedTime;
+        snapshot_.lastCompletedSectorImprovedBest = improvedBest;
 
         snapshot_.currentSectorTime = 0.0f;
         if (sectorIndex < 2) snapshot_.currentSectorIndex = sectorIndex + 1;
