@@ -42,23 +42,23 @@ private:
     void UpdateRacePauseMenu();
     void UpdateRaceResultsMenu();
     void UpdatePlayableLibrary();
+    void EnterTrackEditor();
     void StartNewEditorSession();
+    void StartEditorTimeTrial();
     void LaunchPlayableTrack(const std::string& path);
     void ExportVerifiedPlayable(TrackMetadata metadata);
     void UpdateActivePlayableGhost();
     void ShowPlayableLibraryMessage(const std::string& message);
-    void ReturnFromRace();
+    void ReturnHome();
     void DrawMainMenu() const;
     void DrawEditor() const;
     void DrawRace() const;
     void DrawStateHint() const;
 
     AppState state_;
-    // A playable package can be launched from either the menu or editor.
-    // Race menus and Tab return to this source screen.
-    AppState raceReturnState_;
     RaceSessionKind raceSessionKind_;
     std::string activePlayablePath_;
+    bool editorSessionActive_;
     bool quitRequested_;
     Camera3D editorCamera_;
     MainMenu mainMenu_;
