@@ -4,7 +4,11 @@
 
 void TrackEditor::RefreshDraftList() {
     std::string error;
-    if (!DraftIO::ListCustomDrafts(savedDrafts_, error)) SetMessage(error.c_str());
+    if (!DraftIO::ListCustomDrafts(savedDrafts_, error)) {
+        SetMessage(error.c_str());
+        return;
+    }
+    draftLibraryFlow_.Reset(savedDrafts_.size());
 }
 
 void TrackEditor::SaveDraft() {
