@@ -8,7 +8,7 @@
 // loading remains owned by TrackEditor.
 class DraftLibraryFlow {
 public:
-    static const std::size_t kPageSize = 9u;
+    static std::size_t PageSize() { return 9u; }
 
     DraftLibraryFlow() : itemCount_(0), firstVisibleIndex_(0) {}
 
@@ -21,7 +21,8 @@ public:
             return;
         }
 
-        const std::size_t lastPageStart = ((itemCount_ - 1u) / kPageSize) * kPageSize;
+        const std::size_t pageSize = PageSize();
+        const std::size_t lastPageStart = ((itemCount_ - 1u) / pageSize) * pageSize;
         if (firstVisibleIndex_ > lastPageStart) firstVisibleIndex_ = lastPageStart;
     }
 
@@ -30,27 +31,28 @@ public:
 
     std::size_t VisibleCount() const {
         if (firstVisibleIndex_ >= itemCount_) return 0;
-        return std::min(kPageSize, itemCount_ - firstVisibleIndex_);
+        return std::min(PageSize(), itemCount_ - firstVisibleIndex_);
     }
 
     std::size_t CurrentPage() const {
-        return itemCount_ == 0 ? 0 : firstVisibleIndex_ / kPageSize + 1u;
+        return itemCount_ == 0 ? 0 : firstVisibleIndex_ / PageSize() + 1u;
     }
 
     std::size_t PageCount() const {
-        return itemCount_ == 0 ? 0 : (itemCount_ + kPageSize - 1u) / kPageSize;
+        const std::size_t pageSize = PageSize();
+        return itemCount_ == 0 ? 0 : (itemCount_ + pageSize - 1u) / pageSize;
     }
 
     void PreviousPage() {
-        if (HasPreviousPage()) firstVisibleIndex_ -= kPageSize;
+        if (HasPreviousPage()) firstVisibleIndex_ -= PageSize();
     }
 
     void NextPage() {
-        if (HasNextPage()) firstVisibleIndex_ += kPageSize;
+        if (HasNextPage()) firstVisibleIndex_ += PageSize();
     }
 
     bool HasPreviousPage() const { return firstVisibleIndex_ > 0; }
-    bool HasNextPage() const { return firstVisibleIndex_ + kPageSize < itemCount_; }
+    bool HasNextPage() const { return firstVisibleIndex_ + PageSize() < itemCount_; }
 
 private:
     std::size_t itemCount_;
