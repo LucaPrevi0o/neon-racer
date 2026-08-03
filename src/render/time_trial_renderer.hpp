@@ -17,6 +17,12 @@ public:
 
 private:
     void DrawHud(const TimeTrial& timeTrial) const;
+    void DrawSplitBanner() const;
 
     Camera3D camera_;
+    unsigned int observedSplitSequence_;
+    float splitBannerSeconds_;
+    int splitBannerSector_;
+    float splitBannerTime_;
+    bool splitBannerWasBest_;
 };
