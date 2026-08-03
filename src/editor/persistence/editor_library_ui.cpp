@@ -169,7 +169,7 @@ void TrackEditor::DrawTrackLibrary() const {
     DrawText(pageText, 1028 - MeasureText(pageText, 14) / 2, 483, 14, Neon::Yellow);
 
     DrawText(currentDraftName_.empty()
-                 ? "Ctrl+S: name/save  |  arrows, PgUp/PgDn or wheel: page"
-                 : "Ctrl+S: update  |  arrows, PgUp/PgDn or wheel: page",
-             840, 540, 13, Neon::Yellow);
+                 ? "Ctrl+S: name/save  |  Ctrl+O: close  |  arrows/PgUp/PgDn/wheel: page"
+                 : "Ctrl+S: update  |  Ctrl+O: close  |  arrows/PgUp/PgDn/wheel: page",
+             840, 540, 12, Neon::Yellow);
 }
