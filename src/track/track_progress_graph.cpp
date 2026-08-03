@@ -50,22 +50,6 @@ float Distance(const TrackPathPoint& first, const TrackPathPoint& second) {
     return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-float PieceRouteLength(const TrackPiece& piece) {
-    if (piece.type == TrackPieceType::Branch || piece.type == TrackPieceType::Merge) {
-        const float forward = static_cast<float>(piece.length);
-        const float lateral = static_cast<float>(std::abs(piece.lateralOffset));
-        const float vertical = static_cast<float>(piece.elevationDelta);
-        return std::sqrt(forward * forward + lateral * lateral + vertical * vertical);
-    }
-
-    const std::vector<TrackPathPoint> points = piece.PathPoints();
-    float length = 0.0f;
-    for (std::size_t index = 1; index < points.size(); ++index) {
-        length += Distance(points[index - 1], points[index]);
-    }
-    return length;
-}
-
 TransitionMap BuildTransitionMap(const TrackProgressGraph& graph) {
     TransitionMap transitions;
     for (std::vector<TrackProgressTransition>::const_iterator transition = graph.transitions.begin();
@@ -87,7 +71,7 @@ void EnumerateLapRoutes(const Track& track,
 
     const TrackPiece* currentPiece = track.GetPiece(currentPieceId);
     if (currentPiece == 0) return;
-    const float nextLength = currentLength + PieceRouteLength(*currentPiece);
+    const float nextLength = currentLength + TrackRouteLengthForPiece(*currentPiece);
 
     const TransitionMap::const_iterator outgoing = transitionMap.find(currentPieceId);
     if (outgoing == transitionMap.end()) return;
@@ -131,7 +115,7 @@ bool SelectBoundaryIndices(const Track& track,
          transition != route.transitions.end(); ++transition) {
         const TrackPiece* piece = track.GetPiece((*transition)->fromPieceId);
         if (piece == 0) return false;
-        cumulative += PieceRouteLength(*piece);
+        cumulative += TrackRouteLengthForPiece(*piece);
         cumulativeDistances.push_back(cumulative);
     }
 
@@ -182,6 +166,22 @@ TrackSectorLayout FailedLayout(TrackSectorLayoutStatus status) {
 }
 
 } // namespace
+
+float TrackRouteLengthForPiece(const TrackPiece& piece) {
+    if (piece.type == TrackPieceType::Branch || piece.type == TrackPieceType::Merge) {
+        const float forward = static_cast<float>(piece.length);
+        const float lateral = static_cast<float>(std::abs(piece.lateralOffset));
+        const float vertical = static_cast<float>(piece.elevationDelta);
+        return std::sqrt(forward * forward + lateral * lateral + vertical * vertical);
+    }
+
+    const std::vector<TrackPathPoint> points = piece.PathPoints();
+    float length = 0.0f;
+    for (std::size_t index = 1; index < points.size(); ++index) {
+        length += Distance(points[index - 1], points[index]);
+    }
+    return length;
+}
 
 TrackProgressGraph BuildTrackProgressGraph(const Track& track) {
     TrackProgressGraph graph = TrackProgressGraph{
