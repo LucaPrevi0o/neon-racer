@@ -48,7 +48,8 @@ public:
 
         EditorPauseChoice hovered = flow_.SelectedChoice();
         const bool hasHoveredChoice = ChoiceAt(GetMousePosition(), hovered);
-        if (hasHoveredChoice) flow_.Select(hovered);
+        const bool hoveredChoiceEnabled = hasHoveredChoice && flow_.IsChoiceEnabled(hovered);
+        if (hoveredChoiceEnabled) flow_.Select(hovered);
 
         if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) ||
             IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
@@ -66,7 +67,7 @@ public:
             return;
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && hasHoveredChoice) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && hoveredChoiceEnabled) {
             flow_.Select(hovered);
             flow_.ActivateSelectedChoice();
             return;
