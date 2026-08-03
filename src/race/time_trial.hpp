@@ -32,6 +32,7 @@ public:
     float BestLapTime() const;
     float TotalTime() const;
     const RaceTimingSnapshot& Timing() const;
+    const RaceTimingReferences& TimingReferences() const { return timing_.References(); }
     const RaceCar& Car() const;
     bool IsOnTrack() const;
     SurfaceMaterial CurrentSurfaceMaterial() const;
