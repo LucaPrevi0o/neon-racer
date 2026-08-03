@@ -4,6 +4,9 @@
 
 namespace {
 
+const float kRowStart = 222.0f;
+const float kRowStep = 27.0f;
+
 Rectangle TrackLibraryBounds() {
     return Rectangle{820.0f, 80.0f, 420.0f, 490.0f};
 }
@@ -14,6 +17,18 @@ Rectangle SaveDraftButtonBounds() {
 
 Rectangle RefreshDraftButtonBounds() {
     return Rectangle{1035.0f, 132.0f, 180.0f, 34.0f};
+}
+
+Rectangle PreviousPageButtonBounds() {
+    return Rectangle{840.0f, 474.0f, 105.0f, 32.0f};
+}
+
+Rectangle NextPageButtonBounds() {
+    return Rectangle{1110.0f, 474.0f, 105.0f, 32.0f};
+}
+
+Rectangle DraftRowBounds(std::size_t visibleIndex) {
+    return Rectangle{840.0f, kRowStart + static_cast<float>(visibleIndex) * kRowStep, 375.0f, 23.0f};
 }
 
 } // namespace
@@ -39,8 +54,16 @@ bool TrackEditor::UpdateTrackLibraryInput() {
         return true;
     }
 
-    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return true;
     const Vector2 mouse = GetMousePosition();
+    const float wheel = CheckCollisionPointRec(mouse, TrackLibraryBounds()) ? GetMouseWheelMove() : 0.0f;
+    const bool previousPage = IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_PAGE_UP) || wheel > 0.0f ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT);
+    const bool nextPage = IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_PAGE_DOWN) || wheel < 0.0f ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT);
+    if (previousPage) draftLibraryFlow_.PreviousPage();
+    if (nextPage) draftLibraryFlow_.NextPage();
+
+    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return true;
     if (CheckCollisionPointRec(mouse, SaveDraftButtonBounds())) {
         BeginSaveDraft();
         return true;
@@ -49,13 +72,22 @@ bool TrackEditor::UpdateTrackLibraryInput() {
         RefreshDraftList();
         return true;
     }
-    const float rowStart = currentDraftName_.empty() ? 192.0f : 222.0f;
-    for (std::size_t index = 0; index < savedDrafts_.size() && index < 11; ++index) {
-        const Rectangle row{840.0f, rowStart + static_cast<float>(index) * 27.0f, 375.0f, 23.0f};
-        if (CheckCollisionPointRec(mouse, row)) {
-            LoadDraft(savedDrafts_[index]);
-            return true;
-        }
+    if (CheckCollisionPointRec(mouse, PreviousPageButtonBounds())) {
+        draftLibraryFlow_.PreviousPage();
+        return true;
+    }
+    if (CheckCollisionPointRec(mouse, NextPageButtonBounds())) {
+        draftLibraryFlow_.NextPage();
+        return true;
+    }
+
+    const std::size_t first = draftLibraryFlow_.FirstVisibleIndex();
+    const std::size_t visibleCount = draftLibraryFlow_.VisibleCount();
+    for (std::size_t visibleIndex = 0; visibleIndex < visibleCount; ++visibleIndex) {
+        if (!CheckCollisionPointRec(mouse, DraftRowBounds(visibleIndex))) continue;
+        const std::size_t itemIndex = first + visibleIndex;
+        if (itemIndex < savedDrafts_.size()) LoadDraft(savedDrafts_[itemIndex]);
+        return true;
     }
     return true;
 }
@@ -101,17 +133,43 @@ void TrackEditor::DrawTrackLibrary() const {
     } else if (savedDrafts_.empty()) {
         DrawText("No saved custom tracks yet.", 840, 205, 16, Fade(RAYWHITE, 0.65f));
     }
-    const float rowStart = currentDraftName_.empty() ? 192.0f : 222.0f;
-    for (std::size_t index = 0; index < savedDrafts_.size() && index < 11; ++index) {
-        const Rectangle row{840.0f, rowStart + static_cast<float>(index) * 27.0f, 375.0f, 23.0f};
+
+    const std::size_t first = draftLibraryFlow_.FirstVisibleIndex();
+    const std::size_t visibleCount = draftLibraryFlow_.VisibleCount();
+    for (std::size_t visibleIndex = 0; visibleIndex < visibleCount; ++visibleIndex) {
+        const std::size_t itemIndex = first + visibleIndex;
+        if (itemIndex >= savedDrafts_.size()) break;
+        const Rectangle row = DraftRowBounds(visibleIndex);
         const Neon::ButtonState rowState = Neon::GetButtonState(row);
         Neon::DrawButton(row, Neon::Cyan, rowState);
-        DrawText(savedDrafts_[index].c_str(), static_cast<int>(row.x) + 10,
+        DrawText(savedDrafts_[itemIndex].c_str(), static_cast<int>(row.x) + 10,
                  static_cast<int>(row.y) + 4, 15,
                  Neon::IsButtonHighlighted(rowState) ? RAYWHITE : Neon::Cyan);
     }
+
+    const Rectangle previous = PreviousPageButtonBounds();
+    const Rectangle next = NextPageButtonBounds();
+    const bool hasPrevious = draftLibraryFlow_.HasPreviousPage();
+    const bool hasNext = draftLibraryFlow_.HasNextPage();
+    const Neon::ButtonState previousState = Neon::GetButtonState(previous, hasPrevious);
+    const Neon::ButtonState nextState = Neon::GetButtonState(next, hasNext);
+    Neon::DrawButton(previous, Neon::Pink, previousState, hasPrevious);
+    Neon::DrawButton(next, Neon::Cyan, nextState, hasNext);
+    DrawText("PREVIOUS", 855, 483, 14,
+             hasPrevious ? (Neon::IsButtonHighlighted(previousState) ? RAYWHITE : Neon::Pink)
+                         : Fade(RAYWHITE, 0.32f));
+    DrawText("NEXT", 1143, 483, 14,
+             hasNext ? (Neon::IsButtonHighlighted(nextState) ? RAYWHITE : Neon::Cyan)
+                     : Fade(RAYWHITE, 0.32f));
+
+    const char* pageText = draftLibraryFlow_.PageCount() == 0
+        ? "PAGE 0 / 0"
+        : TextFormat("PAGE %i / %i", static_cast<int>(draftLibraryFlow_.CurrentPage()),
+                     static_cast<int>(draftLibraryFlow_.PageCount()));
+    DrawText(pageText, 1028 - MeasureText(pageText, 14) / 2, 483, 14, Neon::Yellow);
+
     DrawText(currentDraftName_.empty()
-                 ? "Ctrl+S: name and save  |  Ctrl+O: close library"
-                 : "Ctrl+S: update current draft  |  Ctrl+O: close library",
-             840, 540, 14, Neon::Yellow);
+                 ? "Ctrl+S: name/save  |  Ctrl+O: close  |  arrows/PgUp/PgDn/wheel: page"
+                 : "Ctrl+S: update  |  Ctrl+O: close  |  arrows/PgUp/PgDn/wheel: page",
+             840, 540, 12, Neon::Yellow);
 }
