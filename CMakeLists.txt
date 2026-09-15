@@ -131,6 +131,11 @@ target_compile_options(neon-racer-time-trial-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-time-trial-tests PRIVATE neon_racer_time_trial)
 add_test(NAME neon-racer-time-trial-tests COMMAND neon-racer-time-trial-tests)
 
+add_executable(neon-racer-timing-trace-tests tests/unit/test_timing_trace.cpp)
+target_compile_options(neon-racer-timing-trace-tests PRIVATE -Wall -Wextra)
+target_link_libraries(neon-racer-timing-trace-tests PRIVATE neon_racer_time_trial)
+add_test(NAME neon-racer-timing-trace-tests COMMAND neon-racer-timing-trace-tests)
+
 add_executable(neon-racer-track-position-tests tests/unit/test_track_position_tracker.cpp)
 target_compile_options(neon-racer-track-position-tests PRIVATE -Wall -Wextra)
 target_link_libraries(neon-racer-track-position-tests PRIVATE neon_racer_time_trial)
